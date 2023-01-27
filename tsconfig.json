@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "NodeNext",
+    "forceConsistentCasingInFileNames": true,
+    "lib": [
+      "DOM",
+      "es2020"
+    ],
+    "module": "es2022",
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "es2020"
+  }
+}

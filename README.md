@@ -1,6 +1,6 @@
 # staark
 
-A easy to understand front-end library coming in at a whopping **two kilobytes** when compressed. To get you up and running you only need to know three functions: `app`, `node`, and `view`. There are a few more but lets go over the basics first.
+A easy to understand front-end library coming in at less than two kilobytes when compressed. To get you up and running you only need to know three functions: `app`, `node`, and `view`. There are a few more but lets go over the basics first.
 
 With `app` you attach the application to the document. With `node` you create, well an abstract representation of a [node](https://developer.mozilla.org/docs/Web/API/Node) for the document. And you can use the `view` function to create a component with its own state and render function that controls the nodes it returns.
 
@@ -76,7 +76,8 @@ app(
         })
       }, 'General Kenobi')
     ])
-  ), { active: false }
+    { active: false }
+  ),
 )
 ```
 

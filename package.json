@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "name": "@doars/staark-workspace",
+  "workspaces": [
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "yarn workspaces run build",
+    "lint": "yarn workspaces run lint",
+    "serve": "serve ./",
+    "upgrade": "npm-check-updates --upgrade --target minor && yarn workspaces run upgrade && yarn install"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.49.0",
+    "@typescript-eslint/parser": "^5.49.0",
+    "brotli-size": "4.0.x",
+    "chokidar": "^3.5.3",
+    "cssnano": "^5.1.14",
+    "esbuild": "^0.17.4",
+    "eslint": "^8.32.0",
+    "npm-check-updates": "^16.6.3",
+    "postcss-import": "^15.1.0",
+    "postcss-nesting": "^10.2.0",
+    "postcss-preset-env": "^7.8.3",
+    "postcss": "^8.4.21",
+    "serve": "^14.1.2",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {}
+}
