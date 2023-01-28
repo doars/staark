@@ -49,35 +49,24 @@ app(
 
 In the example above the text will always be shown. However it only updates when the number changes from divisible by three to not divisible by three, and vice versa. This is because the value of the second argument will change from `true` to `false`. The second argument can of course be anything even a deeply nested object.
 
-Then there is the `factory` object and the `classes` and `styles` functions to make creating nodes as well as setting the [class](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/class) and [style](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/style) attributes a little simpeler.
+Then there is the `factory` object to make creating nodes a little simpeler. You can deconstruct it to create node function which don't need the node type as the first parameter.
 
 ```JavaScript
-import { app, classes, factory, styles } from '@doars/staark'
-const { button, div, h1, span } = factory
+import { app, factory, view } from '@doars/staark'
+const { button, div, span } = factory
 
 app(
   document.body.firstSibling,
   view(
     'root',
     (state) => div([
+      span(state.count),
       button({
-        click: () => state.active = !state.active,
-      }, 'toggle')
-
-      h1({
-        class: classes({
-          active: state.active,
-          title: true
-        })
-      }, 'Hello there'),
-      span({
-        style: styles({
-          'background-color': state.active ? 'green' : 'red'
-        })
-      }, 'General Kenobi')
-    ])
-    { active: false }
-  ),
+        click: () => state.count++,
+      }, 'add')
+    ]),
+    { count: 0 }
+  )
 )
 ```
 
@@ -92,7 +81,7 @@ app(
   document.body.firstSibling,
   view(
     'root',
-    () => node('div', {}, [
+    () => node('div', [
       view(
         'field',
         () => node('input', {
