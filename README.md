@@ -70,9 +70,7 @@ app(
 )
 ```
 
-In the example above you can see that the `node` function has been replace with tag specific functions. And the `active` class of the `h1` as well as the `background-color` of the `span` depend on the `active` state.
-
-Well then what is the catch? Unfortunately you need to provided the view functions, which doesn't sound that hard. The keys however leading up a view must be unique. Have a look at the sample below. In order for it to work one, or both, of the keys need to be changed otherwise two views will have the path `root/field` associated with it. For instance to `root/field-name` and `root/field-email`.
+Then what is the catch? Well you need to provide the view functions with a key. Which doesn't sound that bad. Unfortunately the keys leading up a view must be unique. Have a look at the sample below. In order for it to work one, or both, of the keys need to be changed otherwise two views will have the path `root/field` associated with it. For instance it could be changed to `root/field-name` and `root/field-email`.
 
 ```JavaScript
 import { app, node, view } from '@doars/staark'
@@ -100,7 +98,7 @@ app(
 )
 ```
 
-And that is it. You now know everything in order to be an expert at using staark. For more details on the core library see the package's own [README](https://github.com/doars/staark/tree/main/packages/staark#readme).
+And that is almost everything. You now know most things in order to be an expert at using _staark_. For more details on the core library see the package's own [README](https://github.com/doars/staark/tree/main/packages/staark#readme).
 
 In addition to the core package there are other packages part of this repository to help you with the development of your application.
 
