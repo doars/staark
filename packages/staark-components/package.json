@@ -1,0 +1,41 @@
+{
+  "author": {
+    "name": "Ron Dekker",
+    "website": "https://rondekker.com"
+  },
+  "name": "@doars/staark-components",
+  "description": "",
+  "keywords": [],
+  "version": "0.0.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "homepage": "https://github.com/doars/staark#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doars/staark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/doars/staark/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "develop:script": "NODE_ENV=development node config.esbuild.js",
+    "develop:style": "NODE_ENV=development node config.postcss.js",
+    "build": "NODE_ENV=production node config.esbuild.js && NODE_ENV=production node config.postcss.js",
+    "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "upgrade": "npm-check-updates --upgrade --target minor"
+  },
+  "files": [
+    "dst",
+    "src",
+    "README.md"
+  ],
+  "devDependencies": {},
+  "dependencies": {
+    "@doars/staark": "0.0.0"
+  }
+}
