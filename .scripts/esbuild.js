@@ -41,6 +41,9 @@ const run = async (
         'safari11', // 'safari10',
       ] : [],
     }, options, buildOptions)
+    if (buildOptions.minify) {
+      buildOptions.treeShaking = true
+    }
 
     // Re-assign from and to paths.
     if (buildOptions.from) {

@@ -65,6 +65,7 @@ mount(
       }, 'add'),
 
       memo(
+        'count',
         count % 3 === 0,
         () => text(count / 2),
       ),
@@ -112,6 +113,16 @@ mount(
 ```
 
 And as you can probably guess the `fctory` object is a combination of the `factory` object and `ndo` function. You can deconstruct it to create node functions where you do not have to specify the node type and can write the attributes as a query selector.
+
+```JavaScript
+import { fctory, mount } from '@doars/staark'
+const { a } = fctory
+
+mount(
+  a('.nav-link.active[href="/next-page/"][target=_blank]', 'Next page'),
+  document.body.firstSibling,
+)
+```
 
 In addition to the functions and objects provided it is good to know that some attribute properties are treated differently. As you have probably noticed in the examples above a function gets added as a listener. The `class` and `style` are automatically converted from arrays or objects to a single string.
 

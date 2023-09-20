@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staark click example</title>
+    <link rel="stylesheet" href="/examples/style.css">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+        text,
+        view,
+      } from '/packages/staark/dst/staark.js'
+
+      console.log('mount', mount)
+      console.log('node', node)
+      console.log('text', text)
+      console.log('view', view)
+
+      console.log(
+        '[update, unmount]',
+        mount(
+          view('view-name', (state) => node('div', [
+            node('button', {
+              click: state.direction === 'left' ? () => {
+                state.direction = 'right'
+                state.clicks += 1
+              } : null,
+            }, state.direction === 'left' ? 'Click me!' : 'Can\'t click me!'),
+
+            node('button', {
+              click: state.direction === 'right' ? () => {
+                state.direction = 'left'
+                state.clicks += 1
+              } : null,
+            }, state.direction === 'right' ? 'Click me!' : 'Can\'t click me!'),
+
+            node('span',
+              ' clicks: ' + state.clicks
+            ),
+          ]), {
+            clicks: 0,
+            direction: 'left',
+          })
+        ),
+        document.getElementById('app'),
+      )
+    </script>
+  </body>
+
+</html>
