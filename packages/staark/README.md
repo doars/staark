@@ -153,3 +153,8 @@ attributes = {
 As you can see in the example above the style properties are automatically converted from camel case to kebab case. This is not done for class names since capitals could be intended.
 
 And well, that is everything you need to know about the library in order to be an expert at using _staark_!
+
+## Ideas
+
+- Store the state of the application in the browsers local storage and try to resume from there on page reload.
+- Create a server side rendering function and and a client-side re-hydration function.
