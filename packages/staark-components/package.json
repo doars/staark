@@ -36,6 +36,6 @@
   ],
   "devDependencies": {},
   "dependencies": {
-    "@doars/staark": "0.0.0"
+    "@doars/staark": "1.0.0"
   }
 }

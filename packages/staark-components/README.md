@@ -1,1 +1,3 @@
-# staark components
+# Staark components
+
+Work in progress
