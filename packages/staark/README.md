@@ -137,8 +137,36 @@ And well, that is everything you need to know about the library in order to be a
 
 ## Installation
 
+Via npm
+
 ```ZSH
 npm install @doars/staark
+```
+
+IIFE build via a CDN
+
+```HTML
+<!-- Base bundle -->
+<script src="https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.iife.js"></script>
+<!-- Base bundle minified -->
+<script src="https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.iife.min.js"></script>
+<!-- Full bundle -->
+<script src="https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.iife.js"></script>
+<!-- Full bundle minified -->
+<script src="https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.iife.min.js"></script>
+```
+
+ESM build via a CDN
+
+```JS
+// Base bundle
+import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.js'
+// Base bundle minified
+import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.min.js'
+// Full bundle
+import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.js'
+// Full bundle minified
+import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.min.js'
 ```
 
 ## Known issues
