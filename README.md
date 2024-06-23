@@ -27,8 +27,7 @@ If you are using Staark then please [let me know](https://rondekker.com#contact)
 
 ## Future ideas
 
-- Keep track of the data read from the proxy when the view function is called. Currently unnecessary re-renders can happen where the state has changed but the change won't have any effect on the results of the view function. By comparing the change's path on the state to a list of used paths the excess re-renders can be prevented.
-- Add optional keys to the `node` function so some nodes are exempt from being re-used during morphing.
+- Add optional key parameter to the `node` function so some nodes are exempt from being re-used during morphing.
 - Create a server side rendering function and and a client-side re-hydration function.
 - Store the state of the application in the browsers local storage and try to resume from there on page reload.
 
