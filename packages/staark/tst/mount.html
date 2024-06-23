@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '../dst/staark.js'
+
+      console.log('mount', mount)
+      console.log('node', node)
+
+      console.log(
+        '[update, unmount]',
+        mount(
+          document.getElementById('app'),
+          () => node('h1', 'hello world'),
+        )
+      )
+    </script>
+  </body>
+
+</html>
