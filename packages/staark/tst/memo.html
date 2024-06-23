@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        memo,
+        mount,
+        node,
+        text,
+      } from '../dst/staark.js'
+
+      console.log('memo', memo)
+      console.log('mount', mount)
+      console.log('node', node)
+      console.log('text', text)
+
+      const renderCount1 = (state) =>
+        node('div', [
+          text('with memo, will update, use memo input: '),
+          text(state.count),
+        ])
+      const renderCount2 = (state) => node('div', [
+        node('div', [
+          text('with memo, will not update: '),
+          text(state.count),
+        ])
+      ])
+
+      console.log(
+        '[update, unmount]',
+        mount(
+          document.getElementById('app'),
+          (state) => [
+            // Without memo function, should always update.
+            node('div',
+              [text('without memo, will update: '), text(state.count)]
+            ),
+
+            // With memo function, but given valid input, therefore should update.
+            memo(
+              renderCount1,
+              state.count
+            ),
+
+            // With memo function, but given invalid input, therefore should not update.
+            memo(
+              renderCount2,
+              null,
+            ),
+
+            // Buttons to mutate the state, therefore invoke an update.
+            node('div', [
+              node('button', {
+                click: () => state.count++,
+              }, text('add')),
+              node('button', {
+                click: () => state.count--,
+              }, text('subtract')),
+            ]),
+          ],
+          { count: 0, },
+        )
+      )
+    </script>
+  </body>
+
+</html>
