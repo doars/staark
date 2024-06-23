@@ -4,9 +4,9 @@
     "website": "https://rondekker.com"
   },
   "name": "@doars/staark",
-  "description": "",
+  "description": "A teeny-tiny framework for building web apps.",
   "keywords": [],
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "main": "src/index.ts",

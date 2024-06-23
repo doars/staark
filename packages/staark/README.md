@@ -3,7 +3,7 @@
 A teeny-tiny framework for building web apps.
 
 - Minimal amount of concepts to learn in order to get going, meaning the system becomes incredibly *easy to reason with*.
-- Comes in at about *a kilobyte and half* in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Comes in at *a kilobyte and half* in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has an *efficient diffing algorithm*. This ensures the dom is morphed quickly from the old to the new state with minimal overhead.
 - Utilises a proxy to manage the application state, the view is therefore only updated on changing the state, and can also be manipulated outside of event listeners.
 
