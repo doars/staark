@@ -264,7 +264,7 @@ var renderElements = (abstracts = null) => {
   if (abstracts) {
     for (const abstract of abstracts) {
       if (abstract.t) {
-        rendered += "<" + abstract.t + renderAttributes(abstract.a);
+        rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
         if (SELF_CLOSING.includes(abstract.t)) {
           rendered += "/>";
         } else {
@@ -272,7 +272,7 @@ var renderElements = (abstracts = null) => {
           if (abstract.c) {
             rendered += renderElements(abstract.c);
           }
-          rendered += "<" + abstract.t + ">";
+          rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
         }
       } else {
         rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
