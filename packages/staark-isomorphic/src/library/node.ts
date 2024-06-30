@@ -6,15 +6,8 @@ import {
   marker,
 } from './marker.js'
 import {
-  MemoAbstract,
-} from './memo.js'
-import {
   TextAbstract,
 } from './text.js'
-
-export type NodeAttributeListener = (
-  event: Event
-) => unknown
 
 export type NodeAttributes =
   GenericObject<
@@ -23,13 +16,11 @@ export type NodeAttributes =
     number |
     string |
     (number | string)[] |
-    NodeAttributeListener |
     GenericObject<number | string>
   >
 
 export type NodeContent =
   string |
-  MemoAbstract |
   NodeAbstract |
   TextAbstract
 

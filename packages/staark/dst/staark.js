@@ -33,7 +33,7 @@ var factory = new Proxy({}, {
   }
 });
 
-// src/utilities/selector.ts
+// ../staark-common/src/selector.ts
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
 var DOT = ".";
@@ -180,7 +180,7 @@ var memo = (render, memory) => ({
   m: memory
 });
 
-// src/utilities/array.ts
+// ../staark-common/src/array.ts
 var arrayify = function(data) {
   if (Array.isArray(data)) {
     return data;
@@ -190,7 +190,7 @@ var arrayify = function(data) {
   ];
 };
 
-// src/utilities/clone.ts
+// ../staark-common/src/clone.ts
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
     if (Array.isArray(value)) {
@@ -210,7 +210,7 @@ var cloneRecursive = (value) => {
   return value;
 };
 
-// src/utilities/compare.ts
+// ../staark-common/src/compare.ts
 var equalRecursive = (valueA, valueB) => {
   if (valueA === valueB) {
     return true;

@@ -1,6 +1,7 @@
+
 import {
-  NodeAttributes,
-} from '../library/node.js'
+  GenericObjectAny,
+} from './generics.js'
 
 const BRACKET_CLOSE = ']'
 const BRACKET_OPEN = '['
@@ -19,12 +20,12 @@ enum TokenTypes {
 
 export const tokenizer = (
   selector: string,
-): [string, NodeAttributes] => {
+): [string, GenericObjectAny] => {
   const length: number = selector.length
   let i: number = 0
 
   let type: string = ''
-  const attributes: NodeAttributes = {}
+  const attributes: GenericObjectAny = {}
 
   let tokenA: string = ''
   let tokenB: string | true = true

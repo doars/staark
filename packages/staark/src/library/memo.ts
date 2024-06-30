@@ -1,4 +1,4 @@
-import { GenericObject } from '../utilities/generics.js'
+import { GenericObject } from '@doars/staark-common/src/generics.js'
 import {
   marker,
 } from './marker.js'

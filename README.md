@@ -28,7 +28,8 @@ If you are using Staark then please [let me know](https://rondekker.com#contact)
 ## Future ideas
 
 - Add optional key parameter to the `node` function so some nodes are exempt from being re-used during morphing.
-- Create a server side rendering function and and a client-side re-hydration function.
+- Document how to deal with listening to window events such as resize.
+- Add client-side re-hydration.
 - Store the state of the application in the browsers local storage and try to resume from there on page reload.
 
 ## License

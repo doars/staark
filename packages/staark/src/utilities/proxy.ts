@@ -1,6 +1,6 @@
 import {
   GenericObjectAny,
-} from './generics.js'
+} from '@doars/staark-common/src/generics.js'
 
 export type ProxyData = {
   // Proxy

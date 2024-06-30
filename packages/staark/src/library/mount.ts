@@ -1,17 +1,17 @@
 import {
   arrayify,
-} from '../utilities/array.js'
+} from '@doars/staark-common/src/array.js'
 import {
   cloneRecursive,
-} from '../utilities/clone.js'
+} from '@doars/staark-common/src/clone.js'
 import {
   equalRecursive,
-} from '../utilities/compare.js'
+} from '@doars/staark-common/src/compare.js'
 import {
   GenericFunction,
   GenericFunctionUnknown,
   GenericObject,
-} from '../utilities/generics.js'
+} from '@doars/staark-common/src/generics.js'
 import {
   proxify,
 } from '../utilities/proxy.js'

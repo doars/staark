@@ -3,14 +3,12 @@
     "name": "Ron Dekker",
     "website": "https://rondekker.com"
   },
-  "name": "@doars/staark",
-  "description": "A teeny-tiny framework for building web apps.",
+  "name": "@doars/staark-common",
+  "description": "",
   "keywords": [],
-  "version": "1.0.1",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
-  "main": "dst/index.js",
-  "types": "src/index.ts",
   "homepage": "https://github.com/doars/staark#readme",
   "repository": {
     "type": "git",
@@ -23,9 +21,9 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "NODE_ENV=development node config.esbuild.js",
-    "build": "NODE_ENV=production node config.esbuild.js",
-    "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "develop": "echo 'not applicable'",
+    "build": "echo 'not applicable'",
+    "lint": "eslint src/*.js --cache --fix --no-error-on-unmatched-pattern",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "files": [
@@ -34,7 +32,5 @@
     "README.md"
   ],
   "devDependencies": {},
-  "dependencies": {
-    "@doars/staark-common": "^1.0.0"
-  }
+  "dependencies": {}
 }

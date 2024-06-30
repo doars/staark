@@ -3,10 +3,10 @@
     "name": "Ron Dekker",
     "website": "https://rondekker.com"
   },
-  "name": "@doars/staark",
+  "name": "@doars/staark-isomorphic",
   "description": "A teeny-tiny framework for building web apps.",
   "keywords": [],
-  "version": "1.0.1",
+  "version": "1.0.0",
   "license": "MIT",
   "type": "module",
   "main": "dst/index.js",
