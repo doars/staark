@@ -107,7 +107,7 @@ const renderElements = (
   if (abstracts) {
     for (const abstract of abstracts) {
       if ((abstract as NodeAbstract).t) {
-        rendered += '<' + (abstract as NodeAbstract).t + renderAttributes((abstract as NodeAbstract).a)
+        rendered += '<' + (abstract as NodeAbstract).t.toLocaleLowerCase() + renderAttributes((abstract as NodeAbstract).a)
         if (SELF_CLOSING.includes((abstract as NodeAbstract).t)) {
           rendered += '/>'
         } else {
@@ -115,7 +115,7 @@ const renderElements = (
           if ((abstract as NodeAbstract).c) {
             rendered += renderElements((abstract as NodeAbstract).c)
           }
-          rendered += '<' + (abstract as NodeAbstract).t + '>'
+          rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
         }
       } else {
         rendered += ' ' + (

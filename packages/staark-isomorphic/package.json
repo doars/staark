@@ -6,7 +6,7 @@
   "name": "@doars/staark-isomorphic",
   "description": "A teeny-tiny framework for building web apps.",
   "keywords": [],
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "MIT",
   "type": "module",
   "main": "dst/staark-isomorphic.js",
