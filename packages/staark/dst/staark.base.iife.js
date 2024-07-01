@@ -174,7 +174,7 @@
       if (newAttributes) {
         for (const name in newAttributes) {
           let value = newAttributes[name];
-          if (value !== null) {
+          if (value !== null && value !== void 0) {
             const type = typeof value;
             if (type === "function") {
               const listener = newAttributes[name] = (event) => {

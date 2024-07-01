@@ -95,7 +95,10 @@ export const mount = (
     if (newAttributes) {
       for (const name in newAttributes) {
         let value = newAttributes[name]
-        if (value !== null) {
+        if (
+          value !== null
+          && value !== undefined
+        ) {
           const type = typeof (value)
           if (type === 'function') {
             // Wrap the listener so we can prevent re-renders during handling.

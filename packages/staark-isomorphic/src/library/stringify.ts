@@ -44,7 +44,7 @@ const renderAttributes = (
   if (attributes) {
     for (const name in attributes) {
       let value = attributes[name]
-      if (value !== null) {
+      if (value !== null && value !== undefined) {
         const type = typeof (value)
 
         // Ensure it is of type string.
@@ -106,21 +106,23 @@ const renderElements = (
   let rendered = ''
   if (abstracts) {
     for (const abstract of abstracts) {
-      if ((abstract as NodeAbstract).t) {
-        rendered += '<' + (abstract as NodeAbstract).t.toLocaleLowerCase() + renderAttributes((abstract as NodeAbstract).a)
-        if (SELF_CLOSING.includes((abstract as NodeAbstract).t)) {
-          rendered += '/>'
-        } else {
-          rendered += '>'
-          if ((abstract as NodeAbstract).c) {
-            rendered += renderElements((abstract as NodeAbstract).c)
+      if (abstract) {
+        if ((abstract as NodeAbstract).t) {
+          rendered += '<' + (abstract as NodeAbstract).t.toLocaleLowerCase() + renderAttributes((abstract as NodeAbstract).a)
+          if (SELF_CLOSING.includes((abstract as NodeAbstract).t)) {
+            rendered += '/>'
+          } else {
+            rendered += '>'
+            if ((abstract as NodeAbstract).c) {
+              rendered += renderElements((abstract as NodeAbstract).c)
+            }
+            rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
           }
-          rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
+        } else {
+          rendered += ' ' + (
+            (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
+          ) + ' '
         }
-      } else {
-        rendered += ' ' + (
-          (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
-        ) + ' '
       }
     }
   }

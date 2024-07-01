@@ -213,7 +213,7 @@ var renderAttributes = (attributes = null) => {
   if (attributes) {
     for (const name in attributes) {
       let value = attributes[name];
-      if (value !== null) {
+      if (value !== null && value !== void 0) {
         const type = typeof value;
         if (type === "boolean") {
           value = value ? "true" : "false";
@@ -263,19 +263,21 @@ var renderElements = (abstracts = null) => {
   let rendered = "";
   if (abstracts) {
     for (const abstract of abstracts) {
-      if (abstract.t) {
-        rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
-        if (SELF_CLOSING.includes(abstract.t)) {
-          rendered += "/>";
-        } else {
-          rendered += ">";
-          if (abstract.c) {
-            rendered += renderElements(abstract.c);
+      if (abstract) {
+        if (abstract.t) {
+          rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
+          if (SELF_CLOSING.includes(abstract.t)) {
+            rendered += "/>";
+          } else {
+            rendered += ">";
+            if (abstract.c) {
+              rendered += renderElements(abstract.c);
+            }
+            rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
           }
-          rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
+        } else {
+          rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
         }
-      } else {
-        rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
       }
     }
   }
