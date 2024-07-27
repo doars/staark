@@ -61,9 +61,11 @@ export const node = (
     _: marker,
     a: attributesOrContents as (NodeAttributes | undefined),
     c: (
-      Array.isArray(contents)
-        ? contents
-        : [contents] as NodeContent[]
+      contents
+        ? Array.isArray(contents)
+          ? contents
+          : [contents] as NodeContent[]
+        : []
     ),
     t: type.toUpperCase(),
   }

@@ -18,7 +18,13 @@ export const nde = (
   return {
     _: marker,
     a: attributes,
-    c: (Array.isArray(contents) ? contents : [contents] as NodeContent[]),
+    c: (
+      contents
+        ? Array.isArray(contents)
+          ? contents
+          : [contents] as NodeContent[]
+        : []
+    ),
     t: type.toUpperCase(),
   }
 }

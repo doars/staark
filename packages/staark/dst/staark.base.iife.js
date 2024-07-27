@@ -434,7 +434,7 @@
     return {
       _: marker,
       a: attributesOrContents,
-      c: Array.isArray(contents) ? contents : [contents],
+      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
       t: type.toUpperCase()
     };
   };

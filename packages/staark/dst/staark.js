@@ -10,7 +10,7 @@ var node = (type, attributesOrContents, contents) => {
   return {
     _: marker,
     a: attributesOrContents,
-    c: Array.isArray(contents) ? contents : [contents],
+    c: contents ? Array.isArray(contents) ? contents : [contents] : [],
     t: type.toUpperCase()
   };
 };
@@ -589,7 +589,7 @@ var nde = (selector, contents) => {
   return {
     _: marker,
     a: attributes,
-    c: Array.isArray(contents) ? contents : [contents],
+    c: contents ? Array.isArray(contents) ? contents : [contents] : [],
     t: type.toUpperCase()
   };
 };
