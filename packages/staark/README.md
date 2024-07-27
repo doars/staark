@@ -133,6 +133,20 @@ update()
 unmount()
 ```
 
+Last but not least there is the second way to mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third value returned by the `mount` function, which is the `state` proxy. This is the same proxy that the render function receives, and as such can be manipulated similarly.
+
+```JavaScript
+import { mount, node } from '@doars/staark'
+
+const [update, unmount, state] = mount(
+  document.body.firstSibling,
+  (state) => node('div', state.count),
+  { count: 1, },
+)
+
+count++
+```
+
 And well, that is everything you need to know about the library in order to be an expert at using _staark_!
 
 ## Installation

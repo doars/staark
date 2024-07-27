@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "type": "module",
+  "packageManager": "yarn@1.22.22",
   "scripts": {
     "build": "yarn workspaces run build",
     "lint": "yarn workspaces run lint",

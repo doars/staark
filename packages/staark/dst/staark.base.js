@@ -406,7 +406,8 @@ var mount = (rootNode, renderView, initialState) => {
   updateAbstracts();
   return [
     updateAbstracts,
-    unmount
+    unmount,
+    state.p
   ];
 };
 

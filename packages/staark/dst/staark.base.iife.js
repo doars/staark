@@ -420,7 +420,8 @@
     updateAbstracts();
     return [
       updateAbstracts,
-      unmount
+      unmount,
+      state.p
     ];
   };
 

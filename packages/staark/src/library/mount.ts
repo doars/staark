@@ -11,6 +11,7 @@ import {
   GenericFunction,
   GenericFunctionUnknown,
   GenericObject,
+  GenericObjectAny,
 } from '@doars/staark-common/src/generics.js'
 import {
   proxify,
@@ -50,7 +51,7 @@ export const mount = (
   rootNode: Element | string,
   renderView: ViewFunction,
   initialState?: GenericObject<any>,
-): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown] => {
+): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown, GenericObjectAny] => {
   if (!initialState) {
     initialState = {}
   }
@@ -416,7 +417,7 @@ export const mount = (
         newAbstractTree,
         oldAbstractTree,
       )
-      // Store state for next update
+      // Store tree for next update
       oldAbstractTree = newAbstractTree
       oldMemoList = newMemoList
       newMemoList = []
@@ -432,5 +433,6 @@ export const mount = (
   return [
     updateAbstracts,
     unmount,
+    state.p,
   ]
 }
