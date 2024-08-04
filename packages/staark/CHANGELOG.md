@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Added support for initial state being an existing proxy.
+
 ## 1.1.1
 
 - Fixed issue when node has no child elements.

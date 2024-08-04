@@ -75,7 +75,7 @@ export const mount = (
     ? document.querySelector(rootNode)
     : rootNode
   if (!_rootNode) {
-    throw new Error('no root found')
+    throw new Error('No mount')
   }
   unmount()
   active = true
@@ -218,7 +218,7 @@ export const mount = (
       match = {
         c: arrayify(
           memoAbstract.r(
-            state.p,
+            state,
             memoAbstract.m,
           )
         ),
@@ -385,14 +385,18 @@ export const mount = (
   }
 
   let proxyChanged = true
-  const state = proxify(
-    initialState,
-    (): void => {
-      proxyChanged = true
-      requestAnimationFrame(
-        updateAbstracts,
+  let state = (
+    Object.getPrototypeOf(initialState) === Proxy.prototype
+      ? initialState
+      : proxify(
+        initialState,
+        (): void => {
+          proxyChanged = true
+          requestAnimationFrame(
+            updateAbstracts,
+          )
+        },
       )
-    },
   )
 
   let oldAbstractTree: NodeContent[] = []
@@ -410,7 +414,7 @@ export const mount = (
       proxyChanged = false
 
       let newAbstractTree = arrayify(
-        renderView(state.p),
+        renderView(state),
       )
       updateElementTree(
         _rootNode,
@@ -424,15 +428,20 @@ export const mount = (
 
       updating = false
       if (proxyChanged) {
-        throw new Error('proxy changed during rendering')
+        throw new Error('update during render')
       }
     }
   }
   updateAbstracts()
 
   return [
-    updateAbstracts,
+    (): void => {
+      proxyChanged = true
+      requestAnimationFrame(
+        updateAbstracts,
+      )
+    },
     unmount,
-    state.p,
+    state,
   ]
 }

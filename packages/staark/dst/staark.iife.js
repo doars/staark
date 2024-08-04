@@ -276,15 +276,15 @@
       }
       const revocable = Proxy.revocable(target, {
         deleteProperty: (target2, key) => {
-          if (!Reflect.has(target2, key)) {
-            return true;
+          if (Reflect.has(target2, key)) {
+            remove(target2);
+            const deleted = Reflect.deleteProperty(target2, key);
+            if (deleted) {
+              onChange();
+            }
+            return deleted;
           }
-          remove(target2);
-          const deleted = Reflect.deleteProperty(target2, key);
-          if (deleted) {
-            onChange();
-          }
-          return deleted;
+          return true;
         },
         set: (target2, key, value) => {
           const existingValue = target2[key];
@@ -304,12 +304,7 @@
       map.set(revocable, target);
       return revocable.proxy;
     };
-    return {
-      // Add initial root.
-      p: add(root),
-      // Stop dispatcher by removing root.
-      s: () => remove(root)
-    };
+    return add(root);
   };
 
   // src/library/mount.ts
@@ -333,7 +328,7 @@
     };
     _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) : rootNode;
     if (!_rootNode) {
-      throw new Error("no root found");
+      throw new Error("No mount");
     }
     unmount();
     active = true;
@@ -431,7 +426,7 @@
         match = {
           c: arrayify(
             memoAbstract.r(
-              state.p,
+              state,
               memoAbstract.m
             )
           ),
@@ -556,7 +551,7 @@
       }
     };
     let proxyChanged = true;
-    const state = proxify(
+    let state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
       initialState,
       () => {
         proxyChanged = true;
@@ -573,7 +568,7 @@
         updating = true;
         proxyChanged = false;
         let newAbstractTree = arrayify(
-          renderView(state.p)
+          renderView(state)
         );
         updateElementTree(
           _rootNode,
@@ -585,15 +580,20 @@
         newMemoList = [];
         updating = false;
         if (proxyChanged) {
-          throw new Error("proxy changed during rendering");
+          throw new Error("update during render");
         }
       }
     };
     updateAbstracts();
     return [
-      updateAbstracts,
+      () => {
+        proxyChanged = true;
+        requestAnimationFrame(
+          updateAbstracts
+        );
+      },
       unmount,
-      state.p
+      state
     ];
   };
 

@@ -2,17 +2,10 @@ import {
   GenericObjectAny,
 } from '@doars/staark-common/src/generics.js'
 
-export type ProxyData = {
-  // Proxy
-  p: GenericObjectAny
-  // Stop proxy
-  s: () => void
-}
-
 export const proxify = (
   root: GenericObjectAny,
   onChange: () => void,
-): ProxyData => {
+): GenericObjectAny => {
   // Setup WeakMap to keep track of created proxies.
   const map = new WeakMap()
 
@@ -36,7 +29,6 @@ export const proxify = (
         }
       }
 
-      // Revoke proxy.
       revocable.revoke()
     }
   }
@@ -61,30 +53,23 @@ export const proxify = (
       }
     }
 
-    // Create proxy.
     const revocable = Proxy.revocable(target, {
       deleteProperty: (
         target: GenericObjectAny,
         key: string,
       ): boolean => {
-        // Exit early successful if property doesn't exist.
-        if (!Reflect.has(target, key)) {
-          return true
+        if (Reflect.has(target, key)) {
+          remove(target)
+
+          const deleted = Reflect.deleteProperty(target, key)
+
+          if (deleted) {
+            onChange()
+          }
+
+          return deleted
         }
-
-        // Remove proxy.
-        remove(target)
-
-        // Delete property.
-        const deleted = Reflect.deleteProperty(target, key)
-
-        // Dispatch delete event.
-        if (deleted) {
-          onChange()
-        }
-
-        // Return deleted.
-        return deleted
+        return true
       },
 
       set: (
@@ -103,30 +88,19 @@ export const proxify = (
           if (value && typeof (value) === 'object') {
             value = add(value)
           }
-          // Store value.
           target[key] = value
 
           // Dispatch set event. If the target is an array and a new item has been pushed then the length has also changed, therefore a more generalizable path will be dispatched.
           onChange()
         }
-
-        // Return success.
         return true
       },
     })
 
-    // Store target at proxy.
     map.set(revocable, target)
 
-    // Return proxy.
     return revocable.proxy
   }
 
-  // Return dispatcher and proxy.
-  return {
-    // Add initial root.
-    p: add(root),
-    // Stop dispatcher by removing root.
-    s: () => remove(root),
-  }
+  return add(root)
 }

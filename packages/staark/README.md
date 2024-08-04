@@ -133,7 +133,21 @@ update()
 unmount()
 ```
 
-Last but not least there is the second way to mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third value returned by the `mount` function, which is the `state` proxy. This is the same proxy that the render function receives, and as such can be manipulated similarly.
+Last but not least there is the second way to provide and mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third argument and third value returned by the `mount` function. The third argument can be a recursive proxy in which case it is up to you to invoke the update function once a re-render needs to be done. The third value returned is the `state` proxy used by the app. This is the same proxy that the render function receives and as such can be manipulated similarly.
+
+```JavaScript
+import { mount, node } from '@doars/staark'
+
+const proxy = new Proxy({
+  count: 1,
+}, {})
+
+const [update, unmount] = mount(
+  document.body.firstSibling,
+  (state) => node('div', state.count),
+  proxy,
+)
+```
 
 ```JavaScript
 import { mount, node } from '@doars/staark'
@@ -144,7 +158,7 @@ const [update, unmount, state] = mount(
   { count: 1, },
 )
 
-count++
+state.count++
 ```
 
 And well, that is everything you need to know about the library in order to be an expert at using _staark_!
@@ -173,13 +187,13 @@ IIFE build via a CDN
 ESM build via a CDN
 
 ```JS
-// Base bundle
+// Base bundle.
 import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.js'
-// Base bundle minified
+// Base bundle minified.
 import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.min.js'
-// Full bundle
+// Full bundle.
 import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.js'
-// Full bundle minified
+// Full bundle minified.
 import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.min.js'
 ```
 
