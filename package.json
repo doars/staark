@@ -2,6 +2,7 @@
   "private": true,
   "name": "@doars/staark-workspace",
   "workspaces": [
+    "benchmarks/libraries",
     "packages/*"
   ],
   "type": "module",

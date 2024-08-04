@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup benchmark hyperapp</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      const startTime = performance.now();
+
+      import { app, h, text } from '../libraries/dst/hyperapp.base.js'
+
+      const AddTodo = (state) => ({
+        ...state,
+        value: '',
+        todos: state.todos.concat(state.value),
+      })
+
+      const NewValue = (state, event) => ({
+        ...state,
+        value: event.target.value,
+      })
+
+      app({
+        init: {
+          todos: [],
+          value: '',
+        },
+        node: document.getElementById('app'),
+        view: ({
+          todos,
+          value,
+        }) =>
+          h('main', {}, [
+            h('h1', {}, text('To do list')),
+            h('input', { type: 'text', oninput: NewValue, value }),
+            h('ul', {},
+              todos.map((todo) => h('li', {}, text(todo)))
+            ),
+            h('button', { onclick: AddTodo }, text('New!')),
+          ]),
+      })
+
+      const endTime = performance.now();
+      const executionTime = endTime - startTime;
+
+      console.log(`Execution time: ${executionTime} milliseconds`);
+    </script>
+  </body>
+
+</html>

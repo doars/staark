@@ -1,0 +1,22 @@
+{
+  "author": {
+    "name": "Ron Dekker",
+    "website": "https://rondekker.com"
+  },
+  "name": "@doars/staark-benchmarks",
+  "private": true,
+  "description": "",
+  "keywords": [],
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "NODE_ENV=production node config.esbuild.js",
+    "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "upgrade": "npm-check-updates --upgrade --target minor"
+  },
+  "dependencies": {
+    "hyperapp": "^2.0.22",
+    "@doars/staark": "^1.2.0"
+  }
+}

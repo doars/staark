@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark todos hyperapp</title>
+  </head>
+
+  <body>
+    <div id="results"></div>
+    <div id="app"></div>
+
+    <script type="module">
+      import { app, h, text } from '../libraries/dst/hyperapp.base.js'
+
+      const ITERATIONS = 10000
+
+      const displayResults = (
+        time,
+      ) => {
+        document.getElementById('results').innerHTML = `
+          <h2>Hyperapp Benchmark Results (${ITERATIONS} iterations):</h2>
+          <p>Total time: ${time.toFixed(3)} ms</p>
+          <p>Average time per iteration: ${(time / ITERATIONS).toFixed(3)} ms</p>
+        `
+      }
+
+      const addTodo = (state) => ({
+        ...state,
+        value: '',
+        todos: state.todos.concat(state.value),
+      })
+
+      const newValue = (state, event) => ({
+        ...state,
+        value: event.target.value,
+      })
+
+      const dispatch = app({
+        init: {
+          todos: [],
+          value: '',
+        },
+        node: document.getElementById('app'),
+        view: (state) =>
+          h('main', {}, [
+            h('h1', {}, text('To do list')),
+            h('input', {
+              type: 'text',
+              oninput: newValue,
+              value: state.value,
+            }),
+            h('ul', {},
+              state.todos.map((todo) => h('li', {}, text(todo)))
+            ),
+            h('button', {
+              onclick: addTodo,
+            }, text('New!')),
+          ]),
+      })
+
+      const run = (
+      ) => {
+        const startTime = performance.now()
+
+        for (let i = 0; i < ITERATIONS; i++) {
+          dispatch(newValue, {
+            target: {
+              value: 'test',
+            },
+          })
+          dispatch(addTodo)
+        }
+
+        const time = performance.now() - startTime
+        displayResults(time)
+      }
+
+      setTimeout(run, 500)
+    </script>
+  </body>
+
+</html>

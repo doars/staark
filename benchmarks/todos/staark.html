@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark todos staark</title>
+  </head>
+
+  <body>
+    <div id="results"></div>
+    <div id="app"></div>
+
+    <script type="module">
+      import { mount, node } from '../libraries/dst/staark.base.js'
+
+      const ITERATIONS = 10000
+
+      const displayResults = (
+        time,
+      ) => {
+        document.getElementById('results').innerHTML = `
+          <h2>Staark benchmark results (${ITERATIONS} iterations):</h2>
+          <p>Total time: ${time.toFixed(3)} ms</p>
+          <p>Average time per iteration: ${(time / ITERATIONS).toFixed(3)} ms</p>
+        `
+      }
+
+      const [update, _, state] = mount(
+        document.getElementById('app'),
+        (state) => node('main', [
+          node('h1', 'To do list'),
+          node('input', {
+            type: 'text',
+            input: (event) => state.value = event.target.value,
+            value: state.value,
+          }),
+          node('ul',
+            state.todos.map((todo) => node('li', todo))
+          ),
+          node('button', {
+            click: () => {
+              state.todos.push(state.value)
+              state.value = ''
+            },
+          }, 'New!')
+        ]),
+        {
+          todos: [],
+          value: '',
+        }
+      )
+
+      const run = (
+      ) => {
+        const startTime = performance.now()
+
+        for (let i = 0; i < ITERATIONS; i++) {
+          state.todos.push('test')
+        }
+
+        const time = performance.now() - startTime
+        displayResults(time)
+      }
+
+      setTimeout(run, 500)
+    </script>
+  </body>
+
+</html>

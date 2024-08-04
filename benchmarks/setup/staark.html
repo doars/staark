@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup benchmark staark</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      const startTime = performance.now();
+
+      import { mount, node } from '../libraries/dst/staark.base.js'
+
+      mount(
+        document.getElementById('app'),
+        (state) => node('main', [
+          node('h1', 'To do list'),
+          node('input', {
+            type: 'text',
+            input: (event) => state.value = event.target.value,
+            value: state.value,
+          }),
+          node('ul',
+            state.todos.map((todo) => node('li', todo))
+          ),
+          node('button', {
+            click: () => {
+              state.todos.push(state.value)
+              state.value = ''
+            },
+          }, 'New!')
+        ]),
+        {
+          todos: [],
+          value: '',
+        },
+      )
+
+      const endTime = performance.now();
+      const executionTime = endTime - startTime;
+
+      console.log(`Execution time: ${executionTime} milliseconds`);
+    </script>
+  </body>
+
+</html>
