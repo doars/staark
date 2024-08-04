@@ -25,9 +25,13 @@ If you are using Staark then please [let me know](https://rondekker.com#contact)
 
 [Hyperapp](https://github.com/jorgebucaran/hyperapp#readme) is a similar library that offers almost the same functionality with some exceptions. Out of the box it does not have the `factory`, `fctory`, and `nde` function, although these could be added as wrappers. Hyperapp also doesn't handle `class` and `style` attributes the same way, but the biggest difference is in how you as the user make changes to the state. Hyperapp expects you to return a new copy of the state with the modified made as the return of a listener. This means only listeners can easily mutate the state at the end of the function. Staark on the other had allows mutation of any key on the state no matter when. The library will after a change has been made re-render the application. This means that you can comfortably use asynchronous functions such fetch and have Staark automatically update the interface afterwards.
 
-## Benchmarks
+### File size
 
-To give an indication how Staark performs I tried writing a simple benchmark that pushes items onto a list similar to a todo app. I expected it to be slower than comparable libraries that do not use proxies for state management, for example Hyperapp. Oddly enough the results indicate Staark being over fifteen times faster than Hyperapp. I have so far been unable to pinpoint the exact reason why. See the [benchmarks directory](https://github.com/doars/staark/tree/main/benchmarks) for the code used.
+Compared to Hyperapp using the same build configuration Hyperapp is 13% larger than the base build of Staark which has an equivalent feature set. Both builds have been produced using the same configuration and were compressed before comparing them.
+
+### Performance
+
+To give an indication how Staark performs I tried writing a simple benchmark that pushes items onto a list similar to a todo app. I expected it to be slower than Hyperapp because it does not use proxies for state management. Oddly enough the results indicate Staark being over fifteen times faster than Hyperapp. I have so far been unable to pinpoint the exact reason why. See the [benchmarks directory](https://github.com/doars/staark/tree/main/benchmarks) for the code used.
 
 ## Future ideas
 
