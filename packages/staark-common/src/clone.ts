@@ -1,7 +1,3 @@
-import {
-  GenericObjectAny,
-} from './generics.js'
-
 export const cloneRecursive = (
   value: any,
 ) => {
@@ -13,7 +9,7 @@ export const cloneRecursive = (
       }
       value = clone
     } else {
-      const clone: GenericObjectAny = {}
+      const clone: Record<string, any> = {}
       for (const key in value) {
         clone[key] = cloneRecursive(value[key])
       }

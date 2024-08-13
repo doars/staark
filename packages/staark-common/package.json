@@ -6,7 +6,7 @@
   "name": "@doars/staark-common",
   "description": "",
   "keywords": [],
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "type": "module",
   "homepage": "https://github.com/doars/staark#readme",
@@ -24,11 +24,13 @@
     "develop": "echo 'not applicable'",
     "build": "echo 'not applicable'",
     "lint": "eslint src/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "files": [
     "dst",
     "src",
+    "CHANGELOG.md",
     "README.md"
   ],
   "devDependencies": {},

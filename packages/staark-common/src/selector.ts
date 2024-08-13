@@ -1,8 +1,3 @@
-
-import {
-  GenericObjectAny,
-} from './generics.js'
-
 const BRACKET_CLOSE = ']'
 const BRACKET_OPEN = '['
 const DOT = '.'
@@ -20,12 +15,12 @@ enum TokenTypes {
 
 export const tokenizer = (
   selector: string,
-): [string, GenericObjectAny] => {
+): [string, Record<string, any>] => {
   const length: number = selector.length
   let i: number = 0
 
   let type: string = ''
-  const attributes: GenericObjectAny = {}
+  const attributes: Record<string, any> = {}
 
   let tokenA: string = ''
   let tokenB: string | true = true
