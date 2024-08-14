@@ -1,11 +1,10 @@
-import { GenericObject } from '@doars/staark-common/src/generics.js'
 import {
   marker,
 } from './marker.js'
 import { NodeContent } from './node.js'
 
 export type MemoFunction = (
-  state: GenericObject<any>,
+  state: Record<string, any>,
   memory: any,
 ) => NodeContent | NodeContent[]
 

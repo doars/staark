@@ -10,8 +10,6 @@ import {
 import {
   GenericFunction,
   GenericFunctionUnknown,
-  GenericObject,
-  GenericObjectAny,
 } from '@doars/staark-common/src/generics.js'
 import {
   proxify,
@@ -38,7 +36,7 @@ type MemoData = {
 }
 
 export type ViewFunction = (
-  state: GenericObject<any>,
+  state: Record<string, any>,
 ) => NodeContent | NodeContent[]
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
@@ -50,8 +48,8 @@ const HYPHENATE = (
 export const mount = (
   rootNode: Element | string,
   renderView: ViewFunction,
-  initialState?: GenericObject<any>,
-): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown, GenericObjectAny] => {
+  initialState?: Record<string, any>,
+): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown, Record<string, any>] => {
   if (!initialState) {
     initialState = {}
   }

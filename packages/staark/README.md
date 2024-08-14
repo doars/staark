@@ -1,4 +1,4 @@
-# Staark
+# staark
 
 A teeny-tiny framework for building web apps.
 

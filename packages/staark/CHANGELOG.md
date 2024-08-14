@@ -11,3 +11,7 @@
 ## 1.1.0
 
 - Added app's state proxy as the third value returned by the mount function.
+
+## 1.0.0
+
+- Initial release.

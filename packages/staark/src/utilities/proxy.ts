@@ -1,20 +1,16 @@
-import {
-  GenericObjectAny,
-} from '@doars/staark-common/src/generics.js'
-
 export const proxify = (
-  root: GenericObjectAny,
+  root: Record<string, any>,
   onChange: () => void,
-): GenericObjectAny => {
+): Record<string, any> => {
   // Setup WeakMap to keep track of created proxies.
   const map = new WeakMap()
 
   /**
    * Remove object from being kept track of.
-   * @param {GenericObjectAny} target Object that is being kept track of.
+   * @param {Record<string, any>} target Object that is being kept track of.
    */
   const remove = (
-    target: GenericObjectAny,
+    target: Record<string, any>,
   ): void => {
     // Check if target exists in case of recursion.
     if (map.has(target)) {
@@ -39,8 +35,8 @@ export const proxify = (
    * @returns {Proxy} Object to access and mutate.
    */
   const add = (
-    target: GenericObjectAny,
-  ): GenericObjectAny => {
+    target: Record<string, any>,
+  ): Record<string, any> => {
     // Exit early if proxy already exists prevent recursion.
     if (map.has(target)) {
       return map.get(target)
@@ -55,7 +51,7 @@ export const proxify = (
 
     const revocable = Proxy.revocable(target, {
       deleteProperty: (
-        target: GenericObjectAny,
+        target: Record<string, any>,
         key: string,
       ): boolean => {
         if (Reflect.has(target, key)) {
@@ -73,7 +69,7 @@ export const proxify = (
       },
 
       set: (
-        target: GenericObjectAny,
+        target: Record<string, any>,
         key: string,
         value: any,
       ): boolean => {
