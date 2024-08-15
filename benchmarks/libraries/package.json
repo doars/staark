@@ -13,6 +13,7 @@
   "scripts": {
     "build": "NODE_ENV=production node config.esbuild.js",
     "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "dependencies": {

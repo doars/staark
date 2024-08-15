@@ -4,9 +4,6 @@ const files = [{
   from: 'src/staark.base.ts',
   to: 'dst/staark.base.js',
 }, {
-  from: 'src/staark.ts',
-  to: 'dst/staark.js',
-}, {
   from: 'src/hyperapp.base.ts',
   to: 'dst/hyperapp.base.js',
 }]
