@@ -1,19 +1,18 @@
 import {
   arrayify,
 } from '@doars/staark-common/src/array.js'
-import {
-  GenericObject,
-  GenericObjectAny,
-} from '@doars/staark-common/src/generics.js'
 
 import {
   NodeAbstract,
   NodeAttributes,
   NodeContent,
-} from './node.js'
+} from '@doars/staark/src/library//node.js'
 import {
   TextAbstract,
-} from './text.js'
+} from '@doars/staark/src/library//text.js'
+import {
+  MemoAbstract,
+} from '@doars/staark/src/library/memo.js'
 
 const SELF_CLOSING = [
   'base',
@@ -28,7 +27,7 @@ const SELF_CLOSING = [
 ]
 
 export type ViewFunction = (
-  state: GenericObject<any>,
+  state: Record<string, any>,
 ) => NodeContent | NodeContent[]
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
@@ -100,41 +99,50 @@ const renderAttributes = (
   return rendered
 }
 
-const renderElements = (
-  abstracts: NodeContent[] | null = null,
-): string => {
-  let rendered = ''
-  if (abstracts) {
-    for (const abstract of abstracts) {
-      if (abstract) {
-        if ((abstract as NodeAbstract).t) {
-          rendered += '<' + (abstract as NodeAbstract).t.toLocaleLowerCase() + renderAttributes((abstract as NodeAbstract).a)
-          if (SELF_CLOSING.includes((abstract as NodeAbstract).t)) {
-            rendered += '/>'
-          } else {
-            rendered += '>'
-            if ((abstract as NodeAbstract).c) {
-              rendered += renderElements((abstract as NodeAbstract).c)
-            }
-            rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
-          }
-        } else {
-          rendered += ' ' + (
-            (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
-          ) + ' '
-        }
-      }
-    }
-  }
-  return rendered
-}
-
 export const stringify = (
   renderView: ViewFunction,
-  initialState?: GenericObject<any>,
+  initialState?: Record<string, any>,
 ): [string, NodeContent[]] => {
   if (!initialState) {
     initialState = {}
+  }
+
+  const renderElements = (
+    abstracts: NodeContent[] | null = null,
+  ): string => {
+    let rendered = ''
+    if (abstracts) {
+      for (const abstract of abstracts) {
+        if (abstract) {
+          if ((abstract as MemoAbstract).m) {
+            rendered += renderElements(
+              arrayify(
+                (abstract as MemoAbstract).r(
+                  initialState,
+                  (abstract as MemoAbstract).m,
+                )
+              )
+            )
+          } else if ((abstract as NodeAbstract).t) {
+            rendered += '<' + (abstract as NodeAbstract).t.toLocaleLowerCase() + renderAttributes((abstract as NodeAbstract).a)
+            if (SELF_CLOSING.includes((abstract as NodeAbstract).t)) {
+              rendered += '/>'
+            } else {
+              rendered += '>'
+              if ((abstract as NodeAbstract).c) {
+                rendered += renderElements((abstract as NodeAbstract).c)
+              }
+              rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
+            }
+          } else {
+            rendered += ' ' + (
+              (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
+            ) + ' '
+          }
+        }
+      }
+    }
+    return rendered
   }
 
   const abstractTree = arrayify(
@@ -149,7 +157,7 @@ export const stringify = (
 }
 
 const customStringify = (
-  data: GenericObjectAny,
+  data: Record<string, any>,
 ): string => {
   if (
     typeof data === 'number'
@@ -182,7 +190,7 @@ const customStringify = (
 
 export const stringifyFull = (
   renderView: ViewFunction,
-  initialState?: GenericObject<any>,
+  initialState?: Record<string, any>,
 ): [string, string, string] => {
   if (!initialState) {
     initialState = {}

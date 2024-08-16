@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        memo,
+        node,
+      } from '../dst/staark-isomorphic.js'
+
+      console.log('memo', memo)
+
+      console.log(
+        memo(
+          (state) =>
+            node('a', {
+              class: 'nav-link',
+              href: '/next-page/',
+              target: '_blank',
+              'data-active': true
+            }, 'next page'),
+          { memory: 0, },
+        )
+      )
+    </script>
+  </body>
+
+</html>

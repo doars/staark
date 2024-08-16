@@ -12,10 +12,10 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // src/library/marker.ts
+  // ../staark/src/library/marker.ts
   var marker = Symbol();
 
-  // src/library/node.ts
+  // ../staark/src/library/node.ts
   var node = (type, attributesOrContents, contents) => {
     if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
       contents = attributesOrContents;
@@ -24,12 +24,12 @@
     return {
       _: marker,
       a: attributesOrContents,
-      c: Array.isArray(contents) ? contents : [contents],
+      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
       t: type.toUpperCase()
     };
   };
 
-  // src/library/factory.ts
+  // ../staark/src/library/factory.ts
   var factory = new Proxy({}, {
     get: (target, type) => {
       if (target[type]) {
@@ -162,7 +162,7 @@
     return [type, attributes];
   };
 
-  // src/library/fctory.ts
+  // ../staark/src/library/fctory.ts
   var fctory = new Proxy({}, {
     get: (target, type) => {
       if (target[type]) {
@@ -187,13 +187,20 @@
     }
   });
 
-  // src/library/nde.ts
+  // ../staark/src/library/memo.ts
+  var memo = (render, memory) => ({
+    _: marker,
+    r: render,
+    m: memory
+  });
+
+  // ../staark/src/library/nde.ts
   var nde = (selector, contents) => {
     const [type, attributes] = tokenizer(selector);
     return {
       _: marker,
       a: attributes,
-      c: Array.isArray(contents) ? contents : [contents],
+      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
       t: type.toUpperCase()
     };
   };
@@ -273,34 +280,43 @@
     }
     return rendered;
   };
-  var renderElements = (abstracts = null) => {
-    let rendered = "";
-    if (abstracts) {
-      for (const abstract of abstracts) {
-        if (abstract) {
-          if (abstract.t) {
-            rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
-            if (SELF_CLOSING.includes(abstract.t)) {
-              rendered += "/>";
-            } else {
-              rendered += ">";
-              if (abstract.c) {
-                rendered += renderElements(abstract.c);
-              }
-              rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
-            }
-          } else {
-            rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
-          }
-        }
-      }
-    }
-    return rendered;
-  };
   var stringify = (renderView, initialState) => {
     if (!initialState) {
       initialState = {};
     }
+    const renderElements = (abstracts = null) => {
+      let rendered = "";
+      if (abstracts) {
+        for (const abstract of abstracts) {
+          if (abstract) {
+            if (abstract.m) {
+              rendered += renderElements(
+                arrayify(
+                  abstract.r(
+                    initialState,
+                    abstract.m
+                  )
+                )
+              );
+            } else if (abstract.t) {
+              rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
+              if (SELF_CLOSING.includes(abstract.t)) {
+                rendered += "/>";
+              } else {
+                rendered += ">";
+                if (abstract.c) {
+                  rendered += renderElements(abstract.c);
+                }
+                rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
+              }
+            } else {
+              rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
+            }
+          }
+        }
+      }
+      return rendered;
+    };
     const abstractTree = arrayify(
       renderView(initialState)
     );
@@ -312,7 +328,7 @@
     ];
   };
 
-  // src/library/text.ts
+  // ../staark/src/library/text.ts
   var text = (contents) => ({
     _: marker,
     c: Array.isArray(contents) ? contents.join("") : "" + contents
@@ -324,6 +340,7 @@
   ], {
     factory,
     fctory,
+    memo,
     nde,
     node,
     stringify,
