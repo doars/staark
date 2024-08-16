@@ -4,13 +4,13 @@
     "website": "https://rondekker.com"
   },
   "name": "@doars/staark-isomorphic",
-  "description": "A teeny-tiny framework for building web apps.",
+  "description": "Extension on staark which allows for rendering on both client and server sides.",
   "keywords": [],
-  "version": "1.0.4",
+  "version": "1.1.0",
   "license": "MIT",
   "type": "module",
   "main": "dst/staark-isomorphic.js",
-  "types": "src/staark.ts",
+  "types": "src/index.ts",
   "homepage": "https://github.com/doars/staark#readme",
   "repository": {
     "type": "git",
@@ -26,15 +26,18 @@
     "develop": "NODE_ENV=development node config.esbuild.js",
     "build": "NODE_ENV=production node config.esbuild.js",
     "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "files": [
     "dst",
     "src",
+    "CHANGELOG.md",
     "README.md"
   ],
   "devDependencies": {},
   "dependencies": {
+    "@doars/staark": "^1.2.0",
     "@doars/staark-common": "^1.0.0"
   }
 }
