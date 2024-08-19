@@ -1,0 +1,42 @@
+{
+  "author": {
+    "name": "Ron Dekker",
+    "website": "https://rondekker.com"
+  },
+  "name": "@doars/tiedliene",
+  "description": "a teensy-tiny library for managing state diffs.",
+  "keywords": [],
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "main": "dst/tiedliene.js",
+  "types": "src/index.ts",
+  "homepage": "https://github.com/doars/staark/tree/main/packages/tiedliene#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doars/staark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/doars/staark/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "develop": "NODE_ENV=development node config.esbuild.js",
+    "build": "NODE_ENV=production node config.esbuild.js",
+    "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "test:runtime": "mocha tst/runtime/**/*.js",
+    "upgrade": "npm-check-updates --upgrade --target minor"
+  },
+  "files": [
+    "dst",
+    "src",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "devDependencies": {},
+  "dependencies": {
+    "@doars/staark-common": "^1.0.1"
+  }
+}
