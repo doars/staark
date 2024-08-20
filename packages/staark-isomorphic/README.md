@@ -45,7 +45,7 @@ console.log(state) // {"count":0}
 
 ## Installation
 
-Via npm
+Via NPM
 
 ```ZSH
 npm install @doars/staark-isomorphic

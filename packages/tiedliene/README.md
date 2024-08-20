@@ -94,7 +94,7 @@ All the functionality above is part of the base library there is an expanded ver
 - The `undo()` method reverts the state to its previous version by popping the last set of diffs from the undo stack and applying them in reverse. These diffs are then pushed onto the redo stack.
 - The `redo()` method reapplies the most recent undo by popping diffs from the redo stack and applying them, pushing them back onto the undo stack.
 
-This method makes it easy to implement undo/redo functionality in your application, keeping the history of state changes and allowing users to navigate through past states.
+These methods makes it easy to implement undo and redo functionality in your application, keeping the history of state changes, and allowing users to navigate through past states.
 
 ```JS
 import { manageState } from '@doars/tiedliene'
@@ -142,7 +142,7 @@ const nestedState = {
 
 ## Installation
 
-Via npm
+Via NPM
 
 ```ZSH
 npm install @doars/tiedliene

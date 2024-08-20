@@ -133,7 +133,7 @@ update()
 unmount()
 ```
 
-Last but not least there is the second way to provide and mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third argument and third value returned by the `mount` function. The third argument can be a recursive proxy in which case it is up to you to invoke the update function once a re-render needs to be done. The third value returned is the `state` proxy used by the app. This is the same proxy that the render function receives and as such can be manipulated similarly.
+Last but not least there is the second way to provide and mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third argument and third value returned by the `mount` function. The third argument can be a recursive proxy in which case it is up to you to invoke the update function once a re-render needs to be done.
 
 ```JavaScript
 import { mount, node } from '@doars/staark'
@@ -149,23 +149,27 @@ const [update, unmount] = mount(
 )
 ```
 
+Another method to influence the state outside the app is using the third value returned, which is the `state` proxy used by the app. This is the same proxy that the render function receives and as such can be manipulated similarly. Having the state available outside of the view function allows you to do some nifty things. For instance in the example below the viewport width is used inside the application, and updated when the window changes size.
+
 ```JavaScript
 import { mount, node } from '@doars/staark'
 
 const [update, unmount, state] = mount(
   document.body.firstSibling,
-  (state) => node('div', state.count),
-  { count: 1, },
+  (state) => node('div', state.width),
+  { width: window.innerWidth, },
 )
 
-state.count++
+window.addEventListener('resize', () => {
+  state.width = window.innerWidth
+})
 ```
 
-And well, that is everything you need to know about the library in order to be an expert at using _staark_!
+And well, that is everything you need to know about _staark_ in order to be an expert at using it!
 
 ## Installation
 
-Via npm
+Via NPM
 
 ```ZSH
 npm install @doars/staark
