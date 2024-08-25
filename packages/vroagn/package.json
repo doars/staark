@@ -6,7 +6,7 @@
   "name": "@doars/vroagn",
   "description": "A teensy-tiny library for managing network requests.",
   "keywords": [],
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "type": "module",
   "main": "dst/vroagn.js",
