@@ -51,8 +51,6 @@ const DEFAULT_VALUES: RequestOptions = {
   retryDelay: 500,
 }
 
-// TODO: If the response is "429 Too Many Requests" or "503 Service unavailable" and retry after is later than the retry delay than use that moment instead. https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
-
 export const create = (
   initialOptions: RequestOptions,
 ) => {
@@ -63,7 +61,7 @@ export const create = (
 
   let lastExecutionTime = 0
   let activeRequests = 0
-  let totalRequests = 0 // TODO: Add support for max requests options.
+  let totalRequests = 0
   let debounceTimeout: number | null = null
 
   const throttle = async (
@@ -95,7 +93,16 @@ export const create = (
 
   const sendRequest = async (
     options: RequestOptions,
-  ): Promise<[Response, any]> => {
+  ): Promise<[Error | null, Response | null, any]> => {
+    if (
+      options.maxRequests !== undefined
+      && totalRequests >= options.maxRequests
+    ) {
+      return [new Error('Maximum request limit reached'), null, null]
+    }
+
+    totalRequests++
+
     const config: RequestInit = {
       cache: options.cache,
       credentials: options.credentials,
@@ -131,123 +138,148 @@ export const create = (
     }
 
     const executeFetch = async (
-    ): Promise<[Response, any]> => {
-      const response = await fetch(
-        url,
-        config,
-      )
+    ): Promise<[Error | null, Response, any]> => {
+      // let response = null
+      // try {
+      //   response = await fetch(url, config)
+      // } catch (error) {
+      //   return [(error as Error) || new Error('Thrown fetching error is falsely'), response, null]
+      // }
+      const response = await fetch(url, config)
+      if (!response.ok) {
+        return [new Error('Invalid response'), response, null]
+      }
 
-      let result
-      let foundParser = false
-      const type = options.type || getType(url, response.headers, options.headers)
-      if (options.responseParsers) {
-        for (const parser of options.responseParsers) {
-          foundParser = parser.types.includes(type)
-          if (foundParser) {
-            result = await parser.parser(
-              response,
-              options,
-            )
-            break
+      try {
+        let result
+        let foundParser = false
+        const type = options.type || getType(url, response.headers, options.headers)
+        if (options.responseParsers) {
+          for (const parser of options.responseParsers) {
+            foundParser = parser.types.includes(type)
+            if (foundParser) {
+              result = await parser.parser(
+                response,
+                options,
+              )
+              break
+            }
           }
         }
-      }
-      if (!foundParser) {
-        switch (type.toLowerCase()) {
-          case 'arraybuffer':
-            result = await response.arrayBuffer()
-            break
+        if (!foundParser) {
+          switch (type.toLowerCase()) {
+            case 'arraybuffer':
+              result = await response.arrayBuffer()
+              break
 
-          case 'blob':
-            result = await response.blob()
-            break
+            case 'blob':
+              result = await response.blob()
+              break
 
-          case 'formdata':
-            result = await response.formData()
-            break
+            case 'formdata':
+              result = await response.formData()
+              break
 
-          case 'text/plain':
-          case 'text':
-          case 'txt':
-            result = await response.text()
-            break
+            case 'text/plain':
+            case 'text':
+            case 'txt':
+              result = await response.text()
+              break
 
-          case 'text/html-partial':
-          case 'html-partial':
-            result = await response.text()
-            const template = document.createElement('template')
-            template.innerHTML = result
-            result = template.content.childNodes[0]
-            break
+            case 'text/html-partial':
+            case 'html-partial':
+              result = await response.text()
+              const template = document.createElement('template')
+              template.innerHTML = result
+              result = template.content.childNodes[0]
+              break
 
-          case 'text/html':
-          case 'html':
-            result = await response.text()
-            result = (new DOMParser()).parseFromString(result, 'text/html')
-            break
+            case 'text/html':
+            case 'html':
+              result = await response.text()
+              result = (new DOMParser()).parseFromString(result, 'text/html')
+              break
 
-          case 'application/json':
-          case 'text/json':
-          case 'json':
-            result = await response.json()
-            break
+            case 'application/json':
+            case 'text/json':
+            case 'json':
+              result = await response.json()
+              break
 
-          case 'image/svg+xml':
-          case 'svg':
-            result = await response.text()
-            result = (new DOMParser()).parseFromString(result, 'image/svg+xml')
-            break
+            case 'image/svg+xml':
+            case 'svg':
+              result = await response.text()
+              result = (new DOMParser()).parseFromString(result, 'image/svg+xml')
+              break
 
-          case 'application/xml':
-          case 'text/xml':
-          case 'xml':
-            result = await response.text()
-            result = (new DOMParser()).parseFromString(result, 'application/xml')
-            break
+            case 'application/xml':
+            case 'text/xml':
+            case 'xml':
+              result = await response.text()
+              result = (new DOMParser()).parseFromString(result, 'application/xml')
+              break
+          }
         }
-      }
 
-      return [response, result]
+        return [null, response, result]
+      } catch (error) {
+        return [(error as Error) || new Error('Thrown parsing error is falsy'), response, null]
+      }
     }
 
     const retryRequest = async (
-    ): Promise<[Response, any]> => {
+    ): Promise<[Error | null, Response, any]> => {
       let attempt = 0
       const retryAttempts = options.retryAttempts || 0
       const retryDelay = options.retryDelay || 0
 
       while (attempt < retryAttempts) {
-        try {
-          return await executeFetch()
-        } catch (error) {
-          // TODO: Only do on certain responses: retryCodes.
-
-          attempt++
-          if (attempt >= retryAttempts) {
-            throw error
-          }
-
-          // Exponentially increase the retry delay.
-          await delay(retryDelay * Math.pow(2, attempt - 1))
+        const [error, response, result] = await executeFetch()
+        if (!error) {
+          return [error, response, result]
         }
+        if (!options.retryCodes?.includes(response.status || 200)) {
+          return [new Error('Invalid status code'), response, result]
+        }
+
+        attempt++
+        if (attempt >= retryAttempts) {
+          return [new Error('Too many retry attempts'), response, result]
+        }
+
+        // Exponentially increase the retry delay.
+        let delayTime = retryDelay * Math.pow(2, attempt - 1)
+
+        // Try and respect the Retry-After header.
+        const retryAfter = response.headers.get('Retry-After')
+        if (retryAfter) {
+          const retryAfterSeconds = parseInt(retryAfter, 10)
+          if (!isNaN(retryAfterSeconds)) {
+            delayTime = Math.max(delayTime, retryAfterSeconds * 1000)
+          } else {
+            const retryAfterDate = new Date(retryAfter).getTime()
+            if (!isNaN(retryAfterDate)) {
+              const currentTime = Date.now()
+              delayTime = Math.max(delayTime, retryAfterDate - currentTime)
+            }
+          }
+        }
+
+        await delay(delayTime)
       }
       return executeFetch()
     }
 
-    try {
-      const [response, result] = await retryRequest()
-      if (!response.ok) {
-        throw new Error(response.statusText)
-      }
-      return [response, result]
-    } catch (error) {
-      throw error
+    const [error, response, result] = await retryRequest()
+    if (!response.ok) {
+      return [new Error(response.statusText), response, result]
     }
+    return [error, response, result]
   }
 
   return async (
     sendOptions: SendOptions,
-  ): Promise<[Response, any]> => {
+  ): Promise<[Error | null, Response | null, any]> => {
     const options = {
       ...initialOptions,
       ...cloneRecursive(sendOptions),
@@ -292,12 +324,10 @@ export const create = (
     }
 
     activeRequests++
-    try {
-      return await sendRequest(
-        options,
-      )
-    } finally {
-      activeRequests--
-    }
+    const results = await sendRequest(
+      options,
+    )
+    activeRequests--
+    return results
   }
 }

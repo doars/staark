@@ -123,6 +123,10 @@ var create = (initialOptions) => {
     });
   };
   const sendRequest = (options) => __async(void 0, null, function* () {
+    if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
+      return [new Error("Maximum request limit reached"), null, null];
+    }
+    totalRequests++;
     const config = {
       cache: options.cache,
       credentials: options.credentials,
@@ -147,99 +151,117 @@ var create = (initialOptions) => {
       );
     }
     const executeFetch = () => __async(void 0, null, function* () {
-      const response = yield fetch(
-        url,
-        config
-      );
-      let result;
-      let foundParser = false;
-      const type = options.type || getType(url, response.headers, options.headers);
-      if (options.responseParsers) {
-        for (const parser of options.responseParsers) {
-          foundParser = parser.types.includes(type);
-          if (foundParser) {
-            result = yield parser.parser(
-              response,
-              options
-            );
-            break;
+      const response2 = yield fetch(url, config);
+      if (!response2.ok) {
+        return [new Error("Invalid response"), response2, null];
+      }
+      try {
+        let result2;
+        let foundParser = false;
+        const type = options.type || getType(url, response2.headers, options.headers);
+        if (options.responseParsers) {
+          for (const parser of options.responseParsers) {
+            foundParser = parser.types.includes(type);
+            if (foundParser) {
+              result2 = yield parser.parser(
+                response2,
+                options
+              );
+              break;
+            }
           }
         }
-      }
-      if (!foundParser) {
-        switch (type.toLowerCase()) {
-          case "arraybuffer":
-            result = yield response.arrayBuffer();
-            break;
-          case "blob":
-            result = yield response.blob();
-            break;
-          case "formdata":
-            result = yield response.formData();
-            break;
-          case "text/plain":
-          case "text":
-          case "txt":
-            result = yield response.text();
-            break;
-          case "text/html-partial":
-          case "html-partial":
-            result = yield response.text();
-            const template = document.createElement("template");
-            template.innerHTML = result;
-            result = template.content.childNodes[0];
-            break;
-          case "text/html":
-          case "html":
-            result = yield response.text();
-            result = new DOMParser().parseFromString(result, "text/html");
-            break;
-          case "application/json":
-          case "text/json":
-          case "json":
-            result = yield response.json();
-            break;
-          case "image/svg+xml":
-          case "svg":
-            result = yield response.text();
-            result = new DOMParser().parseFromString(result, "image/svg+xml");
-            break;
-          case "application/xml":
-          case "text/xml":
-          case "xml":
-            result = yield response.text();
-            result = new DOMParser().parseFromString(result, "application/xml");
-            break;
+        if (!foundParser) {
+          switch (type.toLowerCase()) {
+            case "arraybuffer":
+              result2 = yield response2.arrayBuffer();
+              break;
+            case "blob":
+              result2 = yield response2.blob();
+              break;
+            case "formdata":
+              result2 = yield response2.formData();
+              break;
+            case "text/plain":
+            case "text":
+            case "txt":
+              result2 = yield response2.text();
+              break;
+            case "text/html-partial":
+            case "html-partial":
+              result2 = yield response2.text();
+              const template = document.createElement("template");
+              template.innerHTML = result2;
+              result2 = template.content.childNodes[0];
+              break;
+            case "text/html":
+            case "html":
+              result2 = yield response2.text();
+              result2 = new DOMParser().parseFromString(result2, "text/html");
+              break;
+            case "application/json":
+            case "text/json":
+            case "json":
+              result2 = yield response2.json();
+              break;
+            case "image/svg+xml":
+            case "svg":
+              result2 = yield response2.text();
+              result2 = new DOMParser().parseFromString(result2, "image/svg+xml");
+              break;
+            case "application/xml":
+            case "text/xml":
+            case "xml":
+              result2 = yield response2.text();
+              result2 = new DOMParser().parseFromString(result2, "application/xml");
+              break;
+          }
         }
+        return [null, response2, result2];
+      } catch (error2) {
+        return [error2 || new Error("Thrown parsing error is falsy"), response2, null];
       }
-      return [response, result];
     });
     const retryRequest = () => __async(void 0, null, function* () {
+      var _a;
       let attempt = 0;
       const retryAttempts = options.retryAttempts || 0;
       const retryDelay = options.retryDelay || 0;
       while (attempt < retryAttempts) {
-        try {
-          return yield executeFetch();
-        } catch (error) {
-          attempt++;
-          if (attempt >= retryAttempts) {
-            throw error;
-          }
-          yield delay(retryDelay * Math.pow(2, attempt - 1));
+        const [error2, response2, result2] = yield executeFetch();
+        if (!error2) {
+          return [error2, response2, result2];
         }
+        if (!((_a = options.retryCodes) == null ? void 0 : _a.includes(response2.status || 200))) {
+          return [new Error("Invalid status code"), response2, result2];
+        }
+        attempt++;
+        if (attempt >= retryAttempts) {
+          return [new Error("Too many retry attempts"), response2, result2];
+        }
+        let delayTime = retryDelay * Math.pow(2, attempt - 1);
+        const retryAfter = response2.headers.get("Retry-After");
+        if (retryAfter) {
+          const retryAfterSeconds = parseInt(retryAfter, 10);
+          if (!isNaN(retryAfterSeconds)) {
+            delayTime = Math.max(delayTime, retryAfterSeconds * 1e3);
+          } else {
+            const retryAfterDate = new Date(retryAfter).getTime();
+            if (!isNaN(retryAfterDate)) {
+              const currentTime = Date.now();
+              delayTime = Math.max(delayTime, retryAfterDate - currentTime);
+            }
+          }
+        }
+        yield delay(delayTime);
       }
       return executeFetch();
     });
-    try {
-      const [response, result] = yield retryRequest();
-      if (!response.ok) {
-        throw new Error(response.statusText);
-      }
-      return [response, result];
-    } catch (error) {
-      throw error;
+    const [error, response, result] = yield retryRequest();
+    if (!response.ok) {
+      return [new Error(response.statusText), response, result];
     }
+    return [error, response, result];
   });
   return (sendOptions) => __async(void 0, null, function* () {
     const options = __spreadValues(__spreadValues({}, initialOptions), cloneRecursive(sendOptions));
@@ -272,13 +294,11 @@ var create = (initialOptions) => {
       });
     }
     activeRequests++;
-    try {
-      return yield sendRequest(
-        options
-      );
-    } finally {
-      activeRequests--;
-    }
+    const results = yield sendRequest(
+      options
+    );
+    activeRequests--;
+    return results;
   });
 };
 

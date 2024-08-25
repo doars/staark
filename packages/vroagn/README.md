@@ -25,8 +25,8 @@ Here, we set up a `GET` request to `https://api.example.com/data` with a retry p
 Once your request is created, sending it is as easy as pie. Just call the function with any additional options you need, and the library takes care of the rest.
 
 ```JS
-const [response, result] = await request()
-console.log(response, result)
+const [error, response, result] = await request()
+console.log(error, response, result)
 ```
 
 This sends the request and returns the response and parsed result, depending on the response type. It will automatically retry the request if it fails with specific HTTP status codes like `429 Too Many Requests` or `503 Service Unavailable`.
@@ -117,7 +117,7 @@ mount(
     if (!state.data) {
       requestItems()
         .then(
-          ([response, result]) => state.data => result,
+          ([error, response, result]) => state.data => result,
         )
     }
     return node('div', (
