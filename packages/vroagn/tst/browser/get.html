@@ -21,8 +21,8 @@
 
       request()
         .then(
-          ([response, result]) =>
-            console.log('response', response, 'result', result)
+          ([error, response, result]) =>
+            console.log('error', error, 'response', response, 'result', result)
         )
     </script>
   </body>
