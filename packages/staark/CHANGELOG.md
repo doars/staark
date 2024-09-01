@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+- Improved handling when no valid root node is given.
+
+## 1.3.0
+
 ## 1.2.0
 
 - Added support for initial state being an existing proxy.

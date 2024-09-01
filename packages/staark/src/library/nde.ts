@@ -1,6 +1,6 @@
 import {
   tokenizer,
-} from '@doars/staark-common/src/selector.js'
+} from '../utilities/selector.js'
 
 import {
   marker,

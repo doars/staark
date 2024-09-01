@@ -33,7 +33,7 @@ var factory = new Proxy({}, {
   }
 });
 
-// ../staark-common/src/selector.ts
+// src/utilities/selector.ts
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
 var DOT = ".";
@@ -236,6 +236,9 @@ var equalRecursive = (valueA, valueB) => {
   );
 };
 
+// ../staark-common/src/element.ts
+var CREATED_EVENT = "staark-created";
+
 // src/utilities/proxy.ts
 var proxify = (root, onChange) => {
   const map = /* @__PURE__ */ new WeakMap();
@@ -301,27 +304,19 @@ var mount = (rootNode, renderView, initialState) => {
     initialState = {};
   }
   let active = true, updating = false;
-  let _rootNode;
+  let _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) || document.body.appendChild(
+    document.createElement("div")
+  ) : rootNode;
   const unmount = () => {
     if (active) {
       active = false;
-      if (_rootNode) {
-        for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
-          _rootNode.childNodes[i].remove();
-        }
+      for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
+        _rootNode.childNodes[i].remove();
       }
     }
   };
-  _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) : rootNode;
-  if (!_rootNode) {
-    throw new Error("No mount");
-  }
   unmount();
   active = true;
-  if (!_rootNode) {
-    _rootNode = document.createElement("div");
-    document.body.appendChild(_rootNode);
-  }
   let listenerCount = 0;
   const updateAttributes = (element, newAttributes = null, oldAttributes = null) => {
     if (newAttributes) {
@@ -332,18 +327,17 @@ var mount = (rootNode, renderView, initialState) => {
           if (type === "function") {
             const listener = newAttributes[name] = (event) => {
               listenerCount++;
-              value(event);
+              try {
+                value(event);
+              } catch (error) {
+                console.warn("listener error", error);
+              }
               listenerCount--;
               updateAbstracts();
             };
             element.addEventListener(name, listener);
             continue;
           } else {
-            if (type === "boolean") {
-              value = value ? "true" : "false";
-            } else if (type !== "string") {
-              value = value.toString();
-            }
             if (name === "class") {
               if (typeof value === "object") {
                 if (Array.isArray(value)) {
@@ -376,10 +370,17 @@ var mount = (rootNode, renderView, initialState) => {
                   value = styles;
                 }
               }
-            } else if (name === "value" && element.value !== value) {
-              element.value = value;
-            } else if (name === "checked") {
-              element.checked = newAttributes[name];
+            } else {
+              if (type === "boolean") {
+                value = value ? "true" : "false";
+              } else if (type !== "string") {
+                value = value.toString();
+              }
+              if (name === "value" && element.value !== value) {
+                element.value = value;
+              } else if (name === "checked") {
+                element.checked = newAttributes[name];
+              }
             }
             element.setAttribute(name, value);
           }
@@ -512,6 +513,13 @@ var mount = (rootNode, renderView, initialState) => {
               );
             }
             newCount++;
+            _rootNode.dispatchEvent(
+              new CustomEvent(CREATED_EVENT, {
+                detail: {
+                  target: childElement
+                }
+              })
+            );
           } else {
             const childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
             if (element.childNodes.length > newIndex) {

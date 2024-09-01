@@ -2,10 +2,11 @@
 
 A teeny-tiny framework for building web apps.
 
-- Minimal amount of concepts to learn in order to get going, meaning the system becomes incredibly *easy to reason with*.
-- Comes in at *a kilobyte and half* in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
-- Has an *efficient diffing algorithm*. This ensures the dom is morphed quickly from the old to the new state with minimal overhead.
-- Utilises a proxy to manage the application state, the view is therefore only updated on changing the state, and can also be manipulated outside of event listeners.
+- Minimal amount of concepts to learn in order to get going, meaning the system becomes incredibly **easy to reason with**.
+- Comes in at **a kilobyte and half** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Has an **efficient diffing algorithm**. This ensures the dom is morphed quickly from the old to the new state with minimal overhead.
+- Utilises a proxy to manage the application state, the view is therefore **only updated on changing** the state, and can also be manipulated outside of event listeners.
+- Written in Typescript.
 
 To get you up and running you only need to know two functions: `mount` and `node`. There are a few more but lets go over the basics first. With `mount` you attach the application to the document, by providing it with a node from the document, a view function, and optionally an initial state. The view function takes in the state and outputs an abstract representation of the document using the `node` function. With `node` you create an abstract representation of a single [node](https://developer.mozilla.org/docs/Web/API/Node). The library then takes these nodes returned by the view function and creates the actual document for the browser to render.
 
@@ -119,7 +120,7 @@ mount(
 )
 ```
 
-Finally we come to the last two functions you can use. These aren't imported, but returned by the `mount` function. An `update` and `unmount` function. These can be deconstructed from a list, where the first value is the `update` and the second the `unmount` function. As the names suggest, with the `update` function a re-rendering can be forced, and with the `unmount` function the application can be terminated after which it will be removed from the page.
+Now we come to the two more functions needed to stop or update the application. These aren't imported, but returned by the `mount` function. An `update` and `unmount` function. These can be deconstructed from a list, where the first value is the `update` and the second the `unmount` function. As the names suggest, with the `update` function a re-rendering can be forced, and with the `unmount` function the application can be terminated after which it will be removed from the page.
 
 ```JavaScript
 import { mount, node } from '@doars/staark'

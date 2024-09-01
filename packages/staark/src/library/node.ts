@@ -1,8 +1,4 @@
 import {
-  GenericObject,
-} from '@doars/staark-common/src/generics.js'
-
-import {
   marker,
 } from './marker.js'
 import {
@@ -17,14 +13,16 @@ export type NodeAttributeListener = (
 ) => unknown
 
 export type NodeAttributes =
-  GenericObject<
+  Record<string,
     boolean |
     null |
     number |
     string |
     (number | string)[] |
     NodeAttributeListener |
-    GenericObject<number | string>
+    Record<string,
+      number | string
+    >
   >
 
 export type NodeContent =

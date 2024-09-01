@@ -8,9 +8,8 @@ import {
   equalRecursive,
 } from '@doars/staark-common/src/compare.js'
 import {
-  GenericFunction,
-  GenericFunctionUnknown,
-} from '@doars/staark-common/src/generics.js'
+  CREATED_EVENT,
+} from '@doars/staark-common/src/element.js'
 import {
   proxify,
 } from '../utilities/proxy.js'
@@ -28,6 +27,13 @@ import {
 import {
   TextAbstract,
 } from './text.js'
+
+export type GenericFunction<DataType, ReturnType> = (
+  argument: DataType
+) => ReturnType
+
+export type GenericFunctionUnknown = (
+) => unknown
 
 type MemoData = {
   c: NodeContent[],
@@ -56,32 +62,27 @@ export const mount = (
 
   let active: boolean = true,
     updating: boolean = false
-  let _rootNode: Element | null
+  let _rootNode = typeof (rootNode) === 'string'
+    ? (
+      document.querySelector(rootNode)
+      || document.body.appendChild(
+        document.createElement('div')
+      )
+    )
+    : rootNode
+
   const unmount = (
   ): void => {
     if (active) {
       active = false
-      if (_rootNode) {
-        for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
-          _rootNode.childNodes[i].remove()
-        }
+
+      for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
+        _rootNode.childNodes[i].remove()
       }
     }
   }
-
-  _rootNode = typeof (rootNode) === 'string'
-    ? document.querySelector(rootNode)
-    : rootNode
-  if (!_rootNode) {
-    throw new Error('No mount')
-  }
   unmount()
   active = true
-
-  if (!_rootNode) {
-    _rootNode = document.createElement('div')
-    document.body.appendChild(_rootNode)
-  }
 
   // Track amount of listeners running.
   let listenerCount = 0
@@ -105,20 +106,17 @@ export const mount = (
               event: Event,
             ): void => {
               listenerCount++;
-              (value as NodeAttributeListener)(event)
+              try {
+                (value as NodeAttributeListener)(event)
+              } catch (error) {
+                console.warn('listener error', error)
+              }
               listenerCount--
               updateAbstracts()
             }
             element.addEventListener(name, listener)
             continue
           } else {
-            // Ensure it is of type string.
-            if (type === 'boolean') {
-              value = value ? 'true' : 'false'
-            } else if (type !== 'string') {
-              value = value.toString()
-            }
-
             if (name === 'class') {
               if (typeof (value) === 'object') {
                 if (Array.isArray(value)) {
@@ -156,16 +154,25 @@ export const mount = (
                   value = styles
                 }
               }
-            } else if (
-              name === 'value' &&
-              (element as HTMLInputElement).value !== value
-            ) {
-              // Update value separately as well.
-              (element as HTMLInputElement).value = value as string
-              // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-            } else if (name === 'checked') {
-              (element as HTMLInputElement).checked = newAttributes[name] as boolean
-              // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
+            } else {
+              // Ensure it is of type string.
+              if (type === 'boolean') {
+                value = value ? 'true' : 'false'
+              } else if (type !== 'string') {
+                value = value.toString()
+              }
+
+              if (
+                name === 'value' &&
+                (element as HTMLInputElement).value !== value
+              ) {
+                // Update value separately as well.
+                (element as HTMLInputElement).value = value as string
+                // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
+              } else if (name === 'checked') {
+                (element as HTMLInputElement).checked = newAttributes[name] as boolean
+                // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
+              }
             }
 
             element.setAttribute(name, (value as string))
@@ -349,6 +356,14 @@ export const mount = (
               )
             }
             newCount++
+
+            _rootNode.dispatchEvent(
+              new CustomEvent(CREATED_EVENT, {
+                detail: {
+                  target: childElement,
+                }
+              })
+            )
           } else {
             const childElement = (
               typeof (newAbstract) === 'string'
