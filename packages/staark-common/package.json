@@ -6,9 +6,11 @@
   "name": "@doars/staark-common",
   "description": "",
   "keywords": [],
-  "version": "1.0.1",
+  "version": "1.1.0",
   "license": "MIT",
   "type": "module",
+  "main": "dst/staark-common.js",
+  "types": "src/index.ts",
   "homepage": "https://github.com/doars/staark#readme",
   "repository": {
     "type": "git",
@@ -21,8 +23,8 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "echo 'not applicable'",
-    "build": "echo 'not applicable'",
+    "develop": "NODE_ENV=development node config.esbuild.js",
+    "build": "NODE_ENV=production node config.esbuild.js",
     "lint": "eslint src/*.js --cache --fix --no-error-on-unmatched-pattern",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"

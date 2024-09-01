@@ -8,7 +8,3 @@ export const arrayify = function <T>(
     data,
   ]
 }
-
-export default {
-  arrayify,
-}
