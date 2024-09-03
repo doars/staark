@@ -147,8 +147,8 @@ export const mount = (
 
                     if (Array.isArray(styleValue)) {
                       styles += ';' + styleProperty + ':' + styleValue.join(' ')
-                    } else if (value) {
-                      styles += ';' + styleProperty + ':' + value
+                    } else if (styleValue) {
+                      styles += ';' + styleProperty + ':' + styleValue
                     }
                   }
                   value = styles

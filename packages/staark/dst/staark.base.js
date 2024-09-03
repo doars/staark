@@ -191,8 +191,8 @@ var mount = (rootNode, renderView, initialState) => {
                     styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
                     if (Array.isArray(styleValue)) {
                       styles += ";" + styleProperty + ":" + styleValue.join(" ");
-                    } else if (value) {
-                      styles += ";" + styleProperty + ":" + value;
+                    } else if (styleValue) {
+                      styles += ";" + styleProperty + ":" + styleValue;
                     }
                   }
                   value = styles;

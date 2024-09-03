@@ -1,10 +1,16 @@
 # Changelog
 
+## 1.3.3
+
+- Update builds.
+
+## 1.3.2
+
+- Fix bug when updating style attribute.
+
 ## 1.3.1
 
 - Improved handling when no valid root node is given.
-
-## 1.3.0
 
 ## 1.2.0
 

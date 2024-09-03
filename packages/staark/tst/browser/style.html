@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '../../dst/staark.js'
+
+      mount(
+        '#app',
+        () => [
+          node('div', {
+            style: 'background-color:red;',
+          }, 'style string'),
+
+          node('div', {
+            style: [
+              'background-color:red',
+              'color:yellow',
+            ],
+          }, 'style array'),
+
+          node('div', {
+            style: {
+              'background-color': 'red',
+              color: 'yellow',
+              position: false,
+            },
+          }, 'style object'),
+        ],
+      )
+    </script>
+  </body>
+
+</html>
