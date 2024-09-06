@@ -18,6 +18,6 @@
   },
   "dependencies": {
     "hyperapp": "^2.0.22",
-    "@doars/staark": "^1.2.0"
+    "@doars/staark": "^1.2.1"
   }
 }

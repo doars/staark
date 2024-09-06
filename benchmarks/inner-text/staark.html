@@ -49,13 +49,17 @@
           value: '',
         }
       )
+      for (let i = 0; i < ITERATIONS; i++) {
+        state.todos.push('test-1')
+      }
 
       const run = (
       ) => {
         const startTime = performance.now()
 
+        state.todos.splice(0, state.todos.length)
         for (let i = 0; i < ITERATIONS; i++) {
-          state.todos.push('test')
+          state.todos.push('test-2')
         }
 
         const time = performance.now() - startTime

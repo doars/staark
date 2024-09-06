@@ -36,6 +36,12 @@
         value: event.target.value,
       })
 
+      const resetTodos = (state) => ({
+        ...state,
+        value: '',
+        todos: state.todos.splice(0, state.todos.length)
+      })
+
       const dispatch = app({
         init: {
           todos: [],
@@ -59,14 +65,24 @@
           ]),
       })
 
+      for (let i = 0; i < ITERATIONS; i++) {
+        dispatch(newValue, {
+          target: {
+            value: 'test-1',
+          },
+        })
+        dispatch(addTodo)
+      }
+
       const run = (
       ) => {
         const startTime = performance.now()
 
+        dispatch(resetTodos)
         for (let i = 0; i < ITERATIONS; i++) {
           dispatch(newValue, {
             target: {
-              value: 'test',
+              value: 'test-2',
             },
           })
           dispatch(addTodo)

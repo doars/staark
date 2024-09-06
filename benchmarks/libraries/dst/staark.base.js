@@ -64,6 +64,9 @@ var equalRecursive = (valueA, valueB) => {
   );
 };
 
+// ../../packages/staark-common/src/element.ts
+var CREATED_EVENT = "staark-created";
+
 // ../../packages/staark/src/utilities/proxy.ts
 var proxify = (root, onChange) => {
   const map = /* @__PURE__ */ new WeakMap();
@@ -160,18 +163,17 @@ var mount = (rootNode, renderView, initialState) => {
           if (type === "function") {
             const listener = newAttributes[name] = (event) => {
               listenerCount++;
-              value(event);
+              try {
+                value(event);
+              } catch (error) {
+                console.warn("listener error", error);
+              }
               listenerCount--;
               updateAbstracts();
             };
             element.addEventListener(name, listener);
             continue;
           } else {
-            if (type === "boolean") {
-              value = value ? "true" : "false";
-            } else if (type !== "string") {
-              value = value.toString();
-            }
             if (name === "class") {
               if (typeof value === "object") {
                 if (Array.isArray(value)) {
@@ -204,10 +206,17 @@ var mount = (rootNode, renderView, initialState) => {
                   value = styles;
                 }
               }
-            } else if (name === "value" && element.value !== value) {
-              element.value = value;
-            } else if (name === "checked") {
-              element.checked = newAttributes[name];
+            } else {
+              if (type === "boolean") {
+                value = value ? "true" : "false";
+              } else if (type !== "string") {
+                value = value.toString();
+              }
+              if (name === "value" && element.value !== value) {
+                element.value = value;
+              } else if (name === "checked") {
+                element.checked = newAttributes[name];
+              }
             }
             element.setAttribute(name, value);
           }
@@ -340,6 +349,13 @@ var mount = (rootNode, renderView, initialState) => {
               );
             }
             newCount++;
+            _rootNode.dispatchEvent(
+              new CustomEvent(CREATED_EVENT, {
+                detail: {
+                  target: childElement
+                }
+              })
+            );
           } else {
             const childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
             if (element.childNodes.length > newIndex) {
