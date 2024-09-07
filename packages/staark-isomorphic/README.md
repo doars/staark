@@ -1,6 +1,6 @@
 # staark isomorphic
 
-An extension of the [staark framework](https://github.com/doars/staark#readme) that allows for rendering on both the client and server sides. This library provides methods to convert a staark virtual DOM into a string, making it suitable for server-side rendering (SSR) and static site generation (SSG).
+A server side rendering library for [staark](https://github.com/doars/staark#readme). It provides methods to convert a staark virtual DOM into a string, making it suitable for server-side rendering (SSR) and static site generation (SSG).
 
 You have two primary functions at your disposal `stringify` and `stringifyFull`. These functions allow the application state and DOM tree to be rendered to strings. Let’s walk through how each of these functions can be used effectively.
 

@@ -47,7 +47,7 @@
     }
   });
 
-  // ../staark-common/src/selector.ts
+  // ../staark/src/utilities/selector.ts
   var BRACKET_CLOSE = "]";
   var BRACKET_OPEN = "[";
   var DOT = ".";
@@ -327,6 +327,40 @@
       abstractTree
     ];
   };
+  var customStringify = (data) => {
+    if (typeof data === "number" || typeof data === "boolean") {
+      return String(data);
+    }
+    if (typeof data === "string") {
+      return '"'.concat(data.replace(/"/g, '\\"'), '"');
+    }
+    if (Array.isArray(data)) {
+      return "[".concat(data.map((item) => customStringify(item)).join(","), "]");
+    }
+    if (typeof data === "object") {
+      const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
+      const objectContent = keys.map((key) => '"'.concat(key, '":').concat(customStringify(data[key]))).join(",");
+      return "{".concat(objectContent, "}");
+    }
+    return "null";
+  };
+  var stringifyFull = (renderView, initialState) => {
+    if (!initialState) {
+      initialState = {};
+    }
+    const [
+      rendered,
+      abstractTree
+    ] = stringify(
+      renderView,
+      initialState
+    );
+    return [
+      rendered,
+      customStringify(abstractTree),
+      JSON.stringify(initialState)
+    ];
+  };
 
   // ../staark/src/library/text.ts
   var text = (contents) => ({
@@ -344,6 +378,7 @@
     nde,
     node,
     stringify,
+    stringifyFull,
     text
   });
 })();

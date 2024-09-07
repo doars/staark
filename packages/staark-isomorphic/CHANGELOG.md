@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+
+- Included `stringifyFull` function into iife build.
+
 ## 1.1.0
 
 - Added documentation.

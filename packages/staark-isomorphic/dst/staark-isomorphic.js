@@ -33,7 +33,7 @@ var factory = new Proxy({}, {
   }
 });
 
-// ../staark-common/src/selector.ts
+// ../staark/src/utilities/selector.ts
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
 var DOT = ".";
