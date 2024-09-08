@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      const calculateBMI = (
+        state,
+      ) => {
+        const weight = parseFloat(state.weight)
+        const height = parseFloat(state.height) / 100
+        if (
+          weight
+          && height
+        ) {
+          state.bmi = (weight / (height * height)).toFixed(2)
+        }
+      }
+
+      mount('#app', (state) =>
+        node('div', {
+          style: {
+            maxWidth: '256px',
+          }
+        }, [
+          node('p', 'BMI calculator'),
+
+          node('input', {
+            type: 'number',
+            placeholder: 'Weight (kg)',
+            value: state.weight,
+            input: (
+              event,
+            ) => {
+              state.weight = event.target.value
+              calculateBMI(state)
+            },
+            style: {
+              marginBottom: '8px',
+              padding: '4px',
+              width: '100%',
+            },
+          }),
+
+          node('input', {
+            type: 'number',
+            placeholder: 'Height (cm)',
+            value: state.height,
+            input: (
+              event,
+            ) => {
+              state.height = event.target.value
+              calculateBMI(state)
+            },
+            style: {
+              marginBottom: '8px',
+              padding: '4px',
+              width: '100%',
+            },
+          }),
+
+          node('div', {
+            style: {
+              marginTop: '8px',
+            },
+          }, 'BMI: ' + state.bmi),
+        ]),
+        {
+          weight: '',
+          height: '',
+          bmi: 0,
+        },
+      )
+    </script>
+  </body>
+
+</html>

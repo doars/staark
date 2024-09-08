@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      mount('#app', (state) =>
+        node(
+          'div',
+          {
+            style: {
+              maxWidth: '256px',
+            },
+          },
+          [
+            node('div', {
+              style: {
+                marginBottom: '16px',
+              },
+            }, [
+              node(
+                'input',
+                {
+                  type: 'text',
+                  value: state.newtask,
+                  input: (
+                    event,
+                  ) => state.newtask = event.target.value,
+                  placeholder: 'Add a new task',
+                  style: {
+                    width: '60%',
+                    padding: '8px',
+                    marginRight: '8px',
+                  },
+                },
+              ),
+              node(
+                'button',
+                {
+                  click: () => {
+                    if (state.newtask.trim()) {
+                      state.tasks.push({
+                        text: state.newtask,
+                        completed: false,
+                      })
+                      state.newtask = ''
+                    }
+                  },
+                  style: {
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                  },
+                },
+                'Add',
+              ),
+            ]),
+
+            node(
+              'ul',
+              state.tasks.map(
+                (task, index) =>
+                  node('li', [
+                    node(
+                      'button',
+                      {
+                        click: () => {
+                          state.tasks.splice(index, 1)
+                        },
+                        type: 'button',
+                      },
+                      'X',
+                    ),
+
+                    node(
+                      'span',
+                      {
+                        click: () => {
+                          state.tasks[index].completed = !state.tasks[index].completed
+                        },
+                        style: {
+                          textDecoration: task.completed
+                            ? 'line-through'
+                            : 'none',
+                          cursor: 'pointer',
+                          marginRight: '16px',
+                        },
+                      },
+                      ' ' + task.text
+                    ),
+                  ]),
+              ),
+            ),
+          ],
+        ),
+        {
+          newtask: '',
+          tasks: [{
+            text: 'Use task app',
+            completed: false,
+          }],
+        },
+      )
+    </script>
+  </body>
+
+</html>

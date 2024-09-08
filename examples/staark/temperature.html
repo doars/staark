@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      mount('#app', (state) =>
+        node('div', {
+          style: {
+            maxWidth: '256px',
+          },
+        }, [
+          node('p', 'Celsius converter'),
+
+          node('input', {
+            type: 'number',
+            value: state.celsius,
+            input: (event) => {
+              state.celsius = event.target.value
+
+              const celsius = parseFloat(event.target.value)
+              state.fahrenheit = (celsius * 9 / 5 + 32).toFixed(2)
+              state.kelvin = (celsius + 273.15).toFixed(2)
+            },
+            style: {
+              marginBottom: '8px',
+              padding: '4px',
+              width: '100%',
+            },
+            placeholder: 'Enter Celsius',
+          }),
+
+          node('div', `Fahrenheit: ${state.fahrenheit}`),
+          node('div', `Kelvin: ${state.kelvin}`),
+        ]),
+        {
+          celsius: 0,
+          fahrenheit: 32,
+          kelvin: 273.15,
+        },
+      )
+    </script>
+
+    </script>
+  </body>
+
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      mount('#app', (state) =>
+        node('div', {
+          style: {
+            maxWidth: '256px',
+          },
+        }, [
+          node('div', state.tabs.map(
+            (tab, index) =>
+              node('button', {
+                click: () => {
+                  state.activeTab = index
+                },
+                type: 'button',
+              }, tab.title),
+          )),
+
+          node('div', state.tabs[state.activeTab].content.map(
+            paragraph => node('p', paragraph),
+          )),
+        ]),
+        {
+          activeTab: 0,
+          tabs: [{
+            title: 'Tab 1',
+            content: [
+              'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam maximus congue augue, id sollicitudin velit sollicitudin eget. Quisque euismod, dolor at malesuada pulvinar, nunc elit commodo purus, sit amet eleifend felis neque sit amet metus. Praesent pellentesque ultrices nulla, eu dapibus nunc posuere id. Nulla lacinia in nulla tincidunt luctus. Curabitur et varius ex. Curabitur ac ultricies nunc. Vivamus porttitor commodo dignissim. Quisque massa lectus, bibendum a risus quis, tincidunt facilisis sem. Vestibulum vitae pellentesque nunc.',
+              'Nulla tempor nibh eu lorem tristique sagittis. Proin sed pellentesque ex. In accumsan velit sed ex cursus consequat. Etiam porttitor urna nec sollicitudin aliquam. Curabitur ultrices mi eu mi lobortis convallis. Donec in sagittis justo, eu venenatis ipsum. Sed commodo odio suscipit magna aliquet sollicitudin. Curabitur viverra tellus eget tellus pulvinar, quis dignissim dolor fermentum. Sed sed sagittis enim. Nam lobortis nisi eget nisi bibendum, eu tristique dolor efficitur. Pellentesque ultricies urna ac eros auctor, sit amet porttitor erat elementum. Aliquam justo tortor, mattis vel pharetra et, rhoncus id dolor. Quisque vel arcu quis massa scelerisque interdum.',
+              'Etiam odio sapien, imperdiet dignissim nisl ut, auctor mattis massa. Pellentesque maximus maximus arcu sit amet semper. Integer ac tempor tortor. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Suspendisse tempor nulla id sem mollis sagittis. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Ut accumsan condimentum nulla ac volutpat. Mauris dapibus, risus vitae pellentesque hendrerit, lacus erat porttitor lectus, ac gravida lectus nibh ac nulla. Phasellus ultrices dictum eleifend. Proin aliquam ex sit amet erat facilisis, non convallis libero molestie. Aliquam in nisl metus. Aliquam et blandit odio. Aliquam sed leo ut purus mattis tristique. Donec iaculis purus faucibus metus congue tempor. Suspendisse potenti.',
+              'Aliquam erat volutpat. Vestibulum id tempus mauris. Praesent aliquam nibh eu leo congue dignissim. Fusce sagittis lorem ut luctus tristique. Donec tincidunt suscipit ex, sit amet eleifend libero venenatis eu. Donec in facilisis est. Quisque pharetra nulla velit, sit amet fringilla massa semper non. Sed tempus nunc ac metus ornare, ut cursus leo sagittis. Nam non felis varius, luctus elit et, viverra lacus. Praesent dignissim lacinia ante, ut pretium lectus sollicitudin in. Maecenas a ex ultricies, tempor diam et, dignissim metus.',
+            ],
+          }, {
+            title: 'Tab 2',
+            content: [
+              'Praesent placerat ex metus, eget vestibulum ex tincidunt vitae. Praesent lacinia suscipit magna, nec dignissim tellus faucibus tincidunt. Etiam gravida arcu id erat rutrum, eget condimentum eros faucibus. In dapibus interdum ex eget accumsan. Nam faucibus imperdiet velit, at faucibus justo elementum vitae. Nullam rhoncus erat ac tristique dignissim. Maecenas nec nisi hendrerit, venenatis sapien ut, dignissim tellus. Etiam semper, mauris eu efficitur imperdiet, nisl felis semper elit, sed dignissim velit tellus sed enim. Sed volutpat dolor ac lacinia tincidunt. Proin at dictum tortor, eget tristique tellus. Integer varius a dolor id aliquam. Proin ullamcorper sed turpis a hendrerit.',
+              'In maximus elit vel turpis cursus, sit amet facilisis tellus fermentum. Vestibulum tincidunt eros tortor, non dignissim ante ornare quis. Nam a nibh convallis, efficitur nulla at, imperdiet turpis. Curabitur sed sagittis nisi, in rhoncus nulla. Duis tempus orci nisl, a lobortis quam rhoncus vitae. In eleifend, risus eget pulvinar mattis, ex elit aliquam turpis, sed volutpat ipsum ipsum nec ex. Cras placerat dictum elit a imperdiet. Duis eget blandit sapien. Curabitur interdum, lectus faucibus feugiat venenatis, enim sapien viverra ipsum, ac lobortis nunc urna ac ex.',
+              'Nullam sit amet erat eu nisi facilisis maximus. Maecenas sed nulla malesuada, pulvinar ligula eget, imperdiet orci. Fusce congue aliquet justo quis mattis. Donec risus massa, sodales sit amet neque eu, vulputate porttitor massa. Integer iaculis nisl at elementum feugiat. Sed tempor ex non massa suscipit accumsan. Suspendisse sed dolor eget lorem lacinia rutrum. Donec iaculis iaculis felis, non elementum felis tristique eget. Suspendisse consequat nisl sagittis nunc tristique ornare. Aenean rutrum mi non sem finibus, a cursus nibh maximus.',
+              'Donec aliquam placerat ligula, at ultricies sem sollicitudin in. Vestibulum venenatis est id nunc pellentesque, vitae elementum sem mollis. Curabitur nec rutrum est. Aliquam sed massa eu est varius varius vel quis sapien. Nulla a metus tortor. Mauris quis tempor odio. Sed pretium tellus enim. Aliquam lacus ligula, pulvinar a ipsum nec, convallis accumsan diam. Nullam in metus at turpis aliquam pulvinar.',
+              'Aliquam ipsum urna, tempor in nisi et, scelerisque mollis purus. Fusce pretium est sed metus commodo aliquam. Mauris placerat vel tortor id mollis. Curabitur aliquet non nulla sodales dignissim. Ut in pretium metus. Suspendisse pellentesque odio velit, a vulputate erat malesuada eget. Praesent maximus auctor commodo. Quisque non augue diam. Duis dignissim vitae quam et vulputate. Duis feugiat lectus sapien. Nullam varius rhoncus justo a ultrices. Morbi vulputate lacus vitae luctus fringilla. Nullam dapibus feugiat libero faucibus suscipit. Morbi nec dui tristique, gravida leo quis, sagittis diam. Suspendisse et semper libero.',
+              'Nam consequat elit ut risus sagittis dapibus. Duis ullamcorper justo eu enim consectetur, eget molestie urna scelerisque. Donec id convallis elit. Sed laoreet lectus non risus faucibus elementum. In iaculis neque nec ornare tincidunt. Aenean tincidunt ullamcorper aliquet. Quisque id urna faucibus, placerat ante eu, tristique nunc. Suspendisse sed ornare augue, ac hendrerit nulla. Proin rhoncus, magna quis porta accumsan, arcu nisl dictum est, vitae condimentum augue libero vel ex. Sed mattis consectetur turpis vitae suscipit. Maecenas vestibulum iaculis dolor vehicula auctor. Aliquam sodales ipsum id velit maximus dictum.',
+              'Morbi eu finibus massa. Integer felis leo, pellentesque a molestie vel, placerat vel nunc. Aliquam vestibulum fringilla diam, eget accumsan risus vehicula non. Nam rhoncus augue nisl, ut condimentum est egestas quis. Donec velit erat, maximus sed mattis at, suscipit sit amet erat. Donec quis nisi ullamcorper, pretium lorem eget, faucibus ante. Pellentesque in consequat ipsum, at maximus orci. Integer tincidunt eleifend augue, ac eleifend est pretium feugiat. Nam non dolor a urna pharetra maximus. Integer malesuada, ante eu laoreet tincidunt, magna mi hendrerit ipsum, nec fermentum nunc lacus id nunc. Etiam in ex finibus, dapibus lacus vitae, efficitur ipsum. Ut in ligula eu nisi gravida efficitur ut pulvinar odio. Nulla vulputate laoreet pharetra. Nullam condimentum nibh at eros mollis bibendum.',
+            ],
+          }, {
+            title: 'Tab 3',
+            content: [
+              'Mauris ut erat pellentesque, egestas justo vitae, fringilla lectus. Integer sagittis purus at efficitur porta. Vestibulum imperdiet pulvinar lectus. Ut laoreet, odio eu blandit egestas, velit nulla imperdiet nisi, mattis ullamcorper nulla magna a nibh. Proin ultricies scelerisque dui, a posuere velit. Integer quis imperdiet sem. Cras efficitur cursus leo, eu elementum libero pretium vel. Sed ex risus, gravida et mi id, facilisis aliquam arcu. Mauris nisi elit, elementum in nunc vitae, luctus venenatis massa. Vestibulum consequat nulla vel nisi fermentum, vestibulum pulvinar nulla aliquam. Morbi pharetra est in erat tempor congue. Etiam suscipit facilisis nisl at posuere. Maecenas sit amet velit vel tortor aliquam commodo. Duis lobortis congue iaculis. Nunc tempor libero a tempus rutrum. Duis vitae facilisis leo.',
+            ],
+          }]
+        },
+      )
+    </script>
+  </body>
+
+</html>

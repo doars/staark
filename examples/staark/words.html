@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      mount('#app', (state) =>
+        node('div', {
+          style: {
+            maxWidth: '256px',
+          }
+        }, [
+          node('p', 'Word counter'),
+
+          node('textarea', {
+            placeholder: 'Type something...',
+            input: (event) => {
+              state.text = event.target.value
+            },
+            style: {
+              width: '100%',
+              minHeight: '8em',
+              resize: 'vertical',
+              padding: '8px',
+            },
+            value: state.text,
+          }),
+
+          node('p', 'Characters: ' + state.text.length),
+          node('p', 'Words: ' + state.text.trim().split(/\s+/).filter(Boolean).length),
+        ]),
+        {
+          text: 'Hello world how are you doing?',
+        },
+      )
+    </script>
+  </body>
+
+</html>

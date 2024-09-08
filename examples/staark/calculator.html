@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      const appendNumber = (
+        state,
+        number,
+      ) => {
+        if (state.display === '0' || state.result) {
+          state.display = number
+          state.result = null
+        } else {
+          state.display += number
+        }
+      }
+
+      const clearDisplay = (
+        state,
+      ) => {
+        state.display = '0'
+        state.firstOperand = null
+        state.operator = null
+        state.result = null
+      }
+
+      const setOperator = (
+        state,
+        operator,
+      ) => {
+        if (state.firstOperand === null) {
+          state.firstOperand = parseFloat(state.display)
+        } else if (state.operator) {
+          calculateResult(state)
+        }
+        state.operator = operator
+        state.display = '0'
+      }
+
+      const calculateResult = (
+        state,
+      ) => {
+        if (
+          state.operator
+          && state.firstOperand !== null
+        ) {
+          const secondOperand = parseFloat(state.display)
+          switch (state.operator) {
+            case '+':
+              state.result = state.firstOperand + secondOperand
+              break
+
+            case '-':
+              state.result = state.firstOperand - secondOperand
+              break
+
+            case '*':
+              state.result = state.firstOperand * secondOperand
+              break
+
+            case '/':
+              state.result = state.firstOperand / secondOperand
+              break
+          }
+          state.display = state.result.toString()
+          state.firstOperand = null
+          state.operator = null
+        }
+      }
+
+      mount('#app', (state) =>
+        node('div', {
+          style: {
+            maxWidth: '256px',
+          },
+        }, [
+          node('div', {
+            style: {
+              marginBottom: '8px',
+              fontSize: '24px',
+              border: '1px solid black',
+              padding: '8px',
+              textAlign: 'right',
+            }
+          }, state.display),
+
+          node('div', {
+            style: {
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '8px',
+            },
+          }, [
+            node('button', {
+              click: () => appendNumber(state, '7'),
+            }, '7'),
+            node('button', {
+              click: () => appendNumber(state, '8'),
+            }, '8'),
+            node('button', {
+              click: () => appendNumber(state, '9'),
+            }, '9'),
+            node('button', {
+              click: () => setOperator(state, '/'),
+            }, '/'),
+
+            node('button', {
+              click: () => appendNumber(state, '4'),
+            }, '4'),
+            node('button', {
+              click: () => appendNumber(state, '5'),
+            }, '5'),
+            node('button', {
+              click: () => appendNumber(state, '6'),
+            }, '6'),
+            node('button', {
+              click: () => setOperator(state, '*'),
+            }, '*'),
+
+            node('button', {
+              click: () => appendNumber(state, '1'),
+            }, '1'),
+            node('button', {
+              click: () => appendNumber(state, '2'),
+            }, '2'),
+            node('button', {
+              click: () => appendNumber(state, '3'),
+            }, '3'),
+            node('button', {
+              click: () => setOperator(state, '-'),
+            }, '-'),
+
+            node('button', {
+              click: () => clearDisplay(state),
+            }, 'C'),
+            node('button', {
+              click: () => appendNumber(state, '0'),
+            }, '0'),
+            node('button', {
+              click: () => calculateResult(state),
+            }, '='),
+            node('button', {
+              click: () => setOperator(state, '+'),
+            }, '+'),
+          ]),
+        ]),
+        {
+          display: '0',
+          firstOperand: null,
+          operator: null,
+          result: null,
+        },
+      )
+    </script>
+  </body>
+
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      const stopStopwatch = (
+        state,
+      ) => {
+        clearInterval(state.timerInterval)
+        state.timerInterval = null
+      }
+
+      mount('#app', (state) =>
+        node('div', [
+          node('p', 'Stopwatch'),
+
+          node('div', {
+            style: {
+              fontSize: '24px',
+              marginBottom: '10px',
+            },
+          }, (state.time / 10).toFixed(1) + ' seconds'),
+
+          node('button', {
+            click: () => {
+              if (!state.timerInterval) {
+                state.timerInterval = setInterval(
+                  () => state.time++,
+                  100,
+                )
+              }
+            },
+            style: {
+              marginRight: '10px',
+            },
+          }, 'Start'),
+          node('button', {
+            click: () => stopStopwatch(state),
+            style: {
+              marginRight: '10px',
+            },
+          }, 'Stop'),
+          node('button', {
+            click: () => {
+              stopStopwatch(state)
+              state.time = 0
+            },
+          }, 'Reset'),
+        ]),
+        {
+          timerInterval: null,
+          time: 0,
+        }
+      )
+    </script>
+  </body>
+
+</html>
