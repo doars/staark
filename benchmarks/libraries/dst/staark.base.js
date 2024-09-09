@@ -132,27 +132,19 @@ var mount = (rootNode, renderView, initialState) => {
     initialState = {};
   }
   let active = true, updating = false;
-  let _rootNode;
+  let _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) || document.body.appendChild(
+    document.createElement("div")
+  ) : rootNode;
   const unmount = () => {
     if (active) {
       active = false;
-      if (_rootNode) {
-        for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
-          _rootNode.childNodes[i].remove();
-        }
+      for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
+        _rootNode.childNodes[i].remove();
       }
     }
   };
-  _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) : rootNode;
-  if (!_rootNode) {
-    throw new Error("No mount");
-  }
   unmount();
   active = true;
-  if (!_rootNode) {
-    _rootNode = document.createElement("div");
-    document.body.appendChild(_rootNode);
-  }
   let listenerCount = 0;
   const updateAttributes = (element, newAttributes = null, oldAttributes = null) => {
     if (newAttributes) {
@@ -199,8 +191,8 @@ var mount = (rootNode, renderView, initialState) => {
                     styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
                     if (Array.isArray(styleValue)) {
                       styles += ";" + styleProperty + ":" + styleValue.join(" ");
-                    } else if (value) {
-                      styles += ";" + styleProperty + ":" + value;
+                    } else if (styleValue) {
+                      styles += ";" + styleProperty + ":" + styleValue;
                     }
                   }
                   value = styles;

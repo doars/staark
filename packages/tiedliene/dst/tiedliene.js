@@ -1,4 +1,4 @@
-// node_modules/@doars/staark-common/src/clone.ts
+// ../staark-common/src/clone.ts
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
     if (Array.isArray(value)) {

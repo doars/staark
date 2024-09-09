@@ -18,15 +18,15 @@ For all the details on the core library see the package's own [README](https://g
 
 ## Contributing
 
-If you are using the library and are running into an problem that you don't know how to solve, or would love to see a particular feature then feel free to [create an issue](https://github.com/doars/staark/issues/new/choose).
+If you are using the libraries and are running into an problem that you don't know how to solve, or would love to see a particular feature then feel free to [create an issue](https://github.com/doars/staark/issues/new/choose).
 
 ## In the wild
 
-If you are using staark then please [let me know](https://rondekker.com#contact), I would love to hear about it!
+If you are using _staark_ then please let me know, I would love to hear about it!
 
 ## Compared to Hyperapp
 
-[Hyperapp](https://github.com/jorgebucaran/hyperapp#readme) is a similar library that offers almost the same functionality with some exceptions. Out of the box it does not have the `factory`, `fctory`, and `nde` function, although these could be added as wrappers. Hyperapp also doesn't handle `class` and `style` attributes the same way, but the biggest difference is in how you as the user make changes to the state. Hyperapp expects you to return a new copy of the state with the modified made as the return of a listener. This means only listeners can easily mutate the state at the end of the function. staark on the other had allows mutation of any key on the state no matter when. The library will after a change has been made re-render the application. This means that you can comfortably use asynchronous functions such [fetch](https://github.com/doars/staark/tree/main/packages/vroagn#readme) and have staark automatically update the interface afterwards.
+[Hyperapp](https://github.com/jorgebucaran/hyperapp#readme) is a similar library that offers almost the same functionality with some exceptions. Out of the box it does not have the `factory`, `fctory`, and `nde` function, although these could be added as wrappers. Hyperapp also doesn't handle `class` and `style` attributes the same way, but the biggest difference is in how you as the user make changes to the state. Hyperapp expects you to return a new copy of the state with the modified made as the return of a listener. This means only listeners can easily mutate the state at the end of the function. staark on the other had allows mutation of any key on the state no matter when. The library will after a change has been made re-render the application. This means that you can comfortably use asynchronous functions such [fetch](https://github.com/doars/staark/tree/main/packages/vroagn#readme) and have staark automatically update the interface afterwards. And if a event does not change the state then no re-rendering will happen.
 
 ### File size
 
@@ -39,9 +39,7 @@ To give an indication how staark performs I tried writing a simple, probably fla
 ## Future ideas
 
 - Add optional key parameter to the `node` function so some nodes are exempt from being re-used during morphing.
-- Document how to deal with listening to window events such as resize.
-- Add client-side re-hydration.
-- Store the state of the application in the browsers local storage and try to resume from there on page reload.
+- Add client-side re-hydration so _staark_ and _staark/isomorphic_ can be used together.
 
 ## License
 
