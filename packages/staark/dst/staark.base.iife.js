@@ -343,7 +343,12 @@
                   newAbstract.c
                 );
               }
-              if (element.childNodes.length > newIndex) {
+              if (newIndex === 0) {
+                element.insertAdjacentElement(
+                  "afterbegin",
+                  childElement
+                );
+              } else if (element.childNodes.length > newIndex) {
                 element.childNodes[newIndex].insertAdjacentElement(
                   "afterend",
                   childElement
@@ -364,7 +369,12 @@
               );
             } else {
               const childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
-              if (element.childNodes.length > newIndex) {
+              if (newIndex === 0) {
+                element.insertAdjacentText(
+                  "afterbegin",
+                  childElement
+                );
+              } else if (element.childNodes.length > newIndex) {
                 element.childNodes[newIndex].insertAdjacentText(
                   "afterend",
                   childElement

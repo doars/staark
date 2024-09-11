@@ -343,7 +343,12 @@ export const mount = (
               )
             }
 
-            if (element.childNodes.length > newIndex) {
+            if (newIndex === 0) {
+              element.insertAdjacentElement(
+                'afterbegin',
+                childElement,
+              )
+            } else if (element.childNodes.length > newIndex) {
               (element.childNodes[newIndex] as Element)
                 .insertAdjacentElement(
                   'afterend',
@@ -371,7 +376,12 @@ export const mount = (
                 : (newAbstract as TextAbstract).c
             )
 
-            if (element.childNodes.length > newIndex) {
+            if (newIndex === 0) {
+              element.insertAdjacentText(
+                'afterbegin',
+                childElement,
+              )
+            } else if (element.childNodes.length > newIndex) {
               (element.childNodes[newIndex] as Element)
                 .insertAdjacentText(
                   'afterend',

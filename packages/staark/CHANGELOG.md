@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.4
+
+- Fixed bug causing DOM and virtual DOM differences.
+
 ## 1.3.3
 
 - Update builds.
