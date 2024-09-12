@@ -138,7 +138,7 @@ export const mount = (
                 } else {
                   let styles: string = ''
                   for (let styleProperty in value) {
-                    let styleValue: string | number | (string | number)[] = value[styleProperty]
+                    let styleValue: boolean | string | number | (boolean | string | number)[] = value[styleProperty]
 
                     // Convert to kebab case.
                     styleProperty = styleProperty

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.6
+
+- Improved types of NodeAttributes.
+
 ## 1.3.5
 
 - Fixed bug causing DOM and virtual DOM differences.

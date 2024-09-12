@@ -21,7 +21,7 @@ export type NodeAttributes =
     (number | string)[] |
     NodeAttributeListener |
     Record<string,
-      number | string
+      boolean | number | string
     >
   >
 
