@@ -442,7 +442,8 @@
         match.c
       );
     };
-    const updateElementTree = (element, newChildAbstracts = null, oldChildAbstracts = null) => {
+    const updateElementTree = (element, newChildAbstracts, oldChildAbstracts = null, elementAbstract = null) => {
+      var _a, _b, _c;
       let newIndex = 0;
       let newCount = 0;
       if (newChildAbstracts) {
@@ -489,7 +490,8 @@
                   updateElementTree(
                     element.childNodes[newIndex],
                     newAbstract.c,
-                    oldAbstract.c
+                    oldAbstract.c,
+                    oldAbstract
                   );
                 } else {
                   element.childNodes[newIndex].textContent = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
@@ -499,8 +501,9 @@
             }
           }
           if (!matched) {
+            let childElement;
             if (newAbstract.t) {
-              const childElement = document.createElement(
+              childElement = document.createElement(
                 newAbstract.t
               );
               if (newAbstract.a) {
@@ -515,55 +518,88 @@
                   newAbstract.c
                 );
               }
+              const insertAdjacentElement = (element2, elementAbstract2, position) => {
+                if (!elementAbstract2 || elementAbstract2.t) {
+                  element2.insertAdjacentElement(
+                    position,
+                    childElement
+                  );
+                } else {
+                  element2.parentNode.insertBefore(
+                    childElement,
+                    element2
+                  );
+                }
+              };
               if (newIndex === 0) {
-                element.insertAdjacentElement(
-                  "afterbegin",
-                  childElement
+                insertAdjacentElement(
+                  element,
+                  elementAbstract,
+                  "afterbegin"
                 );
-              } else if (element.childNodes.length > newIndex) {
-                element.childNodes[newIndex].insertAdjacentElement(
-                  "afterend",
-                  childElement
+              } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
+                insertAdjacentElement(
+                  element.childNodes[newIndex],
+                  oldChildAbstracts[newIndex + newCount],
+                  "beforebegin"
                 );
               } else {
-                element.insertAdjacentElement(
-                  "beforeend",
-                  childElement
+                insertAdjacentElement(
+                  element,
+                  elementAbstract,
+                  "beforeend"
                 );
               }
               newCount++;
-              _rootNode.dispatchEvent(
-                new CustomEvent(CREATED_EVENT, {
-                  detail: {
-                    target: childElement
-                  }
-                })
-              );
             } else {
-              const childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
+              childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
+              const insertAdjacentText = (element2, elementAbstract2, position) => {
+                if (!elementAbstract2 || elementAbstract2.t) {
+                  element2.insertAdjacentText(
+                    position,
+                    childElement
+                  );
+                } else {
+                  element2.parentNode.insertBefore(
+                    document.createTextNode(childElement),
+                    element2.nextSibling
+                  );
+                }
+              };
               if (newIndex === 0) {
-                element.insertAdjacentText(
-                  "afterbegin",
-                  childElement
+                insertAdjacentText(
+                  element,
+                  elementAbstract,
+                  "afterbegin"
                 );
-              } else if (element.childNodes.length > newIndex) {
-                element.childNodes[newIndex].insertAdjacentText(
-                  "afterend",
-                  childElement
+              } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
+                insertAdjacentText(
+                  element.childNodes[newIndex],
+                  oldChildAbstracts[newIndex + newCount],
+                  "beforebegin"
                 );
               } else {
-                element.insertAdjacentText(
-                  "beforeend",
-                  childElement
+                insertAdjacentText(
+                  element,
+                  elementAbstract,
+                  "beforeend"
                 );
               }
               newCount++;
             }
+            _rootNode.dispatchEvent(
+              new CustomEvent(CREATED_EVENT, {
+                detail: {
+                  target: childElement
+                }
+              })
+            );
           }
         }
       }
-      if (element.childNodes.length >= newIndex) {
-        for (let i = element.childNodes.length - 1; i >= newIndex; i--) {
+      const elementLength = ((_c = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _c : 0) + newCount;
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1; i >= newIndex; i--) {
           element.childNodes[i].remove();
         }
       }

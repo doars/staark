@@ -7,12 +7,12 @@ You have two primary functions at your disposal `stringify` and `stringifyFull`.
 The `stringify` function is your gateway to converting your application’s view into a static HTML string. This is particularly useful for generating the initial HTML on the server before sending it to the client. It takes in two parameters a `view` function that takes in the `state` and outputs the abstract node tree, and optionally an initial `state` object that your application starts with. When you call `stringify`, it returns an array with two elements, firstly the rendered HTML as a string, as well as the abstract node tree.
 
 ```JS
-import { node, stringify } from '@doars/staark-isomorphic'
+import { node as n, stringify } from '@doars/staark-isomorphic'
 
 const [html, tree] = stringify(
-  (state) => node('div', [
-    node('span', state.count),
-    node('button', {
+  (state) => n('div', [
+    n('span', state.count),
+    n('button', {
       click: () => state.count++,
     }, 'add')
   ]),
@@ -25,13 +25,12 @@ console.log(html) // <div><span>0</span><button>add</button></div>
 The `stringifyFull` function goes a step further by not only rendering your view to a static HTML string but also serializing the abstract node tree and the entire application state. This is particularly useful when you need to transfer the initial state and abstract node structure from server to client. It takes in two parameters a `view` function that takes in the `state` and outputs the abstract node tree, and optionally an initial `state` object that your application starts with. When you call `stringifyFull`, it returns an array with three elements, firstly the rendered HTML as a string, as well as the serialized abstract node tree, and finally the serialized initial state.
 
 ```JS
-import { stringifyFull } from '@doars/staark-isomorphic'
-import { node } from '@doars/staark'
+import { node as n, stringifyFull } from '@doars/staark-isomorphic'
 
 const [html, tree, state] = stringifyFull(
-  (state) => node('div', [
-    node('span', state.count),
-    node('button', {
+  (state) => n('div', [
+    n('span', state.count),
+    n('button', {
       click: () => state.count++,
     }, 'add')
   ]),

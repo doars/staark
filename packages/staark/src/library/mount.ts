@@ -163,8 +163,8 @@ export const mount = (
               }
 
               if (
-                name === 'value' &&
-                (element as HTMLInputElement).value !== value
+                name === 'value'
+                && (element as HTMLInputElement).value !== value
               ) {
                 // Update value separately as well.
                 (element as HTMLInputElement).value = value as string
@@ -190,8 +190,8 @@ export const mount = (
             oldAttributes[name] as NodeAttributeListener,
           )
         } else if (
-          !newAttributes ||
-          !(name in newAttributes)
+          !newAttributes
+          || !(name in newAttributes)
           || (newAttributes[name] === null)
           || (newAttributes[name] === undefined)
         ) {
@@ -243,8 +243,9 @@ export const mount = (
 
   const updateElementTree = (
     element: Element,
-    newChildAbstracts: NodeContent[] | null = null,
-    oldChildAbstracts: NodeContent[] | null = null,
+    newChildAbstracts: NodeContent[] | null | undefined,
+    oldChildAbstracts: NodeContent[] | null | undefined = null,
+    elementAbstract: NodeContent | null | undefined = null,
   ): void => {
     let newIndex = 0
     let newCount = 0
@@ -311,6 +312,7 @@ export const mount = (
                   (element.childNodes[newIndex] as Element),
                   (newAbstract as NodeAbstract).c,
                   (oldAbstract as NodeAbstract).c,
+                  oldAbstract,
                 )
               } else {
                 element.childNodes[newIndex].textContent = (
@@ -325,8 +327,9 @@ export const mount = (
         }
 
         if (!matched) {
+          let childElement: Element | string
           if ((newAbstract as NodeAbstract).t) {
-            const childElement = document.createElement(
+            childElement = document.createElement(
               (newAbstract as NodeAbstract).t
             )
 
@@ -343,65 +346,116 @@ export const mount = (
               )
             }
 
+            const insertAdjacentElement = (
+              element: Node,
+              elementAbstract: NodeContent | null | undefined,
+              position: InsertPosition,
+            ) => {
+              if (
+                !elementAbstract
+                || (elementAbstract as NodeAbstract).t
+              ) {
+                (element as Element)
+                  .insertAdjacentElement(
+                    position,
+                    childElement as Element,
+                  )
+              } else {
+                // Otherwise the position is always 'beforebegin'.
+                (element.parentNode as Element)
+                  .insertBefore(
+                    childElement as Element,
+                    element,
+                  )
+              }
+            }
             if (newIndex === 0) {
-              element.insertAdjacentElement(
+              insertAdjacentElement(
+                element,
+                elementAbstract,
                 'afterbegin',
-                childElement,
               )
-            } else if (element.childNodes.length > newIndex) {
-              (element.childNodes[newIndex] as Element)
-                .insertAdjacentElement(
-                  'afterend',
-                  childElement,
-                )
+            } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+              insertAdjacentElement(
+                (element.childNodes[newIndex] as Node),
+                (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                'beforebegin',
+              )
             } else {
-              element.insertAdjacentElement(
+              insertAdjacentElement(
+                element,
+                elementAbstract,
                 'beforeend',
-                childElement,
               )
             }
             newCount++
-
-            _rootNode.dispatchEvent(
-              new CustomEvent(CREATED_EVENT, {
-                detail: {
-                  target: childElement,
-                }
-              })
-            )
           } else {
-            const childElement = (
+            childElement = (
               typeof (newAbstract) === 'string'
                 ? newAbstract
                 : (newAbstract as TextAbstract).c
             )
 
+            const insertAdjacentText = (
+              element: Node,
+              elementAbstract: NodeContent | null | undefined,
+              position: InsertPosition,
+            ) => {
+              if (
+                !elementAbstract
+                || (elementAbstract as NodeAbstract).t
+              ) {
+                (element as Element)
+                  .insertAdjacentText(
+                    position,
+                    childElement as string,
+                  )
+              } else {
+                // Otherwise the position is always 'beforebegin'.
+                (element.parentNode as Element)
+                  .insertBefore(
+                    document.createTextNode(childElement as string),
+                    element.nextSibling,
+                  )
+              }
+            }
             if (newIndex === 0) {
-              element.insertAdjacentText(
+              insertAdjacentText(
+                element,
+                elementAbstract,
                 'afterbegin',
-                childElement,
               )
-            } else if (element.childNodes.length > newIndex) {
-              (element.childNodes[newIndex] as Element)
-                .insertAdjacentText(
-                  'afterend',
-                  childElement,
-                )
+            } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+              insertAdjacentText(
+                element.childNodes[newIndex] as Node,
+                (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                'beforebegin',
+              )
             } else {
-              element.insertAdjacentText(
+              insertAdjacentText(
+                element,
+                elementAbstract,
                 'beforeend',
-                childElement,
               )
             }
             newCount++
           }
+
+          _rootNode.dispatchEvent(
+            new CustomEvent(CREATED_EVENT, {
+              detail: {
+                target: childElement,
+              }
+            })
+          )
         }
       }
     }
 
     // Remove old elements.
-    if (element.childNodes.length >= newIndex) {
-      for (let i = element.childNodes.length - 1; i >= newIndex; i--) {
+    const elementLength = (oldChildAbstracts?.length ?? 0) + newCount
+    if (elementLength >= newIndex) {
+      for (let i = elementLength - 1; i >= newIndex; i--) {
         element.childNodes[i].remove()
       }
     }

@@ -34,7 +34,7 @@ Compared to Hyperapp using the same build configuration Hyperapp is 13% larger t
 
 ### Performance
 
-To give an indication how staark performs I tried writing a simple, probably flawed, benchmark that pushes items onto a list similar to a todo app. I expected it to be slower than Hyperapp because it does not uses proxies for state management, which is typically slower. Oddly enough the results indicate staark being over fifteen times faster than Hyperapp. I have so far been unable to pinpoint the exact reason why. See the [benchmarks directory](https://github.com/doars/staark/tree/main/benchmarks) for the code used.
+To give an indication how staark performs I tried writing a simple, probably flawed, benchmark that pushes items onto a list similar to a todo app. It shows a significant performance improvement, of a few hundred percent, when compared HyperApp and causes less calls to the garbage collector, it does take a millisecond longer to startup though. See the [benchmarks directory](https://github.com/doars/staark/tree/main/benchmarks) for the code used.
 
 ## Future ideas
 

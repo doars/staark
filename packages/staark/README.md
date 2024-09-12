@@ -11,13 +11,13 @@ A teeny-tiny framework for building web apps.
 To get you up and running you only need to know two functions: `mount` and `node`. There are a few more but lets go over the basics first. With `mount` you attach the application to the document, by providing it with a node from the document, a view function, and optionally an initial state. The view function takes in the state and outputs an abstract representation of the document using the `node` function. With `node` you create an abstract representation of a single [node](https://developer.mozilla.org/docs/Web/API/Node). The library then takes these nodes returned by the view function and creates the actual document for the browser to render.
 
 ```JavaScript
-import { mount, node } from '@doars/staark'
+import { mount, node as n } from '@doars/staark'
 
 mount(
   document.body.firstSibling,
-  (state) => node('div', [
-    node('span', state.count),
-    node('button', {
+  (state) => n('div', [
+    n('span', state.count),
+    n('button', {
       click: () => state.count++,
     }, 'add')
   ]),
@@ -28,15 +28,15 @@ mount(
 Of course there is always more to a front-end framework to help you out. There is a `memo` function for using [memoization](https://wikipedia.org/wiki/Memoization) to optimize time costly operations. The function takes in a view function and a state. Only if the state has changed will the view function be called again, otherwise an earlier copy still in memory will be returned.
 
 ```Javascript
-import { memo, mount, node } from '@doars/staark'
+import { memo, mount, node as n } from '@doars/staark'
 
-const halfCount = (state) => node('span', state.count / 2)
+const halfCount = (state) => n('span', state.count / 2)
 
 mount(
   document.body.firstSibling,
-  (state) => node('div', [
-    node('span', state.count),
-    node('button', {
+  (state) => n('div', [
+    n('span', state.count),
+    n('button', {
       click: () => state.count++,
     }, 'add'),
 
@@ -123,11 +123,11 @@ mount(
 Now we come to the two more functions needed to stop or update the application. These aren't imported, but returned by the `mount` function. An `update` and `unmount` function. These can be deconstructed from a list, where the first value is the `update` and the second the `unmount` function. As the names suggest, with the `update` function a re-rendering can be forced, and with the `unmount` function the application can be terminated after which it will be removed from the page.
 
 ```JavaScript
-import { mount, node } from '@doars/staark'
+import { mount, node as n } from '@doars/staark'
 
 const [update, unmount] = mount(
   document.body.firstSibling,
-  () => node('div'),
+  () => n('div'),
 )
 
 update()
@@ -137,7 +137,7 @@ unmount()
 Last but not least there is the second way to provide and mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third argument and third value returned by the `mount` function. The third argument can be a recursive proxy in which case it is up to you to invoke the update function once a re-render needs to be done.
 
 ```JavaScript
-import { mount, node } from '@doars/staark'
+import { mount, node as n } from '@doars/staark'
 
 const proxy = new Proxy({
   count: 1,
@@ -145,7 +145,7 @@ const proxy = new Proxy({
 
 const [update, unmount] = mount(
   document.body.firstSibling,
-  (state) => node('div', state.count),
+  (state) => n('div', state.count),
   proxy,
 )
 ```
@@ -153,11 +153,11 @@ const [update, unmount] = mount(
 Another method to influence the state outside the app is using the third value returned, which is the `state` proxy used by the app. This is the same proxy that the render function receives and as such can be manipulated similarly. Having the state available outside of the view function allows you to do some nifty things. For instance in the example below the viewport width is used inside the application, and updated when the window changes size.
 
 ```JavaScript
-import { mount, node } from '@doars/staark'
+import { mount, node as n } from '@doars/staark'
 
 const [update, unmount, state] = mount(
   document.body.firstSibling,
-  (state) => node('div', state.width),
+  (state) => n('div', state.width),
   { width: window.innerWidth, },
 )
 
@@ -193,13 +193,13 @@ ESM build via a CDN
 
 ```JS
 // Base bundle.
-import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.js'
+import { mount, node as n } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.js'
 // Base bundle minified.
-import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.min.js'
+import { mount, node as n } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.min.js'
 // Full bundle.
-import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.js'
+import { mount, node as n } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.js'
 // Full bundle minified.
-import { mount, node } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.min.js'
+import { mount, node as n } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.min.js'
 ```
 
 ## Known issues

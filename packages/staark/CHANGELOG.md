@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.5
+
+- Fixed bug causing DOM and virtual DOM differences.
+- Removed calls to the DOM for checking the state.
+
 ## 1.3.4
 
 - Fixed bug causing DOM and virtual DOM differences.
