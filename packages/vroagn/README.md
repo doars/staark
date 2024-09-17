@@ -12,7 +12,7 @@ The heart of _vroagn_ is the `create` function, it helps you set up a reusable r
 import { create } from '@doars/vroagn'
 
 const request = create({
-  domain: '://api.example.com',
+  domain: '//api.example.com',
   path: '/v1/item',
   method: 'get',
   retryAttempts: 3,
@@ -45,7 +45,7 @@ import {
 } from '@doars/vroagn'
 
 const request = create({
-  domain: '://api.example.com',
+  domain: '//api.example.com',
   responseParsers: [
     csvParser,
     iniParser,
@@ -105,7 +105,7 @@ import { mount, node } from '@doars/staark'
 import { create } from '@doars/vroagn'
 
 const requestItems = create({
-  domain: '://api.example.com',
+  domain: '//api.example.com',
   path: '/v1/item',
   maxRequests: 1,
   retryAttempts: 4,
