@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+
+- Updated builds.
+
 ## 1.1.1
 
 - Partial html content now returns all nodes, not just the first.
