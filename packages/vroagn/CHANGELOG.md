@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1
+
+- Partial html content now returns all nodes, not just the first.
+- Changed responseParsers option to parsers to match documentation.
+- Automatically use tabs as column delimiter for tab separated values.
+- Added giving matched type to parser for additional context.
+
 ## 1.1.0
 
 - Improved error handling.

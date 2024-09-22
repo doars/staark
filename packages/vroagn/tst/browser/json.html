@@ -9,15 +9,11 @@
   <body>
 
     <script type="module">
-      import { create, iniParser } from '../../dst/vroagn.js'
+      import { create } from '../../dst/vroagn.js'
 
       const request = create({
         domain: 'http://localhost:3000',
-        path: '/packages/vroagn/tst/data/ini.ini',
-        type: 'ini',
-        parsers: [
-          iniParser(),
-        ],
+        path: '/packages/vroagn/tst/data/json.json',
       })
 
       console.log('request', request)

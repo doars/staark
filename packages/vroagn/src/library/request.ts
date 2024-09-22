@@ -11,6 +11,7 @@ export interface ResponseParser {
   parser: (
     response: Response,
     options: RequestOptions,
+    type: string,
   ) => any,
 }
 
@@ -25,7 +26,7 @@ export interface SendOptions {
   priority?: 'high' | 'normal' | 'low'
   queryParams?: Record<string, string>
   redirect?: RequestRedirect,
-  responseParsers?: ResponseParser[],
+  parsers?: ResponseParser[],
   type?: string,
 
   abort?: AbortController
@@ -154,13 +155,14 @@ export const create = (
         let result
         let foundParser = false
         const type = options.type || getType(url, response.headers, options.headers)
-        if (options.responseParsers) {
-          for (const parser of options.responseParsers) {
+        if (options.parsers) {
+          for (const parser of options.parsers) {
             foundParser = parser.types.includes(type)
             if (foundParser) {
               result = await parser.parser(
                 response,
                 options,
+                type,
               )
               break
             }
@@ -191,7 +193,7 @@ export const create = (
               result = await response.text()
               const template = document.createElement('template')
               template.innerHTML = result
-              result = template.content.childNodes[0]
+              result = template.content.childNodes
               break
 
             case 'text/html':

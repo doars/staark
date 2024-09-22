@@ -14,23 +14,35 @@ interface CsvOptions {
 
 // TODO: Check if the file starts with a delimiter specified.
 
+const tsvTypes = [
+  'tsv', 'text/tab-separated-values',
+]
+
 export const csvParser = (
   options: CsvOptions,
 ): ResponseParser => {
-  options = {
-    columnDelimiter: ',',
-    rowDelimiter: '\n',
-    escapeCharacter: '"',
-
-    ...options,
-  }
-
   return {
-    types: options.types || ['csv', 'text/csv',],
+    types: options?.types || [
+      'csv', 'text/csv',
+      ...tsvTypes,
+    ],
     parser: async (
       response: Response,
       requestOptions: RequestOptions,
+      type: string,
     ): Promise<any> => {
+      const optionsTemp = {
+        columnDelimiter: (
+          tsvTypes.includes(type)
+            ? '	'
+            : ','
+        ),
+        rowDelimiter: '\n',
+        escapeCharacter: '"',
+
+        ...options,
+      }
+
       const string = await response.text()
 
       const rows: string[][] = []
@@ -42,32 +54,32 @@ export const csvParser = (
         const character = string[i]
         const nextCharacter = string[i + 1]
 
-        if (character === options.escapeCharacter) {
+        if (character === optionsTemp.escapeCharacter) {
           if (
-            nextCharacter === options.escapeCharacter
+            nextCharacter === optionsTemp.escapeCharacter
             && insideQuotes
           ) {
             // Double quotes inside quotes.
-            currentField += options.escapeCharacter
+            currentField += optionsTemp.escapeCharacter
             i++ // Skip next quote.
           } else {
             // Toggle insideQuotes.
             insideQuotes = !insideQuotes
           }
         } else if (
-          character === options.columnDelimiter
+          character === optionsTemp.columnDelimiter
           && !insideQuotes
         ) {
           currentRow.push(
-            currentField
+            currentField,
           )
           currentField = ''
         } else if (
-          character === options.rowDelimiter
+          character === optionsTemp.rowDelimiter
           && !insideQuotes
         ) {
           currentRow.push(
-            currentField
+            currentField,
           )
           currentField = ''
 
@@ -81,7 +93,7 @@ export const csvParser = (
       // Push the last field and row if there's any.
       if (currentField) {
         currentRow.push(
-          currentField
+          currentField,
         )
         currentField = ''
       }
@@ -89,17 +101,17 @@ export const csvParser = (
         rows.push(currentRow)
       }
 
-      if (options.hasHeaders) {
+      if (optionsTemp.hasHeaders) {
         // Extract headers and create objects.
         const headers = rows[0]
         return rows.slice(1).map(row => {
           return headers.reduce((
-            obj: Record<string, string>,
+            object: Record<string, string>,
             header: string,
             index: number,
           ) => {
-            obj[header] = row[index] || ''
-            return obj
+            object[header] = row[index] || ''
+            return object
           }, {})
         })
       }

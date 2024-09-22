@@ -46,11 +46,11 @@ import {
 
 const request = create({
   domain: '//api.example.com',
-  responseParsers: [
-    csvParser,
-    iniParser,
-    tomlParser,
-    yamlParser,
+  parsers: [
+    csvParser(),
+    iniParser(),
+    tomlParser(),
+    yamlParser(),
   ],
 })
 ```
@@ -68,6 +68,7 @@ const tomlParser = (
   parser: async (
     response,
     requestOptions,
+    type,
   ) => {
     const text = await response.text()
     return parse(text)

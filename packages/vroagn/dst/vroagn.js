@@ -1,40 +1,3 @@
-var __defProp = Object.defineProperty;
-var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __propIsEnum = Object.prototype.propertyIsEnumerable;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues = (a, b) => {
-  for (var prop in b || (b = {}))
-    if (__hasOwnProp.call(b, prop))
-      __defNormalProp(a, prop, b[prop]);
-  if (__getOwnPropSymbols)
-    for (var prop of __getOwnPropSymbols(b)) {
-      if (__propIsEnum.call(b, prop))
-        __defNormalProp(a, prop, b[prop]);
-    }
-  return a;
-};
-var __async = (__this, __arguments, generator) => {
-  return new Promise((resolve, reject) => {
-    var fulfilled = (value) => {
-      try {
-        step(generator.next(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var rejected = (value) => {
-      try {
-        step(generator.throw(value));
-      } catch (e) {
-        reject(e);
-      }
-    };
-    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-    step((generator = generator.apply(__this, __arguments)).next());
-  });
-};
-
 // src/utilities/clone.ts
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
@@ -56,14 +19,14 @@ var cloneRecursive = (value) => {
 };
 
 // src/utilities/delay.ts
-var delay = (time) => __async(void 0, null, function* () {
+var delay = async (time) => {
   if (time > 0) {
     return new Promise(
       (resolve) => setTimeout(resolve, time)
     );
   }
   return null;
-});
+};
 
 // src/utilities/type.ts
 var normalizeContentType = (contentType) => contentType.split(";")[0].trim().toLowerCase();
@@ -100,17 +63,20 @@ var DEFAULT_VALUES = {
   retryDelay: 500
 };
 var create = (initialOptions) => {
-  initialOptions = __spreadValues(__spreadValues({}, DEFAULT_VALUES), cloneRecursive(initialOptions));
+  initialOptions = {
+    ...DEFAULT_VALUES,
+    ...cloneRecursive(initialOptions)
+  };
   let lastExecutionTime = 0;
   let activeRequests = 0;
   let totalRequests = 0;
   let debounceTimeout = null;
-  const throttle = (throttleValue) => __async(void 0, null, function* () {
+  const throttle = async (throttleValue) => {
     const now = Date.now();
     const waitTime = throttleValue - (now - lastExecutionTime);
     lastExecutionTime = now + (waitTime > 0 ? waitTime : 0);
-    yield delay(waitTime);
-  });
+    await delay(waitTime);
+  };
   const debounce = (debounceValue) => {
     return new Promise((resolve) => {
       if (debounceTimeout) {
@@ -122,7 +88,7 @@ var create = (initialOptions) => {
       );
     });
   };
-  const sendRequest = (options) => __async(void 0, null, function* () {
+  const sendRequest = async (options) => {
     if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
       return [new Error("Maximum request limit reached"), null, null];
     }
@@ -150,8 +116,8 @@ var create = (initialOptions) => {
         options.timeout
       );
     }
-    const executeFetch = () => __async(void 0, null, function* () {
-      const response2 = yield fetch(url, config);
+    const executeFetch = async () => {
+      const response2 = await fetch(url, config);
       if (!response2.ok) {
         return [new Error("Invalid response"), response2, null];
       }
@@ -159,13 +125,14 @@ var create = (initialOptions) => {
         let result2;
         let foundParser = false;
         const type = options.type || getType(url, response2.headers, options.headers);
-        if (options.responseParsers) {
-          for (const parser of options.responseParsers) {
+        if (options.parsers) {
+          for (const parser of options.parsers) {
             foundParser = parser.types.includes(type);
             if (foundParser) {
-              result2 = yield parser.parser(
+              result2 = await parser.parser(
                 response2,
-                options
+                options,
+                type
               );
               break;
             }
@@ -174,45 +141,45 @@ var create = (initialOptions) => {
         if (!foundParser) {
           switch (type.toLowerCase()) {
             case "arraybuffer":
-              result2 = yield response2.arrayBuffer();
+              result2 = await response2.arrayBuffer();
               break;
             case "blob":
-              result2 = yield response2.blob();
+              result2 = await response2.blob();
               break;
             case "formdata":
-              result2 = yield response2.formData();
+              result2 = await response2.formData();
               break;
             case "text/plain":
             case "text":
             case "txt":
-              result2 = yield response2.text();
+              result2 = await response2.text();
               break;
             case "text/html-partial":
             case "html-partial":
-              result2 = yield response2.text();
+              result2 = await response2.text();
               const template = document.createElement("template");
               template.innerHTML = result2;
-              result2 = template.content.childNodes[0];
+              result2 = template.content.childNodes;
               break;
             case "text/html":
             case "html":
-              result2 = yield response2.text();
+              result2 = await response2.text();
               result2 = new DOMParser().parseFromString(result2, "text/html");
               break;
             case "application/json":
             case "text/json":
             case "json":
-              result2 = yield response2.json();
+              result2 = await response2.json();
               break;
             case "image/svg+xml":
             case "svg":
-              result2 = yield response2.text();
+              result2 = await response2.text();
               result2 = new DOMParser().parseFromString(result2, "image/svg+xml");
               break;
             case "application/xml":
             case "text/xml":
             case "xml":
-              result2 = yield response2.text();
+              result2 = await response2.text();
               result2 = new DOMParser().parseFromString(result2, "application/xml");
               break;
           }
@@ -221,18 +188,17 @@ var create = (initialOptions) => {
       } catch (error2) {
         return [error2 || new Error("Thrown parsing error is falsy"), response2, null];
       }
-    });
-    const retryRequest = () => __async(void 0, null, function* () {
-      var _a;
+    };
+    const retryRequest = async () => {
       let attempt = 0;
       const retryAttempts = options.retryAttempts || 0;
       const retryDelay = options.retryDelay || 0;
       while (attempt < retryAttempts) {
-        const [error2, response2, result2] = yield executeFetch();
+        const [error2, response2, result2] = await executeFetch();
         if (!error2) {
           return [error2, response2, result2];
         }
-        if (!((_a = options.retryCodes) == null ? void 0 : _a.includes(response2.status || 200))) {
+        if (!options.retryCodes?.includes(response2.status || 200)) {
           return [new Error("Invalid status code"), response2, result2];
         }
         attempt++;
@@ -253,32 +219,38 @@ var create = (initialOptions) => {
             }
           }
         }
-        yield delay(delayTime);
+        await delay(delayTime);
       }
       return executeFetch();
-    });
-    const [error, response, result] = yield retryRequest();
+    };
+    const [error, response, result] = await retryRequest();
     if (!response.ok) {
       return [new Error(response.statusText), response, result];
     }
     return [error, response, result];
-  });
-  return (sendOptions) => __async(void 0, null, function* () {
-    const options = __spreadValues(__spreadValues({}, initialOptions), cloneRecursive(sendOptions));
+  };
+  return async (sendOptions) => {
+    const options = {
+      ...initialOptions,
+      ...cloneRecursive(sendOptions)
+    };
     if (initialOptions.headers) {
-      options.headers = __spreadValues(__spreadValues({}, initialOptions.headers), options.headers);
+      options.headers = {
+        ...initialOptions.headers,
+        ...options.headers
+      };
     }
     if (options.debounce) {
-      yield debounce(options.debounce);
+      await debounce(options.debounce);
     }
     if (options.delay) {
-      yield delay(options.delay);
+      await delay(options.delay);
     }
     if (options.throttle) {
-      yield throttle(options.throttle);
+      await throttle(options.throttle);
     }
     if (options.maxConcurrency && activeRequests >= options.maxConcurrency) {
-      yield new Promise((resolve) => {
+      await new Promise((resolve) => {
         let interval = null;
         const wait = () => {
           if (activeRequests >= options.maxConcurrency) {
@@ -294,25 +266,34 @@ var create = (initialOptions) => {
       });
     }
     activeRequests++;
-    const results = yield sendRequest(
+    const results = await sendRequest(
       options
     );
     activeRequests--;
     return results;
-  });
+  };
 };
 
 // src/library/parsers/csv.ts
+var tsvTypes = [
+  "tsv",
+  "text/tab-separated-values"
+];
 var csvParser = (options) => {
-  options = __spreadValues({
-    columnDelimiter: ",",
-    rowDelimiter: "\n",
-    escapeCharacter: '"'
-  }, options);
   return {
-    types: options.types || ["csv", "text/csv"],
-    parser: (response, requestOptions) => __async(void 0, null, function* () {
-      const string = yield response.text();
+    types: options?.types || [
+      "csv",
+      "text/csv",
+      ...tsvTypes
+    ],
+    parser: async (response, requestOptions, type) => {
+      const optionsTemp = {
+        columnDelimiter: tsvTypes.includes(type) ? "	" : ",",
+        rowDelimiter: "\n",
+        escapeCharacter: '"',
+        ...options
+      };
+      const string = await response.text();
       const rows = [];
       let currentRow = [];
       let currentField = "";
@@ -320,19 +301,19 @@ var csvParser = (options) => {
       for (let i = 0; i < string.length; i++) {
         const character = string[i];
         const nextCharacter = string[i + 1];
-        if (character === options.escapeCharacter) {
-          if (nextCharacter === options.escapeCharacter && insideQuotes) {
-            currentField += options.escapeCharacter;
+        if (character === optionsTemp.escapeCharacter) {
+          if (nextCharacter === optionsTemp.escapeCharacter && insideQuotes) {
+            currentField += optionsTemp.escapeCharacter;
             i++;
           } else {
             insideQuotes = !insideQuotes;
           }
-        } else if (character === options.columnDelimiter && !insideQuotes) {
+        } else if (character === optionsTemp.columnDelimiter && !insideQuotes) {
           currentRow.push(
             currentField
           );
           currentField = "";
-        } else if (character === options.rowDelimiter && !insideQuotes) {
+        } else if (character === optionsTemp.rowDelimiter && !insideQuotes) {
           currentRow.push(
             currentField
           );
@@ -352,17 +333,17 @@ var csvParser = (options) => {
       if (currentRow.length > 0) {
         rows.push(currentRow);
       }
-      if (options.hasHeaders) {
+      if (optionsTemp.hasHeaders) {
         const headers = rows[0];
         return rows.slice(1).map((row) => {
-          return headers.reduce((obj, header, index) => {
-            obj[header] = row[index] || "";
-            return obj;
+          return headers.reduce((object, header, index) => {
+            object[header] = row[index] || "";
+            return object;
           }, {});
         });
       }
       return rows;
-    })
+    }
   };
 };
 
@@ -370,8 +351,8 @@ var csvParser = (options) => {
 var iniParser = (options = {}) => {
   return {
     types: options.types || ["ini"],
-    parser: (response, requestOptions) => __async(void 0, null, function* () {
-      const text = yield response.text();
+    parser: async (response, requestOptions) => {
+      const text = await response.text();
       const result = {};
       const lines = text.split(/\r?\n/).map((line) => line.trim());
       let currentSection = "";
@@ -398,7 +379,7 @@ var iniParser = (options = {}) => {
         }
       }
       return result;
-    })
+    }
   };
 };
 
@@ -458,8 +439,8 @@ var parseInlineTable = (tableString) => {
 var tomlParser = (options = {}) => {
   return {
     types: options.types || ["toml", "application/toml"],
-    parser: (response, requestOptions) => __async(void 0, null, function* () {
-      const text = yield response.text();
+    parser: async (response, requestOptions) => {
+      const text = await response.text();
       const result = {};
       let currentTable = result;
       let currentArray = null;
@@ -537,7 +518,7 @@ var tomlParser = (options = {}) => {
         }
       }
       return result;
-    })
+    }
   };
 };
 
@@ -590,8 +571,8 @@ var parseValue = (value, anchors) => {
 var yamlParser = (options = {}) => {
   return {
     types: options.types || ["yaml", "application/yaml", "text/yaml"],
-    parser: (response, requestOptions) => __async(void 0, null, function* () {
-      const lines = (yield response.text()).split("\n");
+    parser: async (response, requestOptions) => {
+      const lines = (await response.text()).split("\n");
       const result = {};
       let currentObject = result;
       let indentStack = [result];
@@ -661,7 +642,7 @@ var yamlParser = (options = {}) => {
         }
       }
       return result;
-    })
+    }
   };
 };
 export {
