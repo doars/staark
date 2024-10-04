@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app">
+      <span>Hello world</span>
+    </div>
+
+    <script type="module">
+      import {
+        node,
+        prepare,
+      } from '../../dst/staark-patch.js'
+
+      const patch = prepare(document.body.firstElementChild)
+
+      patch(
+        node('div', {
+          id: 'new-id',
+        }, [
+          node('ul', [
+            node('li', 'item 1'),
+            node('li', 'item 2'),
+            node('li', 'item 3'),
+          ]),
+        ]),
+      )
+    </script>
+  </body>
+
+</html>
