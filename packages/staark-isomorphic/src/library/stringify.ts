@@ -1,18 +1,17 @@
 import {
   arrayify,
 } from '@doars/staark-common/src/array.js'
-
+import {
+  MemoAbstract,
+} from '@doars/staark-common/src/memo.js'
 import {
   NodeAbstract,
   NodeAttributes,
   NodeContent,
-} from '@doars/staark/src/library//node.js'
+} from '@doars/staark-common/src/node.js'
 import {
   TextAbstract,
-} from '@doars/staark/src/library//text.js'
-import {
-  MemoAbstract,
-} from '@doars/staark/src/library/memo.js'
+} from '@doars/staark-common/src/text.js'
 
 const SELF_CLOSING = [
   'base',
@@ -28,7 +27,7 @@ const SELF_CLOSING = [
 
 export type ViewFunction = (
   state: Record<string, any>,
-) => NodeContent | NodeContent[]
+) => NodeContent[] | NodeContent
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
 const HYPHENATE = (
@@ -37,7 +36,7 @@ const HYPHENATE = (
 ) => (offset ? '-' : '') + part
 
 const renderAttributes = (
-  attributes: NodeAttributes | null = null,
+  attributes?: NodeAttributes,
 ): string => {
   let rendered = ''
   if (attributes) {
@@ -74,7 +73,7 @@ const renderAttributes = (
             } else {
               let styles: string = ''
               for (let styleProperty in value) {
-                let styleValue: string | number | (string | number)[] = value[styleProperty]
+                let styleValue = value[styleProperty]
 
                 // Convert to kebab case.
                 styleProperty = styleProperty
@@ -99,6 +98,47 @@ const renderAttributes = (
   return rendered
 }
 
+const renderElements = (
+  abstracts?: NodeContent[],
+): string => {
+  let rendered = ''
+  if (abstracts) {
+    for (const abstract of abstracts) {
+      if (abstract) {
+        if ((abstract as NodeAbstract).t) {
+          rendered += '<' + (abstract as NodeAbstract).t.toLocaleLowerCase() + renderAttributes((abstract as NodeAbstract).a)
+          if (SELF_CLOSING.includes((abstract as NodeAbstract).t)) {
+            rendered += '/>'
+          } else {
+            rendered += '>'
+            if ((abstract as NodeAbstract).c) {
+              rendered += renderElements((abstract as NodeAbstract).c)
+            }
+            rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
+          }
+        } else {
+          rendered += ' ' + (
+            (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
+          ) + ' '
+        }
+      }
+    }
+  }
+  return rendered
+}
+
+export const stringifyPatch = (
+  abstractTree?: NodeContent[] | NodeContent,
+): [string, NodeContent[]] => {
+  abstractTree = arrayify(abstractTree ?? [])
+  return [
+    renderElements(
+      abstractTree,
+    ),
+    abstractTree,
+  ]
+}
+
 export const stringify = (
   renderView: ViewFunction,
   initialState?: Record<string, any>,
@@ -108,7 +148,7 @@ export const stringify = (
   }
 
   const renderElements = (
-    abstracts: NodeContent[] | null = null,
+    abstracts?: NodeContent[],
   ): string => {
     let rendered = ''
     if (abstracts) {
@@ -186,6 +226,22 @@ const customStringify = (
 
   // For any unsupported types (like functions or undefined).
   return 'null'
+}
+
+export const stringifyPatchFull = (
+  abstracts?: NodeContent[],
+): [string, string] => {
+  const [
+    rendered,
+    abstractTree,
+  ] = stringifyPatch(
+    abstracts,
+  )
+
+  return [
+    rendered,
+    customStringify(abstractTree),
+  ]
 }
 
 export const stringifyFull = (

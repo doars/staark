@@ -8,25 +8,24 @@ import {
   equalRecursive,
 } from '@doars/staark-common/src/compare.js'
 import {
-  CREATED_EVENT,
+  childrenToNodes,
 } from '@doars/staark-common/src/element.js'
-import {
-  proxify,
-} from '../utilities/proxy.js'
-
 import {
   MemoAbstract,
   MemoFunction,
-} from './memo.js'
+} from '@doars/staark-common/src/memo.js'
 import {
   NodeAbstract,
   NodeAttributes,
   NodeAttributeListener,
   NodeContent,
-} from './node.js'
+} from '@doars/staark-common/src/node.js'
 import {
   TextAbstract,
-} from './text.js'
+} from '@doars/staark-common/src/text.js'
+import {
+  proxify,
+} from '../utilities/proxy.js'
 
 export type GenericFunction<DataType, ReturnType> = (
   argument: DataType
@@ -43,7 +42,7 @@ type MemoData = {
 
 export type ViewFunction = (
   state: Record<string, any>,
-) => NodeContent | NodeContent[]
+) => NodeContent[] | NodeContent
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
 const HYPHENATE = (
@@ -52,53 +51,23 @@ const HYPHENATE = (
 ) => (offset ? '-' : '') + part
 
 export const mount = (
-  rootNode: Element | string,
+  rootElement: Element | string,
   renderView: ViewFunction,
-  initialState?: Record<string, any>,
+  initialState?: Record<string, any> | string,
+  oldAbstractTree?: NodeContent[] | string,
 ): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown, Record<string, any>] => {
-  if (!initialState) {
-    initialState = {}
-  }
-
-  let active: boolean = true,
-    updating: boolean = false
-  let _rootNode = typeof (rootNode) === 'string'
-    ? (
-      document.querySelector(rootNode)
-      || document.body.appendChild(
-        document.createElement('div')
-      )
-    )
-    : rootNode
-
-  const unmount = (
-  ): void => {
-    if (active) {
-      active = false
-
-      for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
-        _rootNode.childNodes[i].remove()
-      }
-    }
-  }
-  unmount()
-  active = true
-
   // Track amount of listeners running.
   let listenerCount = 0
 
   const updateAttributes = (
     element: Element,
-    newAttributes: NodeAttributes | null = null,
-    oldAttributes: NodeAttributes | null = null,
+    newAttributes?: NodeAttributes,
+    oldAttributes?: NodeAttributes,
   ): void => {
     if (newAttributes) {
       for (const name in newAttributes) {
         let value = newAttributes[name]
-        if (
-          value !== null
-          && value !== undefined
-        ) {
+        if (value) {
           const type = typeof (value)
           if (type === 'function') {
             // Wrap the listener so we can prevent re-renders during handling.
@@ -192,8 +161,7 @@ export const mount = (
         } else if (
           !newAttributes
           || !(name in newAttributes)
-          || (newAttributes[name] === null)
-          || (newAttributes[name] === undefined)
+          || !newAttributes[name]
         ) {
           if (name === 'value') {
             // Reset value separately.
@@ -243,9 +211,9 @@ export const mount = (
 
   const updateElementTree = (
     element: Element,
-    newChildAbstracts: NodeContent[] | null | undefined,
-    oldChildAbstracts: NodeContent[] | null | undefined = null,
-    elementAbstract: NodeContent | null | undefined = null,
+    newChildAbstracts?: NodeContent[],
+    oldChildAbstracts?: NodeContent[],
+    elementAbstract?: NodeContent,
   ): void => {
     let newIndex = 0
     let newCount = 0
@@ -293,10 +261,10 @@ export const mount = (
                   element.childNodes[newIndex],
                 )
                 // Move node in abstract tree.
-                oldAbstractTree.splice(
+                oldChildAbstracts.splice(
                   newIndex - newCount,
                   0,
-                  ...oldAbstractTree.splice(
+                  ...oldChildAbstracts.splice(
                     oldIndex,
                     1,
                   )
@@ -440,14 +408,6 @@ export const mount = (
             }
             newCount++
           }
-
-          _rootNode.dispatchEvent(
-            new CustomEvent(CREATED_EVENT, {
-              detail: {
-                target: childElement,
-              }
-            })
-          )
         }
       }
     }
@@ -461,6 +421,10 @@ export const mount = (
     }
   }
 
+  if (typeof (initialState) === 'string') {
+    initialState = JSON.parse(initialState) as Record<string, any>
+  }
+  initialState ??= {}
   let proxyChanged = true
   let state = (
     Object.getPrototypeOf(initialState) === Proxy.prototype
@@ -476,7 +440,28 @@ export const mount = (
       )
   )
 
-  let oldAbstractTree: NodeContent[] = []
+  const _rootElement = (
+    typeof (rootElement) === 'string'
+      ? (
+        document.querySelector(rootElement)
+        || document.body.appendChild(
+          document.createElement('div')
+        )
+      )
+      : rootElement
+  )
+
+  if (typeof (oldAbstractTree) === 'string') {
+    try {
+      oldAbstractTree = JSON.parse(oldAbstractTree) as NodeContent[]
+    } catch (error) {
+      oldAbstractTree = undefined
+    }
+  }
+  oldAbstractTree ??= childrenToNodes(_rootElement)
+
+  let active: boolean = true,
+    updating: boolean = false
   const updateAbstracts = (
   ): void => {
     if (
@@ -494,9 +479,9 @@ export const mount = (
         renderView(state),
       )
       updateElementTree(
-        _rootNode,
+        _rootElement,
         newAbstractTree,
-        oldAbstractTree,
+        oldAbstractTree as NodeContent[],
       )
       // Store tree for next update
       oldAbstractTree = newAbstractTree
@@ -518,7 +503,15 @@ export const mount = (
         updateAbstracts,
       )
     },
-    unmount,
+    (): void => {
+      if (active) {
+        active = false
+
+        for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+          _rootElement.childNodes[i].remove()
+        }
+      }
+    },
     state,
   ]
 }

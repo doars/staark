@@ -1,7 +1,7 @@
-// ../staark/src/library/marker.ts
+// ../staark-common/src/marker.ts
 var marker = Symbol();
 
-// ../staark/src/library/node.ts
+// ../staark-common/src/node.ts
 var node = (type, attributesOrContents, contents) => {
   if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
     contents = attributesOrContents;
@@ -15,7 +15,7 @@ var node = (type, attributesOrContents, contents) => {
   };
 };
 
-// ../staark/src/library/factory.ts
+// ../staark-common/src/factory.ts
 var factory = new Proxy({}, {
   get: (target, type) => {
     if (target[type]) {
@@ -33,7 +33,7 @@ var factory = new Proxy({}, {
   }
 });
 
-// ../staark/src/utilities/selector.ts
+// ../staark-common/src/selector.ts
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
 var DOT = ".";
@@ -41,7 +41,7 @@ var EQUAL = "=";
 var HASH = "#";
 var QUOTE_SINGLE = "'";
 var QUOTE_DOUBLE = '"';
-var tokenizer = (selector) => {
+var selectorToTokenizer = (selector) => {
   const length = selector.length;
   let i = 0;
   let type = "";
@@ -148,7 +148,7 @@ var tokenizer = (selector) => {
   return [type, attributes];
 };
 
-// ../staark/src/library/fctory.ts
+// ../staark-common/src/fctory.ts
 var fctory = new Proxy({}, {
   get: (target, type) => {
     if (target[type]) {
@@ -161,7 +161,7 @@ var fctory = new Proxy({}, {
     return target[type] = (selector, contents) => {
       let attributes;
       if (selector) {
-        const [_, _attributes] = tokenizer(selector);
+        const [_, _attributes] = selectorToTokenizer(selector);
         attributes = _attributes;
       }
       return node(
@@ -173,16 +173,16 @@ var fctory = new Proxy({}, {
   }
 });
 
-// ../staark/src/library/memo.ts
+// ../staark-common/src/memo.ts
 var memo = (render, memory) => ({
   _: marker,
   r: render,
   m: memory
 });
 
-// ../staark/src/library/nde.ts
+// ../staark-common/src/nde.ts
 var nde = (selector, contents) => {
-  const [type, attributes] = tokenizer(selector);
+  const [type, attributes] = selectorToTokenizer(selector);
   return {
     _: marker,
     a: attributes,
@@ -190,6 +190,12 @@ var nde = (selector, contents) => {
     t: type.toUpperCase()
   };
 };
+
+// ../staark-common/src/text.ts
+var text = (contents) => ({
+  _: marker,
+  c: Array.isArray(contents) ? contents.join("") : "" + contents
+});
 
 // ../staark-common/src/array.ts
 var arrayify = function(data) {
@@ -215,7 +221,7 @@ var SELF_CLOSING = [
 ];
 var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
 var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
-var renderAttributes = (attributes = null) => {
+var renderAttributes = (attributes) => {
   let rendered = "";
   if (attributes) {
     for (const name in attributes) {
@@ -266,17 +272,50 @@ var renderAttributes = (attributes = null) => {
   }
   return rendered;
 };
+var renderElements = (abstracts) => {
+  let rendered = "";
+  if (abstracts) {
+    for (const abstract of abstracts) {
+      if (abstract) {
+        if (abstract.t) {
+          rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
+          if (SELF_CLOSING.includes(abstract.t)) {
+            rendered += "/>";
+          } else {
+            rendered += ">";
+            if (abstract.c) {
+              rendered += renderElements(abstract.c);
+            }
+            rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
+          }
+        } else {
+          rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
+        }
+      }
+    }
+  }
+  return rendered;
+};
+var stringifyPatch = (abstractTree) => {
+  abstractTree = arrayify(abstractTree != null ? abstractTree : []);
+  return [
+    renderElements(
+      abstractTree
+    ),
+    abstractTree
+  ];
+};
 var stringify = (renderView, initialState) => {
   if (!initialState) {
     initialState = {};
   }
-  const renderElements = (abstracts = null) => {
+  const renderElements2 = (abstracts) => {
     let rendered = "";
     if (abstracts) {
       for (const abstract of abstracts) {
         if (abstract) {
           if (abstract.m) {
-            rendered += renderElements(
+            rendered += renderElements2(
               arrayify(
                 abstract.r(
                   initialState,
@@ -291,7 +330,7 @@ var stringify = (renderView, initialState) => {
             } else {
               rendered += ">";
               if (abstract.c) {
-                rendered += renderElements(abstract.c);
+                rendered += renderElements2(abstract.c);
               }
               rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
             }
@@ -307,7 +346,7 @@ var stringify = (renderView, initialState) => {
     renderView(initialState)
   );
   return [
-    renderElements(
+    renderElements2(
       abstractTree
     ),
     abstractTree
@@ -330,6 +369,18 @@ var customStringify = (data) => {
   }
   return "null";
 };
+var stringifyPatchFull = (abstracts) => {
+  const [
+    rendered,
+    abstractTree
+  ] = stringifyPatch(
+    abstracts
+  );
+  return [
+    rendered,
+    customStringify(abstractTree)
+  ];
+};
 var stringifyFull = (renderView, initialState) => {
   if (!initialState) {
     initialState = {};
@@ -347,12 +398,6 @@ var stringifyFull = (renderView, initialState) => {
     JSON.stringify(initialState)
   ];
 };
-
-// ../staark/src/library/text.ts
-var text = (contents) => ({
-  _: marker,
-  c: Array.isArray(contents) ? contents.join("") : "" + contents
-});
 export {
   factory,
   fctory,
@@ -361,6 +406,8 @@ export {
   node,
   stringify,
   stringifyFull,
+  stringifyPatch,
+  stringifyPatchFull,
   text
 };
 //# sourceMappingURL=staark-isomorphic.js.map

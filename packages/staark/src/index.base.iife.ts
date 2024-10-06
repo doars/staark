@@ -1,8 +1,8 @@
 import { iife } from '../../../.scripts/iife.js'
 
-import { memo } from './library/memo.js'
+import { memo } from '@doars/staark-common/src/memo.js'
+import { node } from '@doars/staark-common/src/node.js'
 import { mount } from './library/mount.js'
-import { node } from './library/node.js'
 
 iife([
   'staark',

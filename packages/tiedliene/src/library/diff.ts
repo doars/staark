@@ -1,4 +1,6 @@
-import { cloneRecursive } from '@doars/staark-common/src/clone.js'
+import {
+  cloneRecursive,
+} from '@doars/staark-common/src/clone.js'
 
 export interface Change {
   type: 'delete' | 'set',

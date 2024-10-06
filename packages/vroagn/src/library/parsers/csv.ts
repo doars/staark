@@ -12,8 +12,6 @@ interface CsvOptions {
   escapeCharacter?: string,
 }
 
-// TODO: Check if the file starts with a delimiter specified.
-
 const tsvTypes = [
   'tsv', 'text/tab-separated-values',
 ]

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="results"></div>
+    <div id="app"></div>
+
+    <script type="module">
+      const ITERATIONS = 10e3
+
+      const displayResults = (
+        time,
+      ) => {
+        document.getElementById('results').innerHTML = `
+          <h2>vanilla benchmark results (${ITERATIONS} iterations):</h2>
+          <p>Total time: ${time.toFixed(3)} ms</p>
+          <p>Average time per iteration: ${(time / ITERATIONS).toFixed(3)} ms</p>
+        `
+      }
+
+      const app = document.querySelector('#app')
+
+      const title = document.createElement('h1')
+      title.textContent = 'To do list'
+      app.appendChild(title)
+
+      const input = document.createElement('input')
+      input.setAttribute('type', 'text')
+      input.setAttribute('value', '')
+      app.appendChild(input)
+
+      const list = document.createElement('ul')
+      app.appendChild(list)
+
+      const button = document.createElement('button')
+      button.addEventListener('click', () => {
+        const item = document.createElement('li')
+        item.textContent = input.value
+        input.setAttribute('value', '')
+        input.value = ''
+        app.appendChild(item)
+      })
+
+      const items = []
+      for (let i = 0; i < ITERATIONS; i++) {
+        const item = document.createElement('li')
+        item.textContent = 'original'
+        app.appendChild(item)
+        items.push(item)
+      }
+
+      const run = (
+      ) => {
+        const startTime = performance.now()
+
+        for (let i = 0; i < ITERATIONS; i++) {
+          items[i].textContent = 'updated'
+        }
+
+        const time = performance.now() - startTime
+        displayResults(time)
+      }
+
+      setTimeout(run, 500)
+    </script>
+  </body>
+
+</html>

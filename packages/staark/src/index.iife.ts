@@ -1,12 +1,12 @@
 import { iife } from '../../../.scripts/iife.js'
 
-import { factory } from './library/factory.js'
-import { fctory } from './library/fctory.js'
-import { memo } from './library/memo.js'
+import { factory } from '@doars/staark-common/src/factory.js'
+import { fctory } from '@doars/staark-common/src/fctory.js'
+import { memo } from '@doars/staark-common/src/memo.js'
+import { nde } from '@doars/staark-common/src/nde.js'
+import { node } from '@doars/staark-common/src/node.js'
+import { text } from '@doars/staark-common/src/text.js'
 import { mount } from './library/mount.js'
-import { nde } from './library/nde.js'
-import { node } from './library/node.js'
-import { text } from './library/text.js'
 
 iife([
   'staark',

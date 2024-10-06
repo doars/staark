@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '../../dst/staark.js'
+      import {
+        stringify,
+      } from '../../../staark-isomorphic/dst/staark-isomorphic.js'
+
+      console.log('mount', mount)
+      console.log('node', node)
+      console.log('stringify', stringify)
+
+      const state = {}
+
+      const [rendered, abstractTree] = stringify(
+        () => node('p', 'Hello there'),
+        state,
+      )
+
+      console.log(
+        '[rendered, abstractTree]',
+        [rendered, abstractTree],
+      )
+
+      const app = document.getElementById('app')
+      app.innerHTML = rendered
+
+      console.log(
+        '[update, unmount, proxy]',
+        mount(
+          document.getElementById('app'),
+          () => [
+            node('p', 'Hello there'),
+            node('p', 'General Kenobi'),
+          ],
+          state,
+          abstractTree,
+        ),
+      )
+    </script>
+  </body>
+
+</html>

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1
+
+- Optimize build size.
+
 ## 1.2.0
 
 - Added virtual node functions.

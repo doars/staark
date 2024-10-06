@@ -7,8 +7,9 @@
   </head>
 
   <body>
-    <div id="app">
-      <span>Hello world</span>
+    <div>
+      <span class="item-1">Hello there</span>
+      <span class="item-2">General Kenobi</span>
     </div>
 
     <script type="module">
@@ -21,12 +22,24 @@
 
       patch(
         node('div', {
-          id: 'new-id',
+          id: 'first-id',
         }, [
           node('ul', [
             node('li', 'item 1'),
             node('li', 'item 2'),
             node('li', 'item 3'),
+          ]),
+        ]),
+      )
+
+      patch(
+        node('div', {
+          id: 'second-id',
+        }, [
+          node('ul', [
+            node('li', 'item 2'),
+            node('li', 'item 3'),
+            node('li', 'item 4'),
           ]),
         ]),
       )

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- Added `stringifyPatch` and `stringifyPatchFull` functions.
+- Added re-hydration examples.
+
 ## 1.1.1
 
 - Included `stringifyFull` function into iife build.

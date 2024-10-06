@@ -12,15 +12,29 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // src/library/marker.ts
+  // ../staark-common/src/marker.ts
   var marker = Symbol();
 
-  // src/library/memo.ts
+  // ../staark-common/src/memo.ts
   var memo = (render, memory) => ({
     _: marker,
     r: render,
     m: memory
   });
+
+  // ../staark-common/src/node.ts
+  var node = (type, attributesOrContents, contents) => {
+    if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
+      contents = attributesOrContents;
+      attributesOrContents = void 0;
+    }
+    return {
+      _: marker,
+      a: attributesOrContents,
+      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
+      t: type.toUpperCase()
+    };
+  };
 
   // ../staark-common/src/array.ts
   var arrayify = function(data) {
@@ -79,7 +93,31 @@
   };
 
   // ../staark-common/src/element.ts
-  var CREATED_EVENT = "staark-created";
+  var childrenToNodes = (element) => {
+    var _a;
+    const children = [];
+    for (let i = 0; i < element.childNodes.length; i++) {
+      if (element instanceof Text) {
+        children.push(
+          (_a = element.textContent) != null ? _a : ""
+        );
+      } else {
+        let attributes = {};
+        for (let i2 = 0; i2 < element.attributes.length; i2++) {
+          const attribute = element.attributes[i2];
+          attributes[attribute.name] = attribute.value;
+        }
+        children.push(
+          node(
+            element.nodeName,
+            attributes,
+            childrenToNodes(element)
+          )
+        );
+      }
+    }
+    return children;
+  };
 
   // src/utilities/proxy.ts
   var proxify = (root, onChange) => {
@@ -141,30 +179,13 @@
   // src/library/mount.ts
   var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
   var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
-  var mount = (rootNode, renderView, initialState) => {
-    if (!initialState) {
-      initialState = {};
-    }
-    let active = true, updating = false;
-    let _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) || document.body.appendChild(
-      document.createElement("div")
-    ) : rootNode;
-    const unmount = () => {
-      if (active) {
-        active = false;
-        for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
-          _rootNode.childNodes[i].remove();
-        }
-      }
-    };
-    unmount();
-    active = true;
+  var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     let listenerCount = 0;
-    const updateAttributes = (element, newAttributes = null, oldAttributes = null) => {
+    const updateAttributes = (element, newAttributes, oldAttributes) => {
       if (newAttributes) {
         for (const name in newAttributes) {
           let value = newAttributes[name];
-          if (value !== null && value !== void 0) {
+          if (value) {
             const type = typeof value;
             if (type === "function") {
               const listener = newAttributes[name] = (event) => {
@@ -236,7 +257,7 @@
               name,
               oldAttributes[name]
             );
-          } else if (!newAttributes || !(name in newAttributes) || newAttributes[name] === null || newAttributes[name] === void 0) {
+          } else if (!newAttributes || !(name in newAttributes) || !newAttributes[name]) {
             if (name === "value") {
               element.value = "";
             } else if (name === "checked") {
@@ -270,7 +291,7 @@
         match.c
       );
     };
-    const updateElementTree = (element, newChildAbstracts, oldChildAbstracts = null, elementAbstract = null) => {
+    const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
       var _a, _b, _c;
       let newIndex = 0;
       let newCount = 0;
@@ -300,10 +321,10 @@
                     element.childNodes[oldIndex + newCount],
                     element.childNodes[newIndex]
                   );
-                  oldAbstractTree.splice(
+                  oldChildAbstracts.splice(
                     newIndex - newCount,
                     0,
-                    ...oldAbstractTree.splice(
+                    ...oldChildAbstracts.splice(
                       oldIndex,
                       1
                     )
@@ -415,13 +436,6 @@
               }
               newCount++;
             }
-            _rootNode.dispatchEvent(
-              new CustomEvent(CREATED_EVENT, {
-                detail: {
-                  target: childElement
-                }
-              })
-            );
           }
         }
       }
@@ -432,6 +446,10 @@
         }
       }
     };
+    if (typeof initialState === "string") {
+      initialState = JSON.parse(initialState);
+    }
+    initialState != null ? initialState : initialState = {};
     let proxyChanged = true;
     let state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
       initialState,
@@ -442,7 +460,18 @@
         );
       }
     );
-    let oldAbstractTree = [];
+    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(
+      document.createElement("div")
+    ) : rootElement;
+    if (typeof oldAbstractTree === "string") {
+      try {
+        oldAbstractTree = JSON.parse(oldAbstractTree);
+      } catch (error) {
+        oldAbstractTree = void 0;
+      }
+    }
+    oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
+    let active = true, updating = false;
     const updateAbstracts = () => {
       if (active && !updating && // Only update if changes to the state have been made.
       proxyChanged && // Don't update while handling listeners.
@@ -453,7 +482,7 @@
           renderView(state)
         );
         updateElementTree(
-          _rootNode,
+          _rootElement,
           newAbstractTree,
           oldAbstractTree
         );
@@ -474,23 +503,16 @@
           updateAbstracts
         );
       },
-      unmount,
+      () => {
+        if (active) {
+          active = false;
+          for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+            _rootElement.childNodes[i].remove();
+          }
+        }
+      },
       state
     ];
-  };
-
-  // src/library/node.ts
-  var node = (type, attributesOrContents, contents) => {
-    if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
-      contents = attributesOrContents;
-      attributesOrContents = void 0;
-    }
-    return {
-      _: marker,
-      a: attributesOrContents,
-      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
-      t: type.toUpperCase()
-    };
   };
 
   // src/index.base.iife.ts

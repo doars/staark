@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="results"></div>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        eventListenersModule,
+        h,
+        init,
+        propsModule,
+      } from '../libraries/dst/snabbdom.base.min.js'
+
+      const ITERATIONS = 10e3
+
+      const patch = init([eventListenersModule, propsModule])
+      let oldAbstractTree = document.getElementById('app')
+
+      const state = {
+        todos: [],
+        value: '',
+      }
+
+      const displayResults = (time) => {
+        document.getElementById('results').innerHTML = `
+          <h2>snabbdom benchmark results (${ITERATIONS} iterations):</h2>
+          <p>Total time: ${time.toFixed(3)} ms</p>
+          <p>Average time per iteration: ${(time / ITERATIONS).toFixed(3)} ms</p>
+        `
+      }
+
+      const update = () => {
+        const newAbstractTree = h('main', [
+          h('h1', 'To do list'),
+          h('input', {
+            props: {
+              type: 'text',
+              value: state.value,
+            },
+            on: {
+              input: (event) => {
+                state.value = event.target.value
+                update()
+              },
+            },
+          }),
+          h('ul',
+            state.todos.map(todo => h('li', todo))
+          ),
+          h('button', {
+            on: {
+              click: () => {
+                state.todos.push(state.value)
+                state.value = ''
+                update()
+              },
+            },
+          }, 'New!'),
+        ])
+
+        patch(oldAbstractTree, newAbstractTree)
+        oldAbstractTree = newAbstractTree
+      }
+
+      for (let i = 0; i < ITERATIONS; i++) {
+        state.todos.push('original')
+      }
+      update()
+
+      const run = () => {
+        const startTime = performance.now()
+
+        state.todos.splice(0, state.todos.length)
+        for (let i = 0; i < ITERATIONS; i++) {
+          state.todos.push('updated')
+        }
+        update()
+
+        const time = performance.now() - startTime
+        displayResults(time)
+      }
+
+      setTimeout(run, 500)
+    </script>
+  </body>
+
+</html>

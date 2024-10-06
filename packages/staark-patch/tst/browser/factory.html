@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        factory,
+      } from '../../dst/staark-patch.js'
+
+      console.log('factory', factory)
+
+      const { a } = factory
+
+      console.log(
+        a({
+          class: 'nav-link',
+          href: '/next-page/',
+          target: '_blank',
+          'data-active': true
+        }, 'next page')
+      )
+    </script>
+  </body>
+
+</html>

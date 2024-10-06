@@ -1,9 +1,3 @@
-export * from './library/memo.js'
+export * from '@doars/staark-common/src/memo.js'
+export * from '@doars/staark-common/src/node.js'
 export * from './library/mount.js'
-export {
-  NodeAttributeListener,
-  NodeAttributes,
-  NodeContent,
-  NodeAbstract,
-  node,
-} from './library/node.js'

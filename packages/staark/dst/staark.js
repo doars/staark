@@ -1,7 +1,7 @@
-// src/library/marker.ts
+// ../staark-common/src/marker.ts
 var marker = Symbol();
 
-// src/library/node.ts
+// ../staark-common/src/node.ts
 var node = (type, attributesOrContents, contents) => {
   if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
     contents = attributesOrContents;
@@ -15,7 +15,7 @@ var node = (type, attributesOrContents, contents) => {
   };
 };
 
-// src/library/factory.ts
+// ../staark-common/src/factory.ts
 var factory = new Proxy({}, {
   get: (target, type) => {
     if (target[type]) {
@@ -33,7 +33,7 @@ var factory = new Proxy({}, {
   }
 });
 
-// src/utilities/selector.ts
+// ../staark-common/src/selector.ts
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
 var DOT = ".";
@@ -41,7 +41,7 @@ var EQUAL = "=";
 var HASH = "#";
 var QUOTE_SINGLE = "'";
 var QUOTE_DOUBLE = '"';
-var tokenizer = (selector) => {
+var selectorToTokenizer = (selector) => {
   const length = selector.length;
   let i = 0;
   let type = "";
@@ -148,7 +148,7 @@ var tokenizer = (selector) => {
   return [type, attributes];
 };
 
-// src/library/fctory.ts
+// ../staark-common/src/fctory.ts
 var fctory = new Proxy({}, {
   get: (target, type) => {
     if (target[type]) {
@@ -161,7 +161,7 @@ var fctory = new Proxy({}, {
     return target[type] = (selector, contents) => {
       let attributes;
       if (selector) {
-        const [_, _attributes] = tokenizer(selector);
+        const [_, _attributes] = selectorToTokenizer(selector);
         attributes = _attributes;
       }
       return node(
@@ -173,11 +173,28 @@ var fctory = new Proxy({}, {
   }
 });
 
-// src/library/memo.ts
+// ../staark-common/src/memo.ts
 var memo = (render, memory) => ({
   _: marker,
   r: render,
   m: memory
+});
+
+// ../staark-common/src/nde.ts
+var nde = (selector, contents) => {
+  const [type, attributes] = selectorToTokenizer(selector);
+  return {
+    _: marker,
+    a: attributes,
+    c: contents ? Array.isArray(contents) ? contents : [contents] : [],
+    t: type.toUpperCase()
+  };
+};
+
+// ../staark-common/src/text.ts
+var text = (contents) => ({
+  _: marker,
+  c: Array.isArray(contents) ? contents.join("") : "" + contents
 });
 
 // ../staark-common/src/array.ts
@@ -237,7 +254,31 @@ var equalRecursive = (valueA, valueB) => {
 };
 
 // ../staark-common/src/element.ts
-var CREATED_EVENT = "staark-created";
+var childrenToNodes = (element) => {
+  var _a;
+  const children = [];
+  for (let i = 0; i < element.childNodes.length; i++) {
+    if (element instanceof Text) {
+      children.push(
+        (_a = element.textContent) != null ? _a : ""
+      );
+    } else {
+      let attributes = {};
+      for (let i2 = 0; i2 < element.attributes.length; i2++) {
+        const attribute = element.attributes[i2];
+        attributes[attribute.name] = attribute.value;
+      }
+      children.push(
+        node(
+          element.nodeName,
+          attributes,
+          childrenToNodes(element)
+        )
+      );
+    }
+  }
+  return children;
+};
 
 // src/utilities/proxy.ts
 var proxify = (root, onChange) => {
@@ -299,30 +340,13 @@ var proxify = (root, onChange) => {
 // src/library/mount.ts
 var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
 var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
-var mount = (rootNode, renderView, initialState) => {
-  if (!initialState) {
-    initialState = {};
-  }
-  let active = true, updating = false;
-  let _rootNode = typeof rootNode === "string" ? document.querySelector(rootNode) || document.body.appendChild(
-    document.createElement("div")
-  ) : rootNode;
-  const unmount = () => {
-    if (active) {
-      active = false;
-      for (let i = _rootNode.childNodes.length - 1; i >= 0; i--) {
-        _rootNode.childNodes[i].remove();
-      }
-    }
-  };
-  unmount();
-  active = true;
+var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   let listenerCount = 0;
-  const updateAttributes = (element, newAttributes = null, oldAttributes = null) => {
+  const updateAttributes = (element, newAttributes, oldAttributes) => {
     if (newAttributes) {
       for (const name in newAttributes) {
         let value = newAttributes[name];
-        if (value !== null && value !== void 0) {
+        if (value) {
           const type = typeof value;
           if (type === "function") {
             const listener = newAttributes[name] = (event) => {
@@ -394,7 +418,7 @@ var mount = (rootNode, renderView, initialState) => {
             name,
             oldAttributes[name]
           );
-        } else if (!newAttributes || !(name in newAttributes) || newAttributes[name] === null || newAttributes[name] === void 0) {
+        } else if (!newAttributes || !(name in newAttributes) || !newAttributes[name]) {
           if (name === "value") {
             element.value = "";
           } else if (name === "checked") {
@@ -428,7 +452,7 @@ var mount = (rootNode, renderView, initialState) => {
       match.c
     );
   };
-  const updateElementTree = (element, newChildAbstracts, oldChildAbstracts = null, elementAbstract = null) => {
+  const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
     var _a, _b, _c;
     let newIndex = 0;
     let newCount = 0;
@@ -458,10 +482,10 @@ var mount = (rootNode, renderView, initialState) => {
                   element.childNodes[oldIndex + newCount],
                   element.childNodes[newIndex]
                 );
-                oldAbstractTree.splice(
+                oldChildAbstracts.splice(
                   newIndex - newCount,
                   0,
-                  ...oldAbstractTree.splice(
+                  ...oldChildAbstracts.splice(
                     oldIndex,
                     1
                   )
@@ -573,13 +597,6 @@ var mount = (rootNode, renderView, initialState) => {
             }
             newCount++;
           }
-          _rootNode.dispatchEvent(
-            new CustomEvent(CREATED_EVENT, {
-              detail: {
-                target: childElement
-              }
-            })
-          );
         }
       }
     }
@@ -590,6 +607,10 @@ var mount = (rootNode, renderView, initialState) => {
       }
     }
   };
+  if (typeof initialState === "string") {
+    initialState = JSON.parse(initialState);
+  }
+  initialState != null ? initialState : initialState = {};
   let proxyChanged = true;
   let state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
     initialState,
@@ -600,7 +621,18 @@ var mount = (rootNode, renderView, initialState) => {
       );
     }
   );
-  let oldAbstractTree = [];
+  const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(
+    document.createElement("div")
+  ) : rootElement;
+  if (typeof oldAbstractTree === "string") {
+    try {
+      oldAbstractTree = JSON.parse(oldAbstractTree);
+    } catch (error) {
+      oldAbstractTree = void 0;
+    }
+  }
+  oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
+  let active = true, updating = false;
   const updateAbstracts = () => {
     if (active && !updating && // Only update if changes to the state have been made.
     proxyChanged && // Don't update while handling listeners.
@@ -611,7 +643,7 @@ var mount = (rootNode, renderView, initialState) => {
         renderView(state)
       );
       updateElementTree(
-        _rootNode,
+        _rootElement,
         newAbstractTree,
         oldAbstractTree
       );
@@ -632,27 +664,17 @@ var mount = (rootNode, renderView, initialState) => {
         updateAbstracts
       );
     },
-    unmount,
+    () => {
+      if (active) {
+        active = false;
+        for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+          _rootElement.childNodes[i].remove();
+        }
+      }
+    },
     state
   ];
 };
-
-// src/library/nde.ts
-var nde = (selector, contents) => {
-  const [type, attributes] = tokenizer(selector);
-  return {
-    _: marker,
-    a: attributes,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : [],
-    t: type.toUpperCase()
-  };
-};
-
-// src/library/text.ts
-var text = (contents) => ({
-  _: marker,
-  c: Array.isArray(contents) ? contents.join("") : "" + contents
-});
 export {
   factory,
   fctory,

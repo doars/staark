@@ -80,30 +80,28 @@ var node = (type, attributesOrContents, contents) => {
 };
 
 // src/element.ts
-var toNode = (element) => {
-  var _a;
-  if (element instanceof Text) {
-    return (_a = element.textContent) != null ? _a : "";
-  }
-  let attributes = {};
-  for (let i = 0; i < element.attributes.length; i++) {
-    const attribute = element.attributes[i];
-    attributes[attribute.name] = attribute.value;
-  }
-  const children = [];
-  for (let i = 0; i < element.childNodes.length; i++) {
-    children.push(
-      toNode(element.childNodes[i])
-    );
-  }
-  return node(element.nodeName, attributes, children);
-};
 var childrenToNodes = (element) => {
+  var _a;
   const children = [];
   for (let i = 0; i < element.childNodes.length; i++) {
-    children.push(
-      toNode(element.childNodes[i])
-    );
+    if (element instanceof Text) {
+      children.push(
+        (_a = element.textContent) != null ? _a : ""
+      );
+    } else {
+      let attributes = {};
+      for (let i2 = 0; i2 < element.attributes.length; i2++) {
+        const attribute = element.attributes[i2];
+        attributes[attribute.name] = attribute.value;
+      }
+      children.push(
+        node(
+          element.nodeName,
+          attributes,
+          childrenToNodes(element)
+        )
+      );
+    }
   }
   return children;
 };
@@ -306,7 +304,6 @@ export {
   node,
   suffixNameIfMultiple,
   text,
-  toNode,
   uniqueIdentifier
 };
 //# sourceMappingURL=staark-common.js.map

@@ -13,7 +13,7 @@
     <script type="module">
       import { mount, node } from '../libraries/dst/staark.base.min.js'
 
-      const ITERATIONS = 10000
+      const ITERATIONS = 10e3
 
       const displayResults = (
         time,
@@ -25,7 +25,7 @@
         `
       }
 
-      const [update, _, state] = mount(
+      const [_, __, state] = mount(
         document.getElementById('app'),
         (state) => node('main', [
           node('h1', 'To do list'),
@@ -38,6 +38,7 @@
             state.todos.map((todo) => node('li', todo))
           ),
           node('button', {
+            type: 'button',
             click: () => {
               state.todos.push(state.value)
               state.value = ''
@@ -58,8 +59,10 @@
           state.todos.push('test')
         }
 
-        const time = performance.now() - startTime
-        displayResults(time)
+        requestAnimationFrame(() => {
+          const time = performance.now() - startTime
+          displayResults(time)
+        })
       }
 
       setTimeout(run, 500)

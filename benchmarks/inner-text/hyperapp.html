@@ -13,13 +13,13 @@
     <script type="module">
       import { app, h, text } from '../libraries/dst/hyperapp.base.min.js'
 
-      const ITERATIONS = 10000
+      const ITERATIONS = 10e3
 
       const displayResults = (
         time,
       ) => {
         document.getElementById('results').innerHTML = `
-          <h2>Hyperapp Benchmark Results (${ITERATIONS} iterations):</h2>
+          <h2>hyperapp Benchmark Results (${ITERATIONS} iterations):</h2>
           <p>Total time: ${time.toFixed(3)} ms</p>
           <p>Average time per iteration: ${(time / ITERATIONS).toFixed(3)} ms</p>
         `
@@ -39,7 +39,7 @@
       const resetTodos = (state) => ({
         ...state,
         value: '',
-        todos: state.todos.splice(0, state.todos.length)
+        todos: [],
       })
 
       const dispatch = app({
@@ -68,7 +68,7 @@
       for (let i = 0; i < ITERATIONS; i++) {
         dispatch(newValue, {
           target: {
-            value: 'test-1',
+            value: 'original',
           },
         })
         dispatch(addTodo)
@@ -82,14 +82,16 @@
         for (let i = 0; i < ITERATIONS; i++) {
           dispatch(newValue, {
             target: {
-              value: 'test-2',
+              value: 'updated',
             },
           })
           dispatch(addTodo)
         }
 
-        const time = performance.now() - startTime
-        displayResults(time)
+        requestAnimationFrame(() => {
+          const time = performance.now() - startTime
+          displayResults(time)
+        })
       }
 
       setTimeout(run, 500)
