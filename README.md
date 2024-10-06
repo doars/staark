@@ -11,8 +11,8 @@ This mono repository contains several packages, see the overview below:
 
 - [`@doars/staark`](https://github.com/doars/staark/tree/main/packages/staark#readme) a teensy-tiny library for for building web apps.
 - [`@doars/staark-components`](https://github.com/doars/staark/tree/main/packages/staark-components#readme) a set of components, and a great example for seeing the core library in action.
-- [`@doars/staark-isomorphic`](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) a version of `@doars/staark` that can used in both the client and the server for rendering a view.
-- [`@doars/staark-patch`](https://github.com/doars/staark/tree/main/packages/staark-patch#readme) a stateless version of staark where the node tree can be repeatedly patched.
+- [`@doars/staark-isomorphic`](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) a version of staark that can used on the server for rendering a view.
+- [`@doars/staark-patch`](https://github.com/doars/staark/tree/main/packages/staark-patch#readme) a version of staark without state management where the node tree is repeatedly patched.
 - [`@doars/tiedliene`](https://github.com/doars/staark/tree/main/packages/tiedliene#readme) a teensy-tiny library for managing state diffs.
 - [`@doars/vroagn`](https://github.com/doars/staark/tree/main/packages/vroagn#readme) a teensy-tiny library for managing network requests.
 
