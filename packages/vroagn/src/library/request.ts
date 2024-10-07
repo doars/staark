@@ -15,6 +15,11 @@ export interface ResponseParser {
   ) => any,
 }
 
+export type FetchFunction = (
+  request: Request | string,
+  requestOptions?: RequestInit,
+) => Promise<Response>
+
 export interface SendOptions {
   body?: any
   credentials?: RequestCredentials
@@ -31,6 +36,7 @@ export interface SendOptions {
 
   abort?: AbortController
   cache?: RequestCache
+  fetch?: FetchFunction,
 
   debounce?: number
   delay?: number
@@ -146,7 +152,7 @@ export const create = (
       // } catch (error) {
       //   return [(error as Error) || new Error('Thrown fetching error is falsely'), response, null]
       // }
-      const response = await fetch(url, config)
+      const response = await (options.fetch ?? fetch)(url, config)
       if (!response.ok) {
         return [new Error('Invalid response'), response, null]
       }

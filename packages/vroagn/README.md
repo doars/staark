@@ -98,6 +98,23 @@ const yamlParser = (
 
 You can of course also write an entirely new parser based on a custom data specification, this is perfect for those quirky APIs with their own data formats.
 
+A custom fetch function can also be specified using the fetch options. The full build of the library contains an additional fetch function. This function writes successful requests to the browser's caches ensuring the cache is maintained between page reloads.
+
+```JS
+import { create, cacheFetch } from '@doars/vroagn'
+
+const request = create({
+  domain: '//api.example.com',
+  fetch: cacheFetch({
+    name: 'vroagn-cache', // Optional.
+    ttl: 60 * 60 * 1000, // One hour, optional.
+  }),
+})
+
+const [error, response, result] = await request()
+console.log(error, response, result)
+```
+
 ## Using vroagn with staark
 
 _vroagn_ and [_staark_](https://github.com/doars/staark/tree/main/packages/staark#readme) are like peanut butter and jelly. They're great on their own, but together they're unstoppable. Let's see how you can combine them to fetch data dynamically in your _staark_ powered application.
@@ -158,6 +175,7 @@ The full list of send options:
 - `{string} type = null` Specifies the expected response type for the request. This overrides the automatic type determination.
 - `{AbortController} abort = null` A custom `AbortController` instance for cancelling the request.
 - `{string} cache = 'default'` The cache mode for the request. Options include `default`, `no-store`, `reload`, `no-cache`, `force-cache`, or `only-if-cached`.
+- `{function} fetch = fetch` Allows the setting of a custom fetch function to use.
 - `{number} debounce = 0` Time in milliseconds to delay the request after it has been triggered. If a new request is triggered within this time, the timer resets.
 - `{number} delay = 0` Time in milliseconds to delay the start of the request.
 - `{number} retryAttempts = 0` The number of retry attempts allowed before giving up on the request.

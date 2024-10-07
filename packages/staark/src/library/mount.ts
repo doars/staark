@@ -51,7 +51,7 @@ const HYPHENATE = (
 ) => (offset ? '-' : '') + part
 
 export const mount = (
-  rootElement: Element | string,
+  rootElement: HTMLElement | Element | string,
   renderView: ViewFunction,
   initialState?: Record<string, any> | string,
   oldAbstractTree?: NodeContent[] | string,

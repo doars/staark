@@ -151,7 +151,8 @@ var create = (initialOptions) => {
       );
     }
     const executeFetch = () => __async(void 0, null, function* () {
-      const response2 = yield fetch(url, config);
+      var _a;
+      const response2 = yield ((_a = options.fetch) != null ? _a : fetch)(url, config);
       if (!response2.ok) {
         return [new Error("Invalid response"), response2, null];
       }
@@ -300,6 +301,124 @@ var create = (initialOptions) => {
     );
     activeRequests--;
     return results;
+  });
+};
+
+// src/library/cache.ts
+var FALLBACK_TTL = 60 * 60 * 1e3;
+var openCaches = {};
+var cacheFetch = (cacheOptions = {}) => {
+  return (_0, ..._1) => __async(void 0, [_0, ..._1], function* (request, requestOptions = {}) {
+    var _a, _b;
+    if (requestOptions.cache === "no-store") {
+      return yield fetch(request, requestOptions);
+    }
+    const cacheName = (_a = cacheOptions.name) != null ? _a : "vroagn-cache";
+    let cache = null;
+    if (openCaches[cacheName]) {
+      cache = openCaches[cacheName];
+    } else {
+      cache = openCaches[cacheName] = yield caches.open(cacheName);
+    }
+    const fetchFromNetworkAndCache = () => __async(void 0, null, function* () {
+      const networkResponse = yield fetch(request, requestOptions);
+      const cacheControl = networkResponse.headers.get("Cache-Control");
+      const noStore = (cacheControl == null ? void 0 : cacheControl.includes("no-store")) || false;
+      if (networkResponse.status === 200 && !noStore) {
+        const clonedResponse = networkResponse.clone();
+        const headers = new Headers(clonedResponse.headers);
+        headers.set("date", (/* @__PURE__ */ new Date()).toUTCString());
+        const responseWithDate = new Response(clonedResponse.body, {
+          status: clonedResponse.status,
+          statusText: clonedResponse.statusText,
+          headers
+        });
+        yield cache.put(request, responseWithDate);
+      }
+      return networkResponse;
+    });
+    if (requestOptions.cache) {
+      switch (requestOptions.cache) {
+        case "reload":
+          yield cache.delete(request);
+          return yield fetchFromNetworkAndCache();
+        case "no-cache": {
+          const cachedResponse2 = yield cache.match(request);
+          if (cachedResponse2) {
+            const cacheControl = cachedResponse2.headers.get("Cache-Control");
+            if (cacheControl && cacheControl.includes("no-cache")) {
+              yield cache.delete(request);
+              return yield fetchFromNetworkAndCache();
+            }
+          }
+          return yield fetchFromNetworkAndCache();
+        }
+        case "force-cache": {
+          const cachedResponse2 = yield cache.match(request);
+          if (cachedResponse2) {
+            return cachedResponse2;
+          }
+          return yield fetchFromNetworkAndCache();
+        }
+        case "only-if-cached": {
+          const cachedResponse2 = yield cache.match(request);
+          if (!cachedResponse2) {
+            throw new Error("Request failed because no cached response is available");
+          }
+          return cachedResponse2;
+        }
+        default:
+          break;
+      }
+    }
+    const cachedResponse = yield cache.match(request);
+    if (cachedResponse) {
+      const cacheControl = cachedResponse.headers.get("Cache-Control");
+      const expiresHeader = cachedResponse.headers.get("Expires");
+      if (cacheControl || expiresHeader) {
+        if (cacheControl) {
+          const noStore = cacheControl.includes("no-store");
+          const noCache = cacheControl.includes("no-cache");
+          const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+          const maxAge = maxAgeMatch ? parseInt(maxAgeMatch[1]) : null;
+          if (noStore || noCache) {
+            yield cache.delete(request);
+            return fetchFromNetworkAndCache();
+          }
+          if (maxAge !== null) {
+            const cachedTime = new Date(
+              cachedResponse.headers.get("date") || 0
+            ).getTime();
+            const now = Date.now();
+            const age = (now - cachedTime) / 1e3;
+            if (age > maxAge) {
+              yield cache.delete(request);
+              return fetchFromNetworkAndCache();
+            }
+          }
+        }
+        if (expiresHeader) {
+          const expires = new Date(expiresHeader).getTime();
+          if (Date.now() > expires) {
+            yield cache.delete(request);
+            return fetchFromNetworkAndCache();
+          }
+        }
+      } else {
+        const dateHeader = cachedResponse.headers.get("date");
+        if (dateHeader) {
+          const cachedTime = new Date(dateHeader).getTime();
+          const now = Date.now();
+          const age = now - cachedTime;
+          if (age > ((_b = cacheOptions.ttl) != null ? _b : FALLBACK_TTL)) {
+            yield cache.delete(request);
+            return fetchFromNetworkAndCache();
+          }
+        }
+      }
+      return cachedResponse;
+    }
+    return fetchFromNetworkAndCache();
   });
 };
 
@@ -674,6 +793,7 @@ var yamlParser = (options = {}) => {
   };
 };
 export {
+  cacheFetch,
   create,
   csvParser,
   iniParser,

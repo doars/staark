@@ -151,7 +151,8 @@ var create = (initialOptions) => {
       );
     }
     const executeFetch = () => __async(void 0, null, function* () {
-      const response2 = yield fetch(url, config);
+      var _a;
+      const response2 = yield ((_a = options.fetch) != null ? _a : fetch)(url, config);
       if (!response2.ok) {
         return [new Error("Invalid response"), response2, null];
       }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+- Added fetch option to pass custom fetch function.
+- Added cached fetch as custom fetch function.
+
 ## 1.1.2
 
 - Updated builds.

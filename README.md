@@ -26,8 +26,9 @@ If you are using _staark_ then please let me know, I would love to hear about it
 
 ## Future ideas
 
-- Add optional key parameter to the `node` function so some nodes are exempt from being re-used during morphing.
+- Add support for `memo` nodes to `staark-patch` and `staark-isomorphic`'s patch functions.
 - Have the CSV importer of `vroagn` check for a delimiter.
+- Add optional key parameter to the `node` function so some nodes are exempt from being re-used during morphing.
 
 ## License
 

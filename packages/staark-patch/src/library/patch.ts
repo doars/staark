@@ -14,15 +14,15 @@ import {
   TextAbstract,
 } from '@doars/staark-common/src/text.js'
 
-type PatchFunction = (
-  newAbstractTree: NodeContent[] | NodeContent,
-) => void
-
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
 const HYPHENATE = (
   part: string,
   offset: number,
 ) => (offset ? '-' : '') + part
+
+export type PatchFunction = (
+  newAbstractTree: NodeContent[] | NodeContent,
+) => void
 
 const updateAttributes = (
   element: Element,
@@ -129,7 +129,7 @@ const updateAttributes = (
 }
 
 export const prepare = (
-  rootElement: Element | string,
+  rootElement: HTMLElement | Element | string,
   oldAbstractTree?: NodeContent[] | string,
 ): PatchFunction => {
   const updateElementTree = (
