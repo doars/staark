@@ -1,3 +1,9 @@
+<div align="center">
+
+![Project logo](assets/icons/256-round.png)
+
+</div>
+
 # staark
 
 A set of teeny-tiny libraries for building web apps. The goal of this toolkit is as follows:
