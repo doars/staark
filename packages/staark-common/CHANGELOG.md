@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- Fix in children to node function.
+
 ## 1.2.1
 
 - Optimize build size.

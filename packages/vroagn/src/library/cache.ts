@@ -27,7 +27,8 @@ export const cacheFetch = (
       cache = openCaches[cacheName] = await caches.open(cacheName)
     }
 
-    const fetchFromNetworkAndCache = async (): Promise<Response> => {
+    const fetchFromNetworkAndCache = async (
+    ): Promise<Response> => {
       const networkResponse = await fetch(request, requestOptions)
       const cacheControl = networkResponse.headers.get('Cache-Control')
       const noStore = cacheControl?.includes('no-store') || false

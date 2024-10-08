@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.8
+
+- Fix in children to node function.
+
 ## 1.3.7
 
 - Fix internal updating of abstract node tree.

@@ -82,28 +82,29 @@ var node = (type, attributesOrContents, contents) => {
 // src/element.ts
 var childrenToNodes = (element) => {
   var _a;
-  const children = [];
+  const abstractChildNodes = [];
   for (let i = 0; i < element.childNodes.length; i++) {
-    if (element instanceof Text) {
-      children.push(
-        (_a = element.textContent) != null ? _a : ""
+    const childNode = element.childNodes[i];
+    if (childNode instanceof Text) {
+      abstractChildNodes.push(
+        (_a = childNode.textContent) != null ? _a : ""
       );
     } else {
       let attributes = {};
-      for (let i2 = 0; i2 < element.attributes.length; i2++) {
-        const attribute = element.attributes[i2];
+      for (let i2 = 0; i2 < childNode.attributes.length; i2++) {
+        const attribute = childNode.attributes[i2];
         attributes[attribute.name] = attribute.value;
       }
-      children.push(
+      abstractChildNodes.push(
         node(
-          element.nodeName,
+          childNode.nodeName,
           attributes,
-          childrenToNodes(element)
+          childrenToNodes(childNode)
         )
       );
     }
   }
-  return children;
+  return abstractChildNodes;
 };
 
 // src/factory.ts

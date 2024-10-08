@@ -7,27 +7,28 @@ import {
 export const childrenToNodes = (
   element: Element | ChildNode,
 ) => {
-  const children: NodeContent[] = []
+  const abstractChildNodes: NodeContent[] = []
   for (let i = 0; i < element.childNodes.length; i++) {
-    if (element instanceof Text) {
-      children.push(
-        element.textContent ?? ''
+    const childNode = element.childNodes[i]
+    if (childNode instanceof Text) {
+      abstractChildNodes.push(
+        childNode.textContent ?? ''
       )
     } else {
       let attributes: NodeAttributes = {}
-      for (let i = 0; i < (element as Element).attributes.length; i++) {
-        const attribute = (element as Element).attributes[i]
+      for (let i = 0; i < (childNode as Element).attributes.length; i++) {
+        const attribute = (childNode as Element).attributes[i]
         attributes[attribute.name] = attribute.value
       }
 
-      children.push(
+      abstractChildNodes.push(
         node(
-          element.nodeName,
+          childNode.nodeName,
           attributes,
-          childrenToNodes(element),
+          childrenToNodes(childNode),
         )
       )
     }
   }
-  return children
+  return abstractChildNodes
 }
