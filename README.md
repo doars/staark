@@ -33,6 +33,7 @@ If you are using _staark_ then please let me know, I would love to hear about it
 ## Future ideas
 
 - Add support for `memo` nodes to `staark-patch` and `staark-isomorphic`'s patch functions.
+- Lifecycle hooks for reacting to when nodes are first created, or an attribute is updated, or removed from the DOM.
 - Have the CSV importer of `vroagn` check for a delimiter.
 - Add optional key parameter to the `node` function so some nodes are exempt from being re-used during morphing.
 
