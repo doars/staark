@@ -124,7 +124,7 @@ As mentioned before the `stringifyPatch` and `stringifyPatchFull` functions are 
 
     patch(
       n('div', [
-        n('p', 'Hello there'),****
+        n('p', 'Hello there'),
         n('p', 'General Kenobi'),
       ]),
     )
