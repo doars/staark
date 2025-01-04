@@ -12,6 +12,24 @@
     subject[path[path.length - 1]] = data;
   };
 
+  // ../staark-common/src/array.ts
+  var arrayify = function(data) {
+    if (Array.isArray(data)) {
+      return data;
+    }
+    return [
+      data
+    ];
+  };
+
+  // ../staark-common/src/conditional.ts
+  var conditional = (condition, onTruth, onFalse) => {
+    if (condition) {
+      return arrayify(onTruth);
+    }
+    return arrayify(onFalse != null ? onFalse : []);
+  };
+
   // ../staark-common/src/marker.ts
   var marker = Symbol();
 
@@ -211,16 +229,6 @@
     c: Array.isArray(contents) ? contents.join("") : "" + contents
   });
 
-  // ../staark-common/src/array.ts
-  var arrayify = function(data) {
-    if (Array.isArray(data)) {
-      return data;
-    }
-    return [
-      data
-    ];
-  };
-
   // src/library/stringify.ts
   var SELF_CLOSING = [
     "base",
@@ -417,6 +425,7 @@
   iife([
     "staark"
   ], {
+    conditional,
     factory,
     fctory,
     memo,

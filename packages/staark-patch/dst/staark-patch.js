@@ -1,3 +1,21 @@
+// ../staark-common/src/array.ts
+var arrayify = function(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+  return [
+    data
+  ];
+};
+
+// ../staark-common/src/conditional.ts
+var conditional = (condition, onTruth, onFalse) => {
+  if (condition) {
+    return arrayify(onTruth);
+  }
+  return arrayify(onFalse != null ? onFalse : []);
+};
+
 // ../staark-common/src/marker.ts
 var marker = Symbol();
 
@@ -189,16 +207,6 @@ var text = (contents) => ({
   _: marker,
   c: Array.isArray(contents) ? contents.join("") : "" + contents
 });
-
-// ../staark-common/src/array.ts
-var arrayify = function(data) {
-  if (Array.isArray(data)) {
-    return data;
-  }
-  return [
-    data
-  ];
-};
 
 // ../staark-common/src/element.ts
 var childrenToNodes = (element) => {
@@ -474,6 +482,7 @@ var prepare = (rootElement, oldAbstractTree) => {
   };
 };
 export {
+  conditional,
   factory,
   fctory,
   nde,

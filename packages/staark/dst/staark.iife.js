@@ -12,6 +12,24 @@
     subject[path[path.length - 1]] = data;
   };
 
+  // ../staark-common/src/array.ts
+  var arrayify = function(data) {
+    if (Array.isArray(data)) {
+      return data;
+    }
+    return [
+      data
+    ];
+  };
+
+  // ../staark-common/src/conditional.ts
+  var conditional = (condition, onTruth, onFalse) => {
+    if (condition) {
+      return arrayify(onTruth);
+    }
+    return arrayify(onFalse != null ? onFalse : []);
+  };
+
   // ../staark-common/src/marker.ts
   var marker = Symbol();
 
@@ -210,16 +228,6 @@
     _: marker,
     c: Array.isArray(contents) ? contents.join("") : "" + contents
   });
-
-  // ../staark-common/src/array.ts
-  var arrayify = function(data) {
-    if (Array.isArray(data)) {
-      return data;
-    }
-    return [
-      data
-    ];
-  };
 
   // ../staark-common/src/clone.ts
   var cloneRecursive = (value) => {
@@ -544,7 +552,7 @@
                 );
               }
               const insertAdjacentElement = (element2, elementAbstract2, position) => {
-                if (!elementAbstract2 || elementAbstract2.t) {
+                if (position && (!elementAbstract2 || elementAbstract2.t)) {
                   element2.insertAdjacentElement(
                     position,
                     childElement
@@ -564,9 +572,9 @@
                 );
               } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
                 insertAdjacentElement(
-                  element.childNodes[newIndex],
-                  oldChildAbstracts[newIndex + newCount],
-                  "beforebegin"
+                  element.childNodes[newIndex]
+                  // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                  // 'beforebegin',
                 );
               } else {
                 insertAdjacentElement(
@@ -579,7 +587,7 @@
             } else {
               childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
               const insertAdjacentText = (element2, elementAbstract2, position) => {
-                if (!elementAbstract2 || elementAbstract2.t) {
+                if (position && (!elementAbstract2 || elementAbstract2.t)) {
                   element2.insertAdjacentText(
                     position,
                     childElement
@@ -599,9 +607,9 @@
                 );
               } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
                 insertAdjacentText(
-                  element.childNodes[newIndex],
-                  oldChildAbstracts[newIndex + newCount],
-                  "beforebegin"
+                  element.childNodes[newIndex]
+                  // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                  // 'beforebegin',
                 );
               } else {
                 insertAdjacentText(
@@ -695,6 +703,7 @@
   iife([
     "staark"
   ], {
+    conditional,
     factory,
     fctory,
     memo,

@@ -62,6 +62,14 @@ var equalRecursive = (valueA, valueB) => {
   );
 };
 
+// src/conditional.ts
+var conditional = (condition, onTruth, onFalse) => {
+  if (condition) {
+    return arrayify(onTruth);
+  }
+  return arrayify(onFalse != null ? onFalse : []);
+};
+
 // src/marker.ts
 var marker = Symbol();
 
@@ -296,6 +304,7 @@ export {
   arrayify,
   childrenToNodes,
   cloneRecursive,
+  conditional,
   equalRecursive,
   factory,
   fctory,

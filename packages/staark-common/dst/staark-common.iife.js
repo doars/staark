@@ -98,6 +98,18 @@
     );
   };
 
+  // src/conditional.ts
+  var conditional_exports = {};
+  __export(conditional_exports, {
+    conditional: () => conditional
+  });
+  var conditional = (condition, onTruth, onFalse) => {
+    if (condition) {
+      return arrayify(onTruth);
+    }
+    return arrayify(onFalse != null ? onFalse : []);
+  };
+
   // src/element.ts
   var element_exports = {};
   __export(element_exports, {
@@ -380,6 +392,7 @@
     attribute: attribute_exports,
     clone: clone_exports,
     compare: compare_exports,
+    conditional: conditional_exports,
     element: element_exports,
     factory: factory_exports,
     fctory: fctory_exports,

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0
+
+- Conditional function added.
+- Fix bug when adding new nodes.
+
 ## 1.3.8
 
 - Fix in children to node function.

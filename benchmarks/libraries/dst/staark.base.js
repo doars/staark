@@ -355,7 +355,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               );
             }
             const insertAdjacentElement = (element2, elementAbstract2, position) => {
-              if (!elementAbstract2 || elementAbstract2.t) {
+              if (position && (!elementAbstract2 || elementAbstract2.t)) {
                 element2.insertAdjacentElement(
                   position,
                   childElement
@@ -375,9 +375,9 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               );
             } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
               insertAdjacentElement(
-                element.childNodes[newIndex],
-                oldChildAbstracts[newIndex + newCount],
-                "beforebegin"
+                element.childNodes[newIndex]
+                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                // 'beforebegin',
               );
             } else {
               insertAdjacentElement(
@@ -390,7 +390,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           } else {
             childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
             const insertAdjacentText = (element2, elementAbstract2, position) => {
-              if (!elementAbstract2 || elementAbstract2.t) {
+              if (position && (!elementAbstract2 || elementAbstract2.t)) {
                 element2.insertAdjacentText(
                   position,
                   childElement
@@ -410,9 +410,9 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               );
             } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
               insertAdjacentText(
-                element.childNodes[newIndex],
-                oldChildAbstracts[newIndex + newCount],
-                "beforebegin"
+                element.childNodes[newIndex]
+                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                // 'beforebegin',
               );
             } else {
               insertAdjacentText(

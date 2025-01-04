@@ -1,3 +1,4 @@
+export * from '@doars/staark-common/src/conditional.js'
 export * from '@doars/staark-common/src/factory.js'
 export * from '@doars/staark-common/src/fctory.js'
 export * from '@doars/staark-common/src/nde.js'

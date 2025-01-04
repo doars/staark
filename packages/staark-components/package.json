@@ -36,7 +36,8 @@
     "README.md"
   ],
   "devDependencies": {},
-  "dependencies": {
-    "@doars/staark": "1.3.3"
-  }
+  "peerDependencies": {
+    "@doars/staark": "^1.3.0"
+  },
+  "dependencies": {}
 }

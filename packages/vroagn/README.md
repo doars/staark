@@ -98,10 +98,11 @@ const yamlParser = (
 
 You can of course also write an entirely new parser based on a custom data specification, this is perfect for those quirky APIs with their own data formats.
 
-A custom fetch function can also be specified using the fetch options. The full build of the library contains an additional fetch function. This function writes successful requests to the browser's caches ensuring the cache is maintained between page reloads.
+A custom fetch function can also be specified using the fetch options. The examples directory of the library contains an additional fetch function. This function writes successful requests to the browser's caches ensuring the cache is maintained between page reloads outside of the browsers build-in cache.
 
 ```JS
-import { create, cacheFetch } from '@doars/vroagn'
+import { create } from '@doars/vroagn'
+import { cacheFetch } from '[...]/exm/cache.js'
 
 const request = create({
   domain: '//api.example.com',

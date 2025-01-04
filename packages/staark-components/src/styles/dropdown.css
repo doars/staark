@@ -1,0 +1,16 @@
+fieldset.dropdown {
+  position: relative;
+
+  & div:last-of-type {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+  }
+
+  & legend:focus + div:last-of-type,
+  &:focus-within div:last-of-type {
+    display: block;
+  }
+}

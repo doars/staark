@@ -1,0 +1,2 @@
+fieldset.dropdown{position:relative}fieldset.dropdown div:last-of-type{display:none;left:0;position:absolute;right:0;top:100%}fieldset.dropdown legend:focus+div:last-of-type,fieldset.dropdown:focus-within div:last-of-type{display:block}
+/*# sourceMappingURL=staark-components.min.css.map */

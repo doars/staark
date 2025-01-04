@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+
+- Conditional function added.
+
 ## 1.2.2
 
 - Fix in children to node function.

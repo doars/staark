@@ -4,6 +4,7 @@ import * as array from './array.js'
 import * as attribute from './attribute.js'
 import * as clone from './clone.js'
 import * as compare from './compare.js'
+import * as conditional from './conditional.js'
 import * as element from './element.js'
 import * as factory from './factory.js'
 import * as fctory from './fctory.js'
@@ -22,6 +23,7 @@ iife([
   attribute,
   clone,
   compare,
+  conditional,
   element,
   factory,
   fctory,

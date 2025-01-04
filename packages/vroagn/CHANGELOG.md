@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+
+- Moved cache function to examples.
+
 ## 1.2.0
 
 - Added fetch option to pass custom fetch function.

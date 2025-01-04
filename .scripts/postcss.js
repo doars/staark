@@ -32,7 +32,9 @@ export default async (
     for (let i = 0; i < buildLength; i++) {
       // Clone options.
       const buildOptions = Object.assign({}, buildsOptions[i])
-      buildOptions.plugins = [...buildOptions.plugins]
+      buildOptions.plugins = [
+        ...buildOptions.plugins,
+      ]
 
       if (buildOptions.map) {
         buildOptions.map.annotation = true
