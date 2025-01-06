@@ -194,7 +194,7 @@
                 try {
                   value(event);
                 } catch (error) {
-                  console.warn("listener error", error);
+                  console.error("listener error", error);
                 }
                 listenerCount--;
                 updateAbstracts();
@@ -236,7 +236,11 @@
                 }
               } else {
                 if (type === "boolean") {
-                  value = value ? "true" : "false";
+                  if (!value) {
+                    element.removeAttribute(name);
+                    continue;
+                  }
+                  value = "true";
                 } else if (type !== "string") {
                   value = value.toString();
                 }
@@ -317,7 +321,7 @@
               const oldAbstract = oldChildAbstracts[oldIndex];
               if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
                 matched = true;
-                if (newIndex !== oldIndex) {
+                if (newIndex !== oldIndex + newCount) {
                   element.insertBefore(
                     element.childNodes[oldIndex + newCount],
                     element.childNodes[newIndex]
@@ -400,7 +404,6 @@
                   "beforeend"
                 );
               }
-              newCount++;
             } else {
               childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
               const insertAdjacentText = (element2, elementAbstract2, position) => {
@@ -435,8 +438,8 @@
                   "beforeend"
                 );
               }
-              newCount++;
             }
+            newCount++;
           }
         }
       }

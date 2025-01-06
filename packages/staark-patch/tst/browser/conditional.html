@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        conditional,
+        text,
+      } from '../../dst/staark-patch.js'
+
+      console.log('conditional', conditional)
+
+      console.log(
+        'should be true',
+        conditional(
+          true,
+          text('true'),
+          text('false'),
+        )
+      )
+      console.log(
+        'should be false',
+        conditional(
+          false,
+          text('true'),
+          text('false'),
+        )
+      )
+    </script>
+  </body>
+
+</html>

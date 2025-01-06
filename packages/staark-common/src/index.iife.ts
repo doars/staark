@@ -10,6 +10,7 @@ import * as factory from './factory.js'
 import * as fctory from './fctory.js'
 import * as identifier from './identifier.js'
 import * as marker from './marker.js'
+import * as match from './match.js'
 import * as memo from './memo.js'
 import * as nde from './nde.js'
 import * as node from './node.js'
@@ -29,6 +30,7 @@ iife([
   fctory,
   identifier,
   marker,
+  match,
   memo,
   nde,
   node,

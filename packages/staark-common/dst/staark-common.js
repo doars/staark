@@ -277,6 +277,14 @@ var fctory = new Proxy({}, {
 var identifierCount = 0;
 var uniqueIdentifier = () => "-" + identifierCount++;
 
+// src/match.ts
+var match = (pattern, lookup) => {
+  if (lookup && pattern in lookup && lookup[pattern]) {
+    return arrayify(lookup[pattern]);
+  }
+  return [];
+};
+
 // src/memo.ts
 var memo = (render, memory) => ({
   _: marker,
@@ -309,6 +317,7 @@ export {
   factory,
   fctory,
   marker,
+  match,
   memo,
   nde,
   node,

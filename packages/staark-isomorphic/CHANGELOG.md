@@ -1,8 +1,12 @@
 # Changelog
 
+## 1.4.0
+
+- `match` function added.
+
 ## 1.3.0
 
-- Conditional function added.
+- `conditional` function added.
 
 ## 1.2.0
 

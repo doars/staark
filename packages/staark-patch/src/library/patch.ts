@@ -78,6 +78,10 @@ const updateAttributes = (
           } else {
             // Ensure it is of type string.
             if (type === 'boolean') {
+              if (!value) {
+                element.removeAttribute(name)
+                continue
+              }
               value = 'true'
             } else if (type !== 'string') {
               value = value.toString()
@@ -161,7 +165,7 @@ export const prepare = (
             ) {
               matched = true
 
-              if (newIndex !== oldIndex) {
+              if (newIndex !== (oldIndex + newCount)) {
                 // Move node in dom.
                 element.insertBefore(
                   element.childNodes[oldIndex + newCount],
@@ -177,6 +181,7 @@ export const prepare = (
                   )
                 )
               }
+
               if ((newAbstract as NodeAbstract).t) {
                 updateAttributes(
                   (element.childNodes[newIndex] as Element),
@@ -223,12 +228,15 @@ export const prepare = (
 
             const insertAdjacentElement = (
               element: Node,
-              elementAbstract: NodeContent | null | undefined,
-              position: InsertPosition,
+              elementAbstract?: NodeContent | null,
+              position?: InsertPosition,
             ) => {
               if (
-                !elementAbstract
-                || (elementAbstract as NodeAbstract).t
+                position &&
+                (
+                  !elementAbstract
+                  || (elementAbstract as NodeAbstract).t
+                )
               ) {
                 (element as Element)
                   .insertAdjacentElement(
@@ -253,8 +261,8 @@ export const prepare = (
             } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
               insertAdjacentElement(
                 (element.childNodes[newIndex] as Node),
-                (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-                'beforebegin',
+                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                // 'beforebegin',
               )
             } else {
               insertAdjacentElement(
@@ -263,7 +271,6 @@ export const prepare = (
                 'beforeend',
               )
             }
-            newCount++
           } else {
             childElement = (
               typeof (newAbstract) === 'string'
@@ -273,12 +280,15 @@ export const prepare = (
 
             const insertAdjacentText = (
               element: Node,
-              elementAbstract: NodeContent | null | undefined,
-              position: InsertPosition,
+              elementAbstract?: NodeContent | null,
+              position?: InsertPosition,
             ) => {
               if (
-                !elementAbstract
-                || (elementAbstract as NodeAbstract).t
+                position &&
+                (
+                  !elementAbstract
+                  || (elementAbstract as NodeAbstract).t
+                )
               ) {
                 (element as Element)
                   .insertAdjacentText(
@@ -303,8 +313,8 @@ export const prepare = (
             } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
               insertAdjacentText(
                 element.childNodes[newIndex] as Node,
-                (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-                'beforebegin',
+                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                // 'beforebegin',
               )
             } else {
               insertAdjacentText(
@@ -313,8 +323,8 @@ export const prepare = (
                 'beforeend',
               )
             }
-            newCount++
           }
+          newCount++
         }
       }
     }

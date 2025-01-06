@@ -1,8 +1,13 @@
 # Changelog
 
+## 1.5.0
+
+- `match` function added.
+- Fix bug when morphing nodes.
+
 ## 1.4.0
 
-- Conditional function added.
+- `conditional` function added.
 - Fix bug when adding new nodes.
 
 ## 1.3.8

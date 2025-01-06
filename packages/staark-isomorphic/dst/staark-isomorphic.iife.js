@@ -205,6 +205,14 @@
     }
   });
 
+  // ../staark-common/src/match.ts
+  var match = (pattern, lookup) => {
+    if (lookup && pattern in lookup && lookup[pattern]) {
+      return arrayify(lookup[pattern]);
+    }
+    return [];
+  };
+
   // ../staark-common/src/memo.ts
   var memo = (render, memory) => ({
     _: marker,
@@ -428,6 +436,7 @@
     conditional,
     factory,
     fctory,
+    match,
     memo,
     nde,
     node,

@@ -180,7 +180,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               try {
                 value(event);
               } catch (error) {
-                console.warn("listener error", error);
+                console.error("listener error", error);
               }
               listenerCount--;
               updateAbstracts();
@@ -222,7 +222,11 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               }
             } else {
               if (type === "boolean") {
-                value = value ? "true" : "false";
+                if (!value) {
+                  element.removeAttribute(name);
+                  continue;
+                }
+                value = "true";
               } else if (type !== "string") {
                 value = value.toString();
               }
@@ -303,7 +307,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             const oldAbstract = oldChildAbstracts[oldIndex];
             if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
               matched = true;
-              if (newIndex !== oldIndex) {
+              if (newIndex !== oldIndex + newCount) {
                 element.insertBefore(
                   element.childNodes[oldIndex + newCount],
                   element.childNodes[newIndex]
@@ -386,7 +390,6 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 "beforeend"
               );
             }
-            newCount++;
           } else {
             childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
             const insertAdjacentText = (element2, elementAbstract2, position) => {
@@ -421,8 +424,8 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 "beforeend"
               );
             }
-            newCount++;
           }
+          newCount++;
         }
       }
     }

@@ -347,6 +347,18 @@
   var identifierCount = 0;
   var uniqueIdentifier = () => "-" + identifierCount++;
 
+  // src/match.ts
+  var match_exports = {};
+  __export(match_exports, {
+    match: () => match
+  });
+  var match = (pattern, lookup) => {
+    if (lookup && pattern in lookup && lookup[pattern]) {
+      return arrayify(lookup[pattern]);
+    }
+    return [];
+  };
+
   // src/memo.ts
   var memo_exports = {};
   __export(memo_exports, {
@@ -398,6 +410,7 @@
     fctory: fctory_exports,
     identifier: identifier_exports,
     marker: marker_exports,
+    match: match_exports,
     memo: memo_exports,
     nde: nde_exports,
     node: node_exports,

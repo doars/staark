@@ -78,7 +78,7 @@ export const mount = (
               try {
                 (value as NodeAttributeListener)(event)
               } catch (error) {
-                console.warn('listener error', error)
+                console.error('listener error', error)
               }
               listenerCount--
               updateAbstracts()
@@ -126,7 +126,11 @@ export const mount = (
             } else {
               // Ensure it is of type string.
               if (type === 'boolean') {
-                value = value ? 'true' : 'false'
+                if (!value) {
+                  element.removeAttribute(name)
+                  continue
+                }
+                value = 'true'
               } else if (type !== 'string') {
                 value = value.toString()
               }
@@ -232,7 +236,8 @@ export const mount = (
             1,
             ...memoAbstracts,
           )
-          // NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that as just inserted in.
+          // NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that was just inserted in.
+          // We could have the resolve memoization return whether it was re-rendered, but this also means the nodes are not allowed to be re-used when morphing the DOM and this needs to be prevented by marking them as such.
           newIndex--
           continue
         }
@@ -241,7 +246,7 @@ export const mount = (
         let matched = false
         if (oldChildAbstracts) {
           for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
-            const oldAbstract = oldChildAbstracts[oldIndex];
+            const oldAbstract = oldChildAbstracts[oldIndex]
             if (
               (
                 (oldAbstract as NodeAbstract).t
@@ -254,7 +259,7 @@ export const mount = (
             ) {
               matched = true
 
-              if (newIndex !== oldIndex) {
+              if (newIndex !== (oldIndex + newCount)) {
                 // Move node in dom.
                 element.insertBefore(
                   element.childNodes[oldIndex + newCount],
@@ -270,6 +275,7 @@ export const mount = (
                   )
                 )
               }
+
               if ((newAbstract as NodeAbstract).t) {
                 updateAttributes(
                   (element.childNodes[newIndex] as Element),
@@ -316,7 +322,7 @@ export const mount = (
 
             const insertAdjacentElement = (
               element: Node,
-              elementAbstract?: NodeContent | null | undefined,
+              elementAbstract?: NodeContent | null,
               position?: InsertPosition,
             ) => {
               if (
@@ -359,7 +365,6 @@ export const mount = (
                 'beforeend',
               )
             }
-            newCount++
           } else {
             childElement = (
               typeof (newAbstract) === 'string'
@@ -369,7 +374,7 @@ export const mount = (
 
             const insertAdjacentText = (
               element: Node,
-              elementAbstract?: NodeContent | null | undefined,
+              elementAbstract?: NodeContent | null,
               position?: InsertPosition,
             ) => {
               if (
@@ -412,8 +417,8 @@ export const mount = (
                 'beforeend',
               )
             }
-            newCount++
           }
+          newCount++
         }
       }
     }

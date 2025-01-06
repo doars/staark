@@ -191,6 +191,14 @@ var fctory = new Proxy({}, {
   }
 });
 
+// ../staark-common/src/match.ts
+var match = (pattern, lookup) => {
+  if (lookup && pattern in lookup && lookup[pattern]) {
+    return arrayify(lookup[pattern]);
+  }
+  return [];
+};
+
 // ../staark-common/src/nde.ts
 var nde = (selector, contents) => {
   const [type, attributes] = selectorToTokenizer(selector);
@@ -283,6 +291,10 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
             }
           } else {
             if (type === "boolean") {
+              if (!value) {
+                element.removeAttribute(name);
+                continue;
+              }
               value = "true";
             } else if (type !== "string") {
               value = value.toString();
@@ -330,7 +342,7 @@ var prepare = (rootElement, oldAbstractTree) => {
             const oldAbstract = oldChildAbstracts[oldIndex];
             if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
               matched = true;
-              if (newIndex !== oldIndex) {
+              if (newIndex !== oldIndex + newCount) {
                 element.insertBefore(
                   element.childNodes[oldIndex + newCount],
                   element.childNodes[newIndex]
@@ -382,7 +394,7 @@ var prepare = (rootElement, oldAbstractTree) => {
               );
             }
             const insertAdjacentElement = (element2, elementAbstract2, position) => {
-              if (!elementAbstract2 || elementAbstract2.t) {
+              if (position && (!elementAbstract2 || elementAbstract2.t)) {
                 element2.insertAdjacentElement(
                   position,
                   childElement
@@ -402,9 +414,9 @@ var prepare = (rootElement, oldAbstractTree) => {
               );
             } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
               insertAdjacentElement(
-                element.childNodes[newIndex],
-                oldChildAbstracts[newIndex + newCount],
-                "beforebegin"
+                element.childNodes[newIndex]
+                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                // 'beforebegin',
               );
             } else {
               insertAdjacentElement(
@@ -413,11 +425,10 @@ var prepare = (rootElement, oldAbstractTree) => {
                 "beforeend"
               );
             }
-            newCount++;
           } else {
             childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
             const insertAdjacentText = (element2, elementAbstract2, position) => {
-              if (!elementAbstract2 || elementAbstract2.t) {
+              if (position && (!elementAbstract2 || elementAbstract2.t)) {
                 element2.insertAdjacentText(
                   position,
                   childElement
@@ -437,9 +448,9 @@ var prepare = (rootElement, oldAbstractTree) => {
               );
             } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
               insertAdjacentText(
-                element.childNodes[newIndex],
-                oldChildAbstracts[newIndex + newCount],
-                "beforebegin"
+                element.childNodes[newIndex]
+                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
+                // 'beforebegin',
               );
             } else {
               insertAdjacentText(
@@ -448,8 +459,8 @@ var prepare = (rootElement, oldAbstractTree) => {
                 "beforeend"
               );
             }
-            newCount++;
           }
+          newCount++;
         }
       }
     }
@@ -485,6 +496,7 @@ export {
   conditional,
   factory,
   fctory,
+  match,
   nde,
   node,
   prepare,

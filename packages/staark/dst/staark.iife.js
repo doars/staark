@@ -205,6 +205,14 @@
     }
   });
 
+  // ../staark-common/src/match.ts
+  var match = (pattern, lookup) => {
+    if (lookup && pattern in lookup && lookup[pattern]) {
+      return arrayify(lookup[pattern]);
+    }
+    return [];
+  };
+
   // ../staark-common/src/memo.ts
   var memo = (render, memory) => ({
     _: marker,
@@ -377,7 +385,7 @@
                 try {
                   value(event);
                 } catch (error) {
-                  console.warn("listener error", error);
+                  console.error("listener error", error);
                 }
                 listenerCount--;
                 updateAbstracts();
@@ -419,7 +427,11 @@
                 }
               } else {
                 if (type === "boolean") {
-                  value = value ? "true" : "false";
+                  if (!value) {
+                    element.removeAttribute(name);
+                    continue;
+                  }
+                  value = "true";
                 } else if (type !== "string") {
                   value = value.toString();
                 }
@@ -455,9 +467,9 @@
     let oldMemoList = [];
     let newMemoList = [];
     const resolveMemoization = (memoAbstract) => {
-      let match = oldMemoList.find((oldMemo) => oldMemo.r === memoAbstract.r && equalRecursive(oldMemo.m, memoAbstract.m));
-      if (!match) {
-        match = {
+      let match2 = oldMemoList.find((oldMemo) => oldMemo.r === memoAbstract.r && equalRecursive(oldMemo.m, memoAbstract.m));
+      if (!match2) {
+        match2 = {
           c: arrayify(
             memoAbstract.r(
               state,
@@ -468,11 +480,11 @@
           r: memoAbstract.r
         };
       }
-      if (!newMemoList.includes(match)) {
-        newMemoList.push(match);
+      if (!newMemoList.includes(match2)) {
+        newMemoList.push(match2);
       }
       return cloneRecursive(
-        match.c
+        match2.c
       );
     };
     const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
@@ -500,7 +512,7 @@
               const oldAbstract = oldChildAbstracts[oldIndex];
               if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
                 matched = true;
-                if (newIndex !== oldIndex) {
+                if (newIndex !== oldIndex + newCount) {
                   element.insertBefore(
                     element.childNodes[oldIndex + newCount],
                     element.childNodes[newIndex]
@@ -583,7 +595,6 @@
                   "beforeend"
                 );
               }
-              newCount++;
             } else {
               childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
               const insertAdjacentText = (element2, elementAbstract2, position) => {
@@ -618,8 +629,8 @@
                   "beforeend"
                 );
               }
-              newCount++;
             }
+            newCount++;
           }
         }
       }
@@ -706,6 +717,7 @@
     conditional,
     factory,
     fctory,
+    match,
     memo,
     mount,
     nde,
