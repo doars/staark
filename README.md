@@ -27,6 +27,8 @@ If you are using the libraries and are running into an problem that you don't kn
 
 ## In the wild
 
+- [*Toaln*](https://github.com/RedKenrok/webapp-toaln#readme) is a simple language learning app which utilises the power of Large Language Models to practise.
+
 If you are using _staark_ then please let me know, I would love to hear about it!
 
 ## Future ideas
