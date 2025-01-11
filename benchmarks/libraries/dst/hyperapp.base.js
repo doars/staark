@@ -1,32 +1,3 @@
-var __defProp = Object.defineProperty;
-var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __propIsEnum = Object.prototype.propertyIsEnumerable;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues = (a, b) => {
-  for (var prop in b || (b = {}))
-    if (__hasOwnProp.call(b, prop))
-      __defNormalProp(a, prop, b[prop]);
-  if (__getOwnPropSymbols)
-    for (var prop of __getOwnPropSymbols(b)) {
-      if (__propIsEnum.call(b, prop))
-        __defNormalProp(a, prop, b[prop]);
-    }
-  return a;
-};
-var __objRest = (source, exclude) => {
-  var target = {};
-  for (var prop in source)
-    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
-      target[prop] = source[prop];
-  if (source != null && __getOwnPropSymbols)
-    for (var prop of __getOwnPropSymbols(source)) {
-      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
-        target[prop] = source[prop];
-    }
-  return target;
-};
-
 // ../../node_modules/hyperapp/index.js
 var SSR_NODE = 1;
 var TEXT_NODE = 3;
@@ -54,7 +25,7 @@ var createClass = (obj) => {
   return out;
 };
 var shouldRestart = (a, b) => {
-  for (var k in __spreadValues(__spreadValues({}, a), b)) {
+  for (var k in { ...a, ...b }) {
     if (typeof (isArray(a[k]) ? a[k][0] : a[k]) === "function") {
       b[k] = a[k];
     } else if (a[k] !== b[k]) return true;
@@ -77,7 +48,7 @@ var patchSubs = (oldSubs, newSubs = EMPTY_ARR, dispatch) => {
 var getKey = (vdom) => vdom == null ? vdom : vdom.key;
 var patchProperty = (node, key, oldValue, newValue, listener, isSvg) => {
   if (key === "style") {
-    for (var k in __spreadValues(__spreadValues({}, oldValue), newValue)) {
+    for (var k in { ...oldValue, ...newValue }) {
       oldValue = newValue == null || newValue[k] == null ? "" : newValue[k];
       if (k[0] === "-") {
         node[key].setProperty(k, oldValue);
@@ -142,7 +113,7 @@ var patch = (parent, node, oldVNode, newVNode, listener, isSvg) => {
     var oldTail = oldVKids.length - 1;
     var newTail = newVKids.length - 1;
     isSvg = isSvg || newVNode.tag === "svg";
-    for (var i in __spreadValues(__spreadValues({}, oldProps), newProps)) {
+    for (var i in { ...oldProps, ...newProps }) {
       if ((i === "value" || i === "selected" || i === "checked" ? node[i] : oldProps[i]) !== newProps[i]) {
         patchProperty(node, i, oldProps[i], newProps[i], listener, isSvg);
       }
@@ -288,27 +259,21 @@ var recycleNode = (node) => node.nodeType === TEXT_NODE ? text(node.nodeValue, n
   SSR_NODE,
   node
 );
-var createVNode = (tag, _a, children, type, node) => {
-  var _b = _a, { key } = _b, props = __objRest(_b, ["key"]);
-  return {
-    tag,
-    props,
-    key,
-    children,
-    type,
-    node
-  };
-};
+var createVNode = (tag, { key, ...props }, children, type, node) => ({
+  tag,
+  props,
+  key,
+  children,
+  type,
+  node
+});
 var memo = (tag, memo2) => ({ tag, memo: memo2 });
 var text = (value, node) => createVNode(value, EMPTY_OBJ, EMPTY_ARR, TEXT_NODE, node);
-var h = (tag, _a, children = EMPTY_ARR) => {
-  var _b = _a, { class: c } = _b, props = __objRest(_b, ["class"]);
-  return createVNode(
-    tag,
-    __spreadValues(__spreadValues({}, props), c ? { class: createClass(c) } : EMPTY_OBJ),
-    isArray(children) ? children : [children]
-  );
-};
+var h = (tag, { class: c, ...props }, children = EMPTY_ARR) => createVNode(
+  tag,
+  { ...props, ...c ? { class: createClass(c) } : EMPTY_OBJ },
+  isArray(children) ? children : [children]
+);
 var app = ({
   node,
   view,

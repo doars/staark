@@ -1,7 +1,4 @@
 import {
-  cloneRecursive,
-} from '../utilities/clone.js'
-import {
   delay,
 } from '../utilities/delay.js'
 import { getType } from '../utilities/type.js'
@@ -63,7 +60,7 @@ export const create = (
 ) => {
   initialOptions = {
     ...DEFAULT_VALUES,
-    ...cloneRecursive(initialOptions),
+    ...structuredClone(initialOptions),
   }
 
   let lastExecutionTime = 0
@@ -290,7 +287,7 @@ export const create = (
   ): Promise<[Error | null, Response | null, any]> => {
     const options = {
       ...initialOptions,
-      ...cloneRecursive(sendOptions),
+      ...structuredClone(sendOptions),
     }
     if (initialOptions.headers) {
       options.headers = {

@@ -51,18 +51,28 @@
         }
       )
 
+      let startTime
+      let done = false
+      const verifyAndLog = () => {
+        const time = performance.now() - startTime
+        if (
+          !done &&
+          document.querySelector('ul>li:last-child').innerText === 'test'
+        ) {
+          done = true
+          displayResults(time)
+        }
+      }
       const run = (
       ) => {
-        const startTime = performance.now()
+        startTime = performance.now()
 
         for (let i = 0; i < ITERATIONS; i++) {
           state.todos.push('test')
         }
 
-        requestAnimationFrame(() => {
-          const time = performance.now() - startTime
-          displayResults(time)
-        })
+        Promise.resolve().then(verifyAndLog)
+        requestAnimationFrame(verifyAndLog)
       }
 
       setTimeout(run, 500)

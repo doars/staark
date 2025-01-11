@@ -41,13 +41,12 @@
 
   // ../staark-common/src/element.ts
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (let i = 0; i < element.childNodes.length; i++) {
       const childNode = element.childNodes[i];
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
         let attributes = {};
@@ -153,7 +152,6 @@
   };
   var prepare = (rootElement, oldAbstractTree) => {
     const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
-      var _a, _b, _c;
       let newIndex = 0;
       let newCount = 0;
       if (newChildAbstracts) {
@@ -235,7 +233,7 @@
                   elementAbstract,
                   "afterbegin"
                 );
-              } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
+              } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
                 insertAdjacentElement(
                   element.childNodes[newIndex]
                   // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -269,7 +267,7 @@
                   elementAbstract,
                   "afterbegin"
                 );
-              } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
+              } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
                 insertAdjacentText(
                   element.childNodes[newIndex]
                   // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -287,7 +285,7 @@
           }
         }
       }
-      const elementLength = ((_c = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _c : 0) + newCount;
+      const elementLength = (oldChildAbstracts?.length ?? 0) + newCount;
       if (elementLength >= newIndex) {
         for (let i = elementLength - 1; i >= newIndex; i--) {
           element.childNodes[i].remove();
@@ -304,7 +302,7 @@
         oldAbstractTree = void 0;
       }
     }
-    oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
+    oldAbstractTree ??= childrenToNodes(_rootElement);
     return (newAbstractTree) => {
       newAbstractTree = arrayify(newAbstractTree);
       updateElementTree(

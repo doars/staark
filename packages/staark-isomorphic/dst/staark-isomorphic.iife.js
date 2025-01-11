@@ -27,7 +27,7 @@
     if (condition) {
       return arrayify(onTruth);
     }
-    return arrayify(onFalse != null ? onFalse : []);
+    return arrayify(onFalse ?? []);
   };
 
   // ../staark-common/src/marker.ts
@@ -327,7 +327,7 @@
     return rendered;
   };
   var stringifyPatch = (abstractTree) => {
-    abstractTree = arrayify(abstractTree != null ? abstractTree : []);
+    abstractTree = arrayify(abstractTree ?? []);
     return [
       renderElements(
         abstractTree
@@ -387,15 +387,15 @@
       return String(data);
     }
     if (typeof data === "string") {
-      return '"'.concat(data.replace(/"/g, '\\"'), '"');
+      return `"${data.replace(/"/g, '\\"')}"`;
     }
     if (Array.isArray(data)) {
-      return "[".concat(data.map((item) => customStringify(item)).join(","), "]");
+      return `[${data.map((item) => customStringify(item)).join(",")}]`;
     }
     if (typeof data === "object") {
       const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
-      const objectContent = keys.map((key) => '"'.concat(key, '":').concat(customStringify(data[key]))).join(",");
-      return "{".concat(objectContent, "}");
+      const objectContent = keys.map((key) => `"${key}":${customStringify(data[key])}`).join(",");
+      return `{${objectContent}}`;
     }
     return "null";
   };

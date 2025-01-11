@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.0
+
+- Increased browser compatibility versions of pre-build scripts to major browsers since January 2022.
+
 ## 1.4.0
 
 - `match` function added.

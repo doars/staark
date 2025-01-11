@@ -46,26 +46,6 @@
     ];
   };
 
-  // ../staark-common/src/clone.ts
-  var cloneRecursive = (value) => {
-    if (typeof value === "object") {
-      if (Array.isArray(value)) {
-        const clone = [];
-        for (let i = 0; i < value.length; i++) {
-          clone.push(cloneRecursive(value[i]));
-        }
-        value = clone;
-      } else {
-        const clone = {};
-        for (const key in value) {
-          clone[key] = cloneRecursive(value[key]);
-        }
-        value = clone;
-      }
-    }
-    return value;
-  };
-
   // ../staark-common/src/compare.ts
   var equalRecursive = (valueA, valueB) => {
     if (valueA === valueB) {
@@ -94,13 +74,12 @@
 
   // ../staark-common/src/element.ts
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (let i = 0; i < element.childNodes.length; i++) {
       const childNode = element.childNodes[i];
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
         let attributes = {};
@@ -292,12 +271,11 @@
       if (!newMemoList.includes(match)) {
         newMemoList.push(match);
       }
-      return cloneRecursive(
+      return structuredClone(
         match.c
       );
     };
     const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
-      var _a, _b, _c;
       let newIndex = 0;
       let newCount = 0;
       if (newChildAbstracts) {
@@ -391,7 +369,7 @@
                   elementAbstract,
                   "afterbegin"
                 );
-              } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
+              } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
                 insertAdjacentElement(
                   element.childNodes[newIndex]
                   // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -425,7 +403,7 @@
                   elementAbstract,
                   "afterbegin"
                 );
-              } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
+              } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
                 insertAdjacentText(
                   element.childNodes[newIndex]
                   // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -443,7 +421,7 @@
           }
         }
       }
-      const elementLength = ((_c = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _c : 0) + newCount;
+      const elementLength = (oldChildAbstracts?.length ?? 0) + newCount;
       if (elementLength >= newIndex) {
         for (let i = elementLength - 1; i >= newIndex; i--) {
           element.childNodes[i].remove();
@@ -453,16 +431,17 @@
     if (typeof initialState === "string") {
       initialState = JSON.parse(initialState);
     }
-    initialState != null ? initialState : initialState = {};
+    initialState ??= {};
     let proxyChanged = true;
+    const triggerUpdate = () => {
+      if (!proxyChanged) {
+        proxyChanged = true;
+        Promise.resolve().then(updateAbstracts);
+      }
+    };
     let state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
       initialState,
-      () => {
-        proxyChanged = true;
-        requestAnimationFrame(
-          updateAbstracts
-        );
-      }
+      triggerUpdate
     );
     const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(
       document.createElement("div")
@@ -474,7 +453,7 @@
         oldAbstractTree = void 0;
       }
     }
-    oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
+    oldAbstractTree ??= childrenToNodes(_rootElement);
     let active = true, updating = false;
     const updateAbstracts = () => {
       if (active && !updating && // Only update if changes to the state have been made.
@@ -501,12 +480,7 @@
     };
     updateAbstracts();
     return [
-      () => {
-        proxyChanged = true;
-        requestAnimationFrame(
-          updateAbstracts
-        );
-      },
+      triggerUpdate,
       () => {
         if (active) {
           active = false;

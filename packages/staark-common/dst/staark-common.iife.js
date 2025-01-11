@@ -107,7 +107,7 @@
     if (condition) {
       return arrayify(onTruth);
     }
-    return arrayify(onFalse != null ? onFalse : []);
+    return arrayify(onFalse ?? []);
   };
 
   // src/element.ts
@@ -145,13 +145,12 @@
 
   // src/element.ts
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (let i = 0; i < element.childNodes.length; i++) {
       const childNode = element.childNodes[i];
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
         let attributes = {};

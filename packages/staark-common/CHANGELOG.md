@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- Added deprecation message to `cloneRecursive` function. Use `window.structuredClone` instead.
+
 ## 1.4.0
 
 - `match` function added.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+
+- Removed `@doars/staark-common`'s `cloneRecursive` function dependency in favour of `window.structuredClone` call. Increasing compatibility and reducing build size at the cost of compatibility with browser versions older than three years.
+- Switched from using `requestAnimationFrame` call to delay re-rendering to `Promise.resolve().then`. This decreases the wait time at the risk that a promise resolves after the re-rendering causing another. Because only promises that are scheduled to resolve after the first mutation to the state has happened can cause this the chance of this is deemed small enough to try this out.
+
 ## 1.5.0
 
 - `match` function added.

@@ -1,3 +1,9 @@
+/**
+ * Creates a deep clone of a javascript value.
+ * @deprecated Use window.structuredClone instead, is able to clone more data and reduces build size. However only supported in most browsers since January 2022.
+ * @param value Data to clone.
+ * @returns Clone of the data.
+ */
 export const cloneRecursive = (
   value: any,
 ) => {

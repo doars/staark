@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+
+- Removed `cloneRecursive` function in favour of `window.structuredClone` call. Increasing compatibility and reducing build size at the cost of compatibility with browser versions older than three years.
+
 ## 1.3.0
 
 - Moved cache function to examples.

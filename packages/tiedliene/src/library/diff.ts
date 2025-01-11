@@ -1,7 +1,3 @@
-import {
-  cloneRecursive,
-} from '@doars/staark-common/src/clone.js'
-
 export interface Change {
   type: 'delete' | 'set',
   path: string[],
@@ -23,7 +19,7 @@ const setValueAtPath = (
     }
     current = current[key]
   }
-  current[path[path.length - 1]] = cloneRecursive(value)
+  current[path[path.length - 1]] = structuredClone(value)
 }
 
 // Function to delete a value at a given path.
@@ -61,7 +57,7 @@ export const determineDiff = (
       changes.unshift({
         type: 'delete',
         path: currentPath,
-        old: cloneRecursive(before[key]),
+        old: structuredClone(before[key]),
       })
     } else if (
       typeof before[key] === 'object'
@@ -76,8 +72,8 @@ export const determineDiff = (
       changes.unshift({
         type: 'set',
         path: currentPath,
-        old: cloneRecursive(before[key]),
-        new: cloneRecursive(after[key]),
+        old: structuredClone(before[key]),
+        new: structuredClone(after[key]),
       })
     }
   }
@@ -88,7 +84,7 @@ export const determineDiff = (
       changes.unshift({
         type: 'set',
         path: [...path, key],
-        new: cloneRecursive(after[key]),
+        new: structuredClone(after[key]),
       })
     }
   }

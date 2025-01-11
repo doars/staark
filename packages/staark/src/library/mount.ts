@@ -2,9 +2,6 @@ import {
   arrayify,
 } from '@doars/staark-common/src/array.js'
 import {
-  cloneRecursive,
-} from '@doars/staark-common/src/clone.js'
-import {
   equalRecursive,
 } from '@doars/staark-common/src/compare.js'
 import {
@@ -208,7 +205,7 @@ export const mount = (
       newMemoList.push(match)
     }
     // Return the resulting nodes.
-    return cloneRecursive(
+    return structuredClone(
       match.c,
     )
   }
@@ -437,17 +434,20 @@ export const mount = (
   }
   initialState ??= {}
   let proxyChanged = true
+  const triggerUpdate = (
+  ): void => {
+    if (!proxyChanged) {
+      proxyChanged = true
+      Promise.resolve()
+        .then(updateAbstracts)
+    }
+  }
   let state = (
     Object.getPrototypeOf(initialState) === Proxy.prototype
       ? initialState
       : proxify(
         initialState,
-        (): void => {
-          proxyChanged = true
-          requestAnimationFrame(
-            updateAbstracts,
-          )
-        },
+        triggerUpdate,
       )
   )
 
@@ -508,12 +508,7 @@ export const mount = (
   updateAbstracts()
 
   return [
-    (): void => {
-      proxyChanged = true
-      requestAnimationFrame(
-        updateAbstracts,
-      )
-    },
+    triggerUpdate,
     (): void => {
       if (active) {
         active = false

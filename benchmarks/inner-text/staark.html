@@ -53,22 +53,32 @@
         state.todos.push('original')
       }
 
+      let startTime
+      let done = false
+      const verifyAndLog = () => {
+        const time = performance.now() - startTime
+        if (
+          !done &&
+          document.querySelector('ul>li:last-child').innerText === 'updated'
+        ) {
+          done = true
+          displayResults(time)
+        }
+      }
       const run = (
       ) => {
-        const startTime = performance.now()
+        startTime = performance.now()
 
         state.todos.splice(0, state.todos.length)
         for (let i = 0; i < ITERATIONS; i++) {
           state.todos.push('updated')
         }
 
-        requestAnimationFrame(() => {
-          const time = performance.now() - startTime
-          displayResults(time)
-        })
+        Promise.resolve().then(verifyAndLog)
+        requestAnimationFrame(verifyAndLog)
       }
 
-      setTimeout(run, 500)
+      setTimeout(run, 250)
     </script>
   </body>
 
