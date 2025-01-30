@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2
+
+- Allow `conditional` and `match` to be given function that resolve to nodes.
+
 ## 1.4.1
 
 - Added deprecation message to `cloneRecursive` function. Use `window.structuredClone` instead.

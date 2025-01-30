@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+      * {
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        font-size: 1rem;
+      }
+
+      p {
+        font-size: 1rem;
+        margin: 0.5em 0;
+      }
+
+      .title {
+        text-align: center;
+        font-size: 1.5rem;
+        margin: 0;
+        margin: 0.75em 0;
+        font-weight: bold;
+      }
+
+      .stage {
+        margin: 2rem;
+      }
+
+      .uploader {
+        height: calc(100vh - 4rem);
+        border: 0.125em dashed black;
+        border-radius: 1rem;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .uploader .title {
+        margin-top: 0;
+      }
+
+      .compare {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 1rem;
+      }
+
+      .compare .title {
+        text-align: center;
+      }
+
+      .compare .image {
+        max-width: calc(50% - 2rem);
+        max-height: calc(100vh - 2rem);
+        object-fit: contain;
+        height: auto;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .compare .image:hover {
+        transform: scale(1.05);
+      }
+
+      .ranking {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        align-items: center;
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+        justify-content: center;
+        gap: 1rem;
+      }
+
+      .ranking .title {
+        text-align: center;
+      }
+
+      .ranking li {
+        align-items: center;
+      }
+
+      .ranking li p {
+        display: block;
+        margin-bottom: 0.5em;
+        font-size: 2em;
+      }
+
+      .ranking .image {
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script type="module">
+      import {
+        mount,
+        node,
+      } from '/packages/staark/dst/staark.js'
+
+      const rankImages = (state) => {
+        if (!state.queue) {
+          // Initialize the ranking process
+          state.queue = [...state.images]
+          state.ranked = []
+        }
+
+        if (state.preferred !== null) {
+          const [imageA, imageB] = state.toCompare
+          if (state.preferred === 'A') {
+            state.ranked.push(imageA)
+            state.queue.push(imageB)
+          } else {
+            state.ranked.push(imageB)
+            state.queue.push(imageA)
+          }
+          state.preferred = null
+        }
+
+        // If only one image remains, ranking is complete
+        if (state.queue.length === 1) {
+          state.ranked.push(state.queue.pop())
+          state.stage = 'result'
+          return
+        }
+
+        // Get the next two images to compare
+        if (state.queue.length > 1) {
+          state.toCompare = [
+            state.queue.shift(),
+            state.queue.shift(),
+          ]
+        }
+      }
+
+      const randomizeOrder = (list) => {
+        for (let i = list.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          const temp = list[i]
+          list[i] = list[j]
+          list[j] = temp
+        }
+        return list
+      }
+
+      mount(
+        '#app',
+        (state) => {
+          if (state.stage === 'upload') {
+            return node('div', {
+              class: 'stage',
+            }, [
+              node('div', {
+                class: 'uploader',
+                dragover: (event) => event.preventDefault(),
+                drop: (event) => {
+                  event.preventDefault()
+                  let files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'))
+                  console.log('files', files)
+                  files = randomizeOrder(files)
+                  console.log('files', files)
+                  state.images = files.map((file, index) => ({
+                    index: index,
+                    name: file.name.replace(/\.[^/.]+$/, '').toUpperCase(),
+                    url: URL.createObjectURL(file),
+                  }))
+                  rankImages(state)
+                  state.stage = 'compare'
+                },
+              }, node('p', {
+                class: 'title',
+              }, 'Drag and drop your image files here')),
+            ])
+          }
+
+          if (state.stage === 'compare') {
+            const [imageA, imageB] = state.toCompare
+            return node('div', {
+              class: 'stage',
+            }, [
+              node('p', {
+                class: 'title',
+              }, 'Select your preferred image'),
+              node('div', {
+                class: 'compare',
+              }, [
+                node('img', {
+                  class: 'image',
+                  src: imageA.url,
+                  click: () => {
+                    state.preferred = 'A'
+                    rankImages(state)
+                  },
+                }),
+                node('img', {
+                  class: 'image',
+                  src: imageB.url,
+                  click: () => {
+                    state.preferred = 'B'
+                    rankImages(state)
+                  },
+                }),
+              ]),
+            ])
+          }
+
+          if (state.stage === 'result') {
+            return node('div', {
+              class: 'stage',
+            }, [
+              node('p', {
+                class: 'title',
+              }, 'Final Ranking'),
+              node('ol', {
+                class: 'ranking',
+              },
+                state.ranked.map(image => node('li', [
+                  node('p', image.name),
+                  node('img', {
+                    src: image.url,
+                    class: 'image',
+                  }),
+                ])),
+              ),
+            ])
+          }
+
+          return node('div', 'Unknown stage reached.')
+        },
+        {
+          stage: 'upload',
+          images: [],
+          toCompare: [],
+          ranked: [],
+          queue: null,
+          preferred: null,
+        },
+      )
+    </script>
+  </body>
+
+</html>

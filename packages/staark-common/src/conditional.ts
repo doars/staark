@@ -1,13 +1,23 @@
 import { arrayify } from './array.js'
 import { NodeAbstract } from './node.js'
 
+type ResolveFunction = () => NodeAbstract[] | NodeAbstract | null | undefined
+
 export const conditional = (
   condition: any,
-  onTruth: NodeAbstract[] | NodeAbstract,
-  onFalse?: NodeAbstract[] | NodeAbstract,
+  onTruth: NodeAbstract[] | NodeAbstract | ResolveFunction,
+  onFalse?: NodeAbstract[] | NodeAbstract | ResolveFunction,
 ): NodeAbstract[] => {
-  if (condition) {
-    return arrayify(onTruth)
+  let result: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined = (
+    condition
+      ? onTruth
+      : onFalse
+  )
+  if (typeof (result) === 'function') {
+    result = result()
   }
-  return arrayify(onFalse ?? [])
+  if (result) {
+    return arrayify(result)
+  }
+  return []
 }
