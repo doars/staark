@@ -300,7 +300,7 @@ export const prepare = (
                 (element.parentNode as Element)
                   .insertBefore(
                     document.createTextNode(childElement as string),
-                    element.nextSibling,
+                    element,
                   )
               }
             }

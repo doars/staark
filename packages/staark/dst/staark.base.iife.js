@@ -393,7 +393,7 @@
                 } else {
                   element2.parentNode.insertBefore(
                     document.createTextNode(childElement),
-                    element2.nextSibling
+                    element2
                   );
                 }
               };
@@ -456,9 +456,7 @@
     oldAbstractTree ??= childrenToNodes(_rootElement);
     let active = true, updating = false;
     const updateAbstracts = () => {
-      if (active && !updating && // Only update if changes to the state have been made.
-      proxyChanged && // Don't update while handling listeners.
-      listenerCount <= 0) {
+      if (active && !updating && proxyChanged && listenerCount <= 0) {
         updating = true;
         proxyChanged = false;
         let newAbstractTree = arrayify(

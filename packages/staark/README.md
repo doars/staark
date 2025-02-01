@@ -79,7 +79,33 @@ attributes = {
 
 As you can see in the example above the style properties are automatically converted from camel case to kebab case. This is not done for class names since capital letters could be intended.
 
-All the functionality above is part of the base library there is an expanded version which has a bit more non-essential functionality to make development simpler. One of which is the `factory` object, it can make creating nodes a little simpler. You can deconstruct it to create `node` function which don't need the node type as the first argument.
+All the functionality above is part of the base library there is an expanded version which has a bit more non-essential functionality to make development simpler. The first of these being the `conditional` and `match` functions. These allow you to easily add branching into rendering the node tree. The `conditional` function takes in a statement, if the statement is true the first parameter will be returned, otherwise the second parameter will be returned. For the `match` function the first parameter is the key of one of the entries into the second parameter, the matching one will be returned by the function.
+
+```JavaScript
+import { conditional, match, mount, node as n } from '@doars/staark'
+
+mount(
+  document.body.firstSibling,
+  (state) => n('div', [
+    ...conditional(
+      state.count === 0,
+      'Count is zero',
+      'Count is non-zero',
+    ),
+
+    ...match('option-' + state.count, {
+      'option-0': 'Count is zero',
+      'option-1': 'Count is one',
+      'option-2': 'Count is three',
+    }),
+  ]),
+  { count: 0 },
+)
+```
+
+The returned results are always an array, hence the spread operator being used. Optionally the first and second parameters of the `conditional` call, as well as the properties on the `match`'s second parameter are allowed to be functions. These will be evaluated when picked reducing the amount of wasted abstract nodes that would otherwise have been created for nothing.
+
+Another useful tool is the `factory` object, it can make creating nodes a little simpler. You can deconstruct it to create `node` function which don't need the node type as the first argument.
 
 ```JavaScript
 import { factory, mount } from '@doars/staark'

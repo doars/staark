@@ -10,10 +10,14 @@ var arrayify = function(data) {
 
 // ../staark-common/src/conditional.ts
 var conditional = (condition, onTruth, onFalse) => {
-  if (condition) {
-    return arrayify(onTruth);
+  let result = condition ? onTruth : onFalse;
+  if (typeof result === "function") {
+    result = result();
   }
-  return arrayify(onFalse ?? []);
+  if (result) {
+    return arrayify(result);
+  }
+  return [];
 };
 
 // ../staark-common/src/marker.ts
@@ -194,7 +198,14 @@ var fctory = new Proxy({}, {
 // ../staark-common/src/match.ts
 var match = (pattern, lookup) => {
   if (lookup && pattern in lookup && lookup[pattern]) {
-    return arrayify(lookup[pattern]);
+    let result = lookup[pattern];
+    if (typeof result === "function") {
+      result = result();
+      if (!result) {
+        return [];
+      }
+    }
+    return arrayify(result);
   }
   return [];
 };
@@ -570,7 +581,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               } else {
                 element2.parentNode.insertBefore(
                   document.createTextNode(childElement),
-                  element2.nextSibling
+                  element2
                 );
               }
             };
@@ -633,9 +644,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   oldAbstractTree ??= childrenToNodes(_rootElement);
   let active = true, updating = false;
   const updateAbstracts = () => {
-    if (active && !updating && // Only update if changes to the state have been made.
-    proxyChanged && // Don't update while handling listeners.
-    listenerCount <= 0) {
+    if (active && !updating && proxyChanged && listenerCount <= 0) {
       updating = true;
       proxyChanged = false;
       let newAbstractTree = arrayify(

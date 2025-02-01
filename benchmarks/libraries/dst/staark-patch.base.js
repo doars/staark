@@ -243,7 +243,7 @@ var prepare = (rootElement, oldAbstractTree) => {
               } else {
                 element2.parentNode.insertBefore(
                   document.createTextNode(childElement),
-                  element2.nextSibling
+                  element2
                 );
               }
             };

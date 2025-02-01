@@ -64,10 +64,14 @@ var equalRecursive = (valueA, valueB) => {
 
 // src/conditional.ts
 var conditional = (condition, onTruth, onFalse) => {
-  if (condition) {
-    return arrayify(onTruth);
+  let result = condition ? onTruth : onFalse;
+  if (typeof result === "function") {
+    result = result();
   }
-  return arrayify(onFalse ?? []);
+  if (result) {
+    return arrayify(result);
+  }
+  return [];
 };
 
 // src/marker.ts
@@ -279,7 +283,14 @@ var uniqueIdentifier = () => "-" + identifierCount++;
 // src/match.ts
 var match = (pattern, lookup) => {
   if (lookup && pattern in lookup && lookup[pattern]) {
-    return arrayify(lookup[pattern]);
+    let result = lookup[pattern];
+    if (typeof result === "function") {
+      result = result();
+      if (!result) {
+        return [];
+      }
+    }
+    return arrayify(result);
   }
   return [];
 };

@@ -323,8 +323,8 @@ export const mount = (
               position?: InsertPosition,
             ) => {
               if (
-                position &&
-                (
+                position
+                && (
                   !elementAbstract
                   || (elementAbstract as NodeAbstract).t
                 )
@@ -375,8 +375,8 @@ export const mount = (
               position?: InsertPosition,
             ) => {
               if (
-                position &&
-                (
+                position
+                && (
                   !elementAbstract
                   || (elementAbstract as NodeAbstract).t
                 )
@@ -391,7 +391,7 @@ export const mount = (
                 (element.parentNode as Element)
                   .insertBefore(
                     document.createTextNode(childElement as string),
-                    element.nextSibling,
+                    element,
                   )
               }
             }
@@ -476,12 +476,12 @@ export const mount = (
   const updateAbstracts = (
   ): void => {
     if (
-      active &&
-      !updating &&
+      active
+      && !updating
       // Only update if changes to the state have been made.
-      proxyChanged &&
+      && proxyChanged
       // Don't update while handling listeners.
-      listenerCount <= 0
+      && listenerCount <= 0
     ) {
       updating = true
       proxyChanged = false

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+
+- Update `@doars/staark-common` dependency.
+- Fix bug when inserting text nodes.
+
 ## 1.6.0
 
 - Removed `@doars/staark-common`'s `cloneRecursive` function dependency in favour of `window.structuredClone` call. Increasing compatibility and reducing build size at the cost of compatibility with browser versions older than three years.

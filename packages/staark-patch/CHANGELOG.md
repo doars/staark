@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.1
+
+- Update `@doars/staark-common` dependency.
+- Fix bug when inserting text nodes.
+
 ## 1.3.0
 
 - Increased browser compatibility versions of pre-build scripts to major browsers since January 2022.
