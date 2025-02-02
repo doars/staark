@@ -2,6 +2,9 @@ import {
   arrayify,
 } from '@doars/staark-common/src/array.js'
 import {
+  cloneRecursive
+} from '@doars/staark-common/src/clone.js'
+import {
   equalRecursive,
 } from '@doars/staark-common/src/compare.js'
 import {
@@ -17,9 +20,6 @@ import {
   NodeAttributeListener,
   NodeContent,
 } from '@doars/staark-common/src/node.js'
-import {
-  TextAbstract,
-} from '@doars/staark-common/src/text.js'
 import {
   proxify,
 } from '../utilities/proxy.js'
@@ -53,8 +53,27 @@ export const mount = (
   initialState?: Record<string, any> | string,
   oldAbstractTree?: NodeContent[] | string,
 ): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown, Record<string, any>] => {
-  // Track amount of listeners running.
-  let listenerCount = 0
+  if (typeof (initialState) === 'string') {
+    initialState = JSON.parse(initialState) as Record<string, any>
+  }
+  initialState ??= {}
+  let proxyChanged = true
+  const triggerUpdate = (
+  ): void => {
+    if (!proxyChanged) {
+      proxyChanged = true
+      Promise.resolve()
+        .then(updateAbstracts)
+    }
+  }
+  let state = (
+    Object.getPrototypeOf(initialState) === Proxy.prototype
+      ? initialState
+      : proxify(
+        initialState,
+        triggerUpdate,
+      )
+  )
 
   const updateAttributes = (
     element: Element,
@@ -67,21 +86,31 @@ export const mount = (
         if (value) {
           const type = typeof (value)
           if (type === 'function') {
-            // Wrap the listener so we can prevent re-renders during handling.
-            const listener = newAttributes[name] = (
-              event: Event,
-            ): void => {
-              listenerCount++;
-              try {
-                (value as NodeAttributeListener)(event)
-              } catch (error) {
-                console.error('listener error', error)
+            // Wrap listeners so comparisons can be done between updates.
+            if (
+              oldAttributes
+              && oldAttributes[name]
+            ) {
+              if ((oldAttributes[name] as NodeAttributeListener).f === value) {
+                continue
               }
-              listenerCount--
-              updateAbstracts()
+              element.removeEventListener(
+                name,
+                oldAttributes[name] as NodeAttributeListener,
+              )
             }
-            element.addEventListener(name, listener)
-            continue
+
+            const listener: NodeAttributeListener = newAttributes[name] = (
+              function (event: Event) {
+                (value as NodeAttributeListener)(event, state)
+              } as NodeAttributeListener
+            )
+            listener.f = (value as NodeAttributeListener)
+
+            element.addEventListener(
+              name,
+              listener,
+            )
           } else {
             if (name === 'class') {
               if (typeof (value) === 'object') {
@@ -97,12 +126,18 @@ export const mount = (
                   value = classNames
                 }
               }
+              element.className = value as string
             } else if (name === 'style') {
               if (typeof (value) === 'object') {
                 if (Array.isArray(value)) {
-                  value = value.join(';')
+                  for (const style of value) {
+                    const [styleProperty, ...styleValue] = (style as string).split(':');
+                    (element as HTMLElement).style.setProperty(
+                      styleProperty,
+                      styleValue.join(':'),
+                    )
+                  }
                 } else {
-                  let styles: string = ''
                   for (let styleProperty in value) {
                     let styleValue: boolean | string | number | (boolean | string | number)[] = value[styleProperty]
 
@@ -112,12 +147,14 @@ export const mount = (
                       .toLowerCase()
 
                     if (Array.isArray(styleValue)) {
-                      styles += ';' + styleProperty + ':' + styleValue.join(' ')
-                    } else if (styleValue) {
-                      styles += ';' + styleProperty + ':' + styleValue
+                      styleValue = styleValue.join(' ')
                     }
+
+                    (element as HTMLElement).style.setProperty(
+                      styleProperty,
+                      styleValue.toString(),
+                    )
                   }
-                  value = styles
                 }
               }
             } else {
@@ -143,9 +180,9 @@ export const mount = (
                 (element as HTMLInputElement).checked = newAttributes[name] as boolean
                 // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
               }
-            }
 
-            element.setAttribute(name, (value as string))
+              element.setAttribute(name, (value as string))
+            }
           }
         }
       }
@@ -154,62 +191,33 @@ export const mount = (
     // Cleanup old attributes.
     if (oldAttributes) {
       for (const name in oldAttributes) {
-        if (typeof (oldAttributes[name]) === 'function') {
-          element.removeEventListener(
-            name,
-            oldAttributes[name] as NodeAttributeListener,
-          )
-        } else if (
+        const value = oldAttributes[name]
+        if (
           !newAttributes
-          || !(name in newAttributes)
           || !newAttributes[name]
         ) {
-          if (name === 'value') {
-            // Reset value separately.
-            (element as HTMLInputElement).value = ''
-            // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
-          } else if (name === 'checked') {
-            (element as HTMLInputElement).checked = false
+          if (typeof (value) === 'function') {
+            element.removeEventListener(
+              name,
+              oldAttributes[name] as NodeAttributeListener,
+            )
+          } else {
+            if (name === 'value') {
+              // Reset value separately.
+              (element as HTMLInputElement).value = ''
+              // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
+            } else if (name === 'checked') {
+              (element as HTMLInputElement).checked = false
+            }
+            element.removeAttribute(name)
           }
-          element.removeAttribute(name)
         }
       }
     }
   }
 
-  let oldMemoList: MemoData[] = []
-  let newMemoList: MemoData[] = []
-  const resolveMemoization = (
-    memoAbstract: MemoAbstract,
-  ): NodeContent[] => {
-    // Try and get the data from memory.
-    let match: MemoData | undefined = oldMemoList.find((oldMemo) => (
-      oldMemo.r === memoAbstract.r
-      && equalRecursive(oldMemo.m, memoAbstract.m)
-    ))
-    // If not found create it.
-    if (!match) {
-      match = {
-        c: arrayify(
-          memoAbstract.r(
-            state,
-            memoAbstract.m,
-          )
-        ),
-        m: memoAbstract.m,
-        r: memoAbstract.r,
-      }
-    }
-    // Store it in the list.
-    if (!newMemoList.includes(match)) {
-      newMemoList.push(match)
-    }
-    // Return the resulting nodes.
-    return structuredClone(
-      match.c,
-    )
-  }
-
+  let oldMemoMap: WeakMap<MemoFunction, MemoData> = new WeakMap()
+  let newMemoMap: WeakMap<MemoFunction, MemoData> = new WeakMap()
   const updateElementTree = (
     element: Element,
     newChildAbstracts?: NodeContent[],
@@ -224,14 +232,34 @@ export const mount = (
 
         // Handle memoization.
         if ((newAbstract as MemoAbstract).r) {
-          const memoAbstracts = resolveMemoization(
-            (newAbstract as MemoAbstract)
+          let match: MemoData | undefined = oldMemoMap.get(
+            (newAbstract as MemoAbstract).r,
           )
+          if (
+            !match
+            || !equalRecursive(match.m, (newAbstract as MemoAbstract).m)
+          ) {
+            match = {
+              c: arrayify(
+                (newAbstract as MemoAbstract).r(
+                  state,
+                  (newAbstract as MemoAbstract).m,
+                )
+              ),
+              m: (newAbstract as MemoAbstract).m,
+              r: (newAbstract as MemoAbstract).r,
+            } as MemoData
+          }
+
+          newMemoMap.set((newAbstract as MemoAbstract).r, match)
+
           // Splice nodes into the tree and re-run the loop again.
           newChildAbstracts.splice(
             newIndex,
             1,
-            ...memoAbstracts,
+            ...cloneRecursive(
+              match.c,
+            ),
           )
           // NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that was just inserted in.
           // We could have the resolve memoization return whether it was re-rendered, but this also means the nodes are not allowed to be re-used when morphing the DOM and this needs to be prevented by marking them as such.
@@ -286,11 +314,11 @@ export const mount = (
                   oldAbstract,
                 )
               } else {
-                element.childNodes[newIndex].textContent = (
-                  typeof (newAbstract) === 'string'
-                    ? newAbstract
-                    : (newAbstract as TextAbstract).c
-                )
+                if (
+                  (oldAbstract as string) !== (newAbstract as string)
+                ) {
+                  element.childNodes[newIndex].textContent = (newAbstract as string)
+                }
               }
               break
             }
@@ -363,12 +391,6 @@ export const mount = (
               )
             }
           } else {
-            childElement = (
-              typeof (newAbstract) === 'string'
-                ? newAbstract
-                : (newAbstract as TextAbstract).c
-            )
-
             const insertAdjacentText = (
               element: Node,
               elementAbstract?: NodeContent | null,
@@ -384,13 +406,13 @@ export const mount = (
                 (element as Element)
                   .insertAdjacentText(
                     position,
-                    childElement as string,
+                    newAbstract as string,
                   )
               } else {
                 // Otherwise the position is always 'beforebegin'.
                 (element.parentNode as Element)
                   .insertBefore(
-                    document.createTextNode(childElement as string),
+                    document.createTextNode(newAbstract as string),
                     element,
                   )
               }
@@ -420,7 +442,6 @@ export const mount = (
       }
     }
 
-    // Remove old elements.
     const elementLength = (oldChildAbstracts?.length ?? 0) + newCount
     if (elementLength >= newIndex) {
       for (let i = elementLength - 1; i >= newIndex; i--) {
@@ -428,28 +449,6 @@ export const mount = (
       }
     }
   }
-
-  if (typeof (initialState) === 'string') {
-    initialState = JSON.parse(initialState) as Record<string, any>
-  }
-  initialState ??= {}
-  let proxyChanged = true
-  const triggerUpdate = (
-  ): void => {
-    if (!proxyChanged) {
-      proxyChanged = true
-      Promise.resolve()
-        .then(updateAbstracts)
-    }
-  }
-  let state = (
-    Object.getPrototypeOf(initialState) === Proxy.prototype
-      ? initialState
-      : proxify(
-        initialState,
-        triggerUpdate,
-      )
-  )
 
   const _rootElement = (
     typeof (rootElement) === 'string'
@@ -480,8 +479,6 @@ export const mount = (
       && !updating
       // Only update if changes to the state have been made.
       && proxyChanged
-      // Don't update while handling listeners.
-      && listenerCount <= 0
     ) {
       updating = true
       proxyChanged = false
@@ -496,8 +493,8 @@ export const mount = (
       )
       // Store tree for next update
       oldAbstractTree = newAbstractTree
-      oldMemoList = newMemoList
-      newMemoList = []
+      oldMemoMap = newMemoMap
+      newMemoMap = new WeakMap()
 
       updating = false
       if (proxyChanged) {

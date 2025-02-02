@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+- Update `@doars/staark-common` dependency.
+- `identifier` function added.
+- Provide state to listener callbacks.
+- Fixed memoization issue.
+- Size and runtime optimisations.
+
 ## 1.6.1
 
 - Update `@doars/staark-common` dependency.

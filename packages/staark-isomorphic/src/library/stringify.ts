@@ -9,9 +9,6 @@ import {
   NodeAttributes,
   NodeContent,
 } from '@doars/staark-common/src/node.js'
-import {
-  TextAbstract,
-} from '@doars/staark-common/src/text.js'
 
 const SELF_CLOSING = [
   'base',
@@ -42,7 +39,10 @@ const renderAttributes = (
   if (attributes) {
     for (const name in attributes) {
       let value = attributes[name]
-      if (value !== null && value !== undefined) {
+      if (
+        value !== null
+        && value !== undefined
+      ) {
         const type = typeof (value)
 
         // Ensure it is of type string.
@@ -117,9 +117,7 @@ const renderElements = (
             rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
           }
         } else {
-          rendered += ' ' + (
-            (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
-          ) + ' '
+          rendered += ' ' + (abstract) + ' '
         }
       }
     }
@@ -175,9 +173,7 @@ export const stringify = (
               rendered += '</' + (abstract as NodeAbstract).t.toLocaleLowerCase() + '>'
             }
           } else {
-            rendered += ' ' + (
-              (abstract as TextAbstract).c ? (abstract as TextAbstract).c : (abstract as string)
-            ) + ' '
+            rendered += ' ' + abstract + ' '
           }
         }
       }
@@ -208,23 +204,22 @@ const customStringify = (
 
   if (typeof data === 'string') {
     // Escape double quotes
-    return `"${(data as string).replace(/"/g, '\\"')}"`
+    return '"' + (data as string).replace(/"/g, '\\"') + '"'
   }
 
   if (Array.isArray(data)) {
-    return `[${data.map(item => customStringify(item)).join(',')}]`;
+    return '[' + data.map(item => customStringify(item)).join(',') + ']'
   }
 
   if (typeof data === 'object') {
     const keys = Object.keys(data)
       .filter((key: string) => !key.startsWith('_'))
     const objectContent: string = keys
-      .map((key: string) => `"${key}":${customStringify(data[key])}`)
+      .map((key: string) => '"' + key + '":' + customStringify(data[key]) + '"')
       .join(',')
-    return `{${objectContent}}`
+    return '{' + objectContent + '}'
   }
 
-  // For any unsupported types (like functions or undefined).
   return 'null'
 }
 

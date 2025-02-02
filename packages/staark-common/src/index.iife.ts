@@ -14,7 +14,6 @@ import * as match from './match.js'
 import * as memo from './memo.js'
 import * as nde from './nde.js'
 import * as node from './node.js'
-import * as text from './text.js'
 
 iife([
   'staark',
@@ -34,5 +33,4 @@ iife([
   memo,
   nde,
   node,
-  text,
 })

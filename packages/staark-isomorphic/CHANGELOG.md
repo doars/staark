@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.0
+
+- `text` abstract removed.
+- `identifier` function added.
+
 ## 1.5.1
 
 - Update `@doars/staark-common` dependency.

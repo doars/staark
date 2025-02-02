@@ -1,1 +1,1 @@
-export const marker = Symbol()
+export const marker = 'n'

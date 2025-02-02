@@ -31,13 +31,14 @@ Of course there is always more to a front-end framework to help you out. There i
 import { memo, mount, node as n } from '@doars/staark'
 
 const halfCount = (state) => n('span', state.count / 2)
+const incrementCount = (event, state) => state.count++
 
 mount(
   document.body.firstSibling,
   (state) => n('div', [
     n('span', state.count),
     n('button', {
-      click: () => state.count++,
+      click: incrementCount,
     }, 'add'),
 
     memo(
@@ -50,6 +51,8 @@ mount(
 ```
 
 In the example above the text will always be shown. However it only updates when the number changes from divisible by three to not divisible by three, and vice versa. This is because the value of the second argument will change from `true` to `false`. The second argument can of course be anything even a deeply nested object. But do note that the function is not defined within the view function, instead it is defined earlier outside of it. This allows it to have a unique and static identifier as well as be pure separately from the rest of the application.
+
+Also note how the click listener has been extracted outside of the view function. This can be done because the first parameter is the event like in vanilla javascript and the second parameter of a function is the state. Extracting the listener is beneficial as it will always remove and re-add the same listener when defined inside the view function. This happens because in JavaScript a new function is always different when re-defined and can't be compared against. For example `{} === {}` results in `true`, but `(() => {}) === (() => {})` is always `false`.
 
 In addition to the functions provided it is good to know that some attribute properties are treated differently. As you have probably noticed in the examples above a function gets added as a listener making reactivity easy to handle. The `class` and `style` are also handled differently, the value of attributes with that name are automatically converted from arrays or objects to a single string.
 

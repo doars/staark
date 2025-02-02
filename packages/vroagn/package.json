@@ -6,7 +6,7 @@
   "name": "@doars/vroagn",
   "description": "A teensy-tiny library for managing network requests.",
   "keywords": [],
-  "version": "1.4.0",
+  "version": "1.4.1",
   "license": "MIT",
   "type": "module",
   "main": "dst/vroagn.js",
@@ -25,7 +25,7 @@
   "scripts": {
     "develop": "NODE_ENV=development node config.esbuild.js",
     "build": "NODE_ENV=production node config.esbuild.js",
-    "lint": "eslint src/**/*.js --cache --fix --no-error-on-unmatched-pattern",
+    "lint": "eslint src/**/*.ts --cache --fix --no-error-on-unmatched-pattern",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
@@ -36,5 +36,7 @@
     "README.md"
   ],
   "devDependencies": {},
-  "dependencies": {}
+  "dependencies": {
+    "@doars/staark-common": "^1.5.0"
+  }
 }

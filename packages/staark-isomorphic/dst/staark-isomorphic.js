@@ -1,12 +1,5 @@
 // ../staark-common/src/array.ts
-var arrayify = function(data) {
-  if (Array.isArray(data)) {
-    return data;
-  }
-  return [
-    data
-  ];
-};
+var arrayify = (data) => Array.isArray(data) ? data : [data];
 
 // ../staark-common/src/conditional.ts
 var conditional = (condition, onTruth, onFalse) => {
@@ -21,7 +14,7 @@ var conditional = (condition, onTruth, onFalse) => {
 };
 
 // ../staark-common/src/marker.ts
-var marker = Symbol();
+var marker = "n";
 
 // ../staark-common/src/node.ts
 var node = (type, attributesOrContents, contents) => {
@@ -195,6 +188,10 @@ var fctory = new Proxy({}, {
   }
 });
 
+// ../staark-common/src/identifier.ts
+var identifierCount = 0;
+var identifier = (prefix) => prefix + "-" + identifierCount++;
+
 // ../staark-common/src/match.ts
 var match = (pattern, lookup) => {
   if (lookup && pattern in lookup && lookup[pattern]) {
@@ -227,12 +224,6 @@ var nde = (selector, contents) => {
     t: type.toUpperCase()
   };
 };
-
-// ../staark-common/src/text.ts
-var text = (contents) => ({
-  _: marker,
-  c: Array.isArray(contents) ? contents.join("") : "" + contents
-});
 
 // src/library/stringify.ts
 var SELF_CLOSING = [
@@ -316,7 +307,7 @@ var renderElements = (abstracts) => {
             rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
           }
         } else {
-          rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
+          rendered += " " + abstract + " ";
         }
       }
     }
@@ -324,7 +315,7 @@ var renderElements = (abstracts) => {
   return rendered;
 };
 var stringifyPatch = (abstractTree) => {
-  abstractTree = arrayify(abstractTree ?? []);
+  abstractTree = arrayify(abstractTree != null ? abstractTree : []);
   return [
     renderElements(
       abstractTree
@@ -362,7 +353,7 @@ var stringify = (renderView, initialState) => {
               rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
             }
           } else {
-            rendered += " " + (abstract.c ? abstract.c : abstract) + " ";
+            rendered += " " + abstract + " ";
           }
         }
       }
@@ -384,15 +375,15 @@ var customStringify = (data) => {
     return String(data);
   }
   if (typeof data === "string") {
-    return `"${data.replace(/"/g, '\\"')}"`;
+    return '"' + data.replace(/"/g, '\\"') + '"';
   }
   if (Array.isArray(data)) {
-    return `[${data.map((item) => customStringify(item)).join(",")}]`;
+    return "[" + data.map((item) => customStringify(item)).join(",") + "]";
   }
   if (typeof data === "object") {
     const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
-    const objectContent = keys.map((key) => `"${key}":${customStringify(data[key])}`).join(",");
-    return `{${objectContent}}`;
+    const objectContent = keys.map((key) => '"' + key + '":' + customStringify(data[key]) + '"').join(",");
+    return "{" + objectContent + "}";
   }
   return "null";
 };
@@ -429,6 +420,7 @@ export {
   conditional,
   factory,
   fctory,
+  identifier,
   match,
   memo,
   nde,
@@ -436,7 +428,6 @@ export {
   stringify,
   stringifyFull,
   stringifyPatch,
-  stringifyPatchFull,
-  text
+  stringifyPatchFull
 };
 //# sourceMappingURL=staark-isomorphic.js.map

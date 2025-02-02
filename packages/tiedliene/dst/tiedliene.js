@@ -1,3 +1,15 @@
+// ../staark-common/src/clone.ts
+var cloneRecursive = (value) => {
+  if (typeof value === "object") {
+    const clone = Array.isArray(value) ? [] : {};
+    for (const key in value) {
+      clone[key] = cloneRecursive(value[key]);
+    }
+    return clone;
+  }
+  return value;
+};
+
 // src/library/diff.ts
 var setValueAtPath = (record, path, value) => {
   let current = record;
@@ -8,7 +20,7 @@ var setValueAtPath = (record, path, value) => {
     }
     current = current[key];
   }
-  current[path[path.length - 1]] = structuredClone(value);
+  current[path[path.length - 1]] = cloneRecursive(value);
 };
 var deleteValueAtPath = (record, path) => {
   let current = record;
@@ -32,7 +44,7 @@ var determineDiff = (before, after, path = []) => {
       changes.unshift({
         type: "delete",
         path: currentPath,
-        old: structuredClone(before[key])
+        old: cloneRecursive(before[key])
       });
     } else if (typeof before[key] === "object" && typeof after[key] === "object") {
       changes.unshift(
@@ -42,8 +54,8 @@ var determineDiff = (before, after, path = []) => {
       changes.unshift({
         type: "set",
         path: currentPath,
-        old: structuredClone(before[key]),
-        new: structuredClone(after[key])
+        old: cloneRecursive(before[key]),
+        new: cloneRecursive(after[key])
       });
     }
   }
@@ -52,7 +64,7 @@ var determineDiff = (before, after, path = []) => {
       changes.unshift({
         type: "set",
         path: [...path, key],
-        new: structuredClone(after[key])
+        new: cloneRecursive(after[key])
       });
     }
   }
@@ -85,7 +97,7 @@ var revertDiff = (state, diff) => {
 
 // src/library/state.ts
 var manageState = function(state, options) {
-  state = structuredClone(state);
+  state = cloneRecursive(state);
   options = Object.assign({
     maximumHistory: 50
   }, options);
@@ -93,10 +105,10 @@ var manageState = function(state, options) {
   const redoStack = [];
   return {
     get: () => {
-      return structuredClone(state);
+      return cloneRecursive(state);
     },
     set: (newState) => {
-      newState = structuredClone(newState);
+      newState = cloneRecursive(newState);
       const diffs = determineDiff(state, newState);
       if (diffs.length > 0) {
         undoStack.push(diffs);
@@ -108,7 +120,7 @@ var manageState = function(state, options) {
         redoStack.splice(0);
       }
       state = newState;
-      return structuredClone(state);
+      return cloneRecursive(state);
     },
     undo: () => {
       if (undoStack.length > 0) {
@@ -123,7 +135,7 @@ var manageState = function(state, options) {
           state = revertDiff(state, lastDiffs);
         }
       }
-      return structuredClone(state);
+      return cloneRecursive(state);
     },
     redo: () => {
       if (redoStack.length > 0) {
@@ -138,7 +150,7 @@ var manageState = function(state, options) {
           state = applyDiff(state, diffs);
         }
       }
-      return structuredClone(state);
+      return cloneRecursive(state);
     }
   };
 };

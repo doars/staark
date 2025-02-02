@@ -132,7 +132,7 @@ As mentioned before the `stringifyPatch` and `stringifyPatchFull` functions are 
 </body>
 ```
 
-The library also exports the `factory`, `fctory`, `memo`, `nde`, and `text` functions from staark so these don't have te imported from there separately. But do note that `stringifyPatch` and `stringifyPatchFull` do not support the `memo` node since there is no state to provide to these memoization functions.
+The library also exports the `factory`, `fctory`, `memo`, and `nde` functions from staark so these don't have te imported from there separately. But do note that `stringifyPatch` and `stringifyPatchFull` do not support the `memo` node since there is no state to provide to these memoization functions.
 
 ## Installation
 

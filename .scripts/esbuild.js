@@ -34,12 +34,12 @@ const run = async (
       plugins: [],
 
       target: process.env.NODE_ENV === 'production' ? [
-        // structuredClone. // ?? // Proxy object
-        'chrome98', // 'chrome51', // 'chrome49',
-        'edge98', // 'edge20', // edge12
-        'firefox94', // 'firefox53', // 'firefox39',
-        'ios15.4', // 'ios11', // 'ios10.2',
-        'safari15.4', // 'safari11', // 'safari10',
+        // ?? // Proxy object
+        'chrome51', // 'chrome49',
+        'edge20', // edge12
+        'firefox53', // 'firefox39',
+        'ios11', // 'ios10.2',
+        'safari11', // 'safari10',
       ] : [],
     }, options, buildOptions)
     if (buildOptions.minify) {

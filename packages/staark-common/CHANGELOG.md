@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0
+
+- `text` abstract removed.
+- `identifier` function added.
+- Size and runtime optimisations.
+
 ## 1.4.2
 
 - Allow `conditional` and `match` to be given function that resolve to nodes.

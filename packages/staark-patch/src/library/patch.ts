@@ -10,19 +10,16 @@ import {
   NodeAttributeListener,
   NodeContent,
 } from '@doars/staark-common/src/node.js'
-import {
-  TextAbstract,
-} from '@doars/staark-common/src/text.js'
+
+export type PatchFunction = (
+  newAbstractTree: NodeContent[] | NodeContent,
+) => void
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
 const HYPHENATE = (
   part: string,
   offset: number,
 ) => (offset ? '-' : '') + part
-
-export type PatchFunction = (
-  newAbstractTree: NodeContent[] | NodeContent,
-) => void
 
 const updateAttributes = (
   element: Element,
@@ -35,8 +32,24 @@ const updateAttributes = (
       if (value) {
         const type = typeof (value)
         if (type === 'function') {
-          element.addEventListener(name, value as NodeAttributeListener)
-          continue
+          if (
+            oldAttributes
+            && oldAttributes[name]
+          ) {
+            if (oldAttributes[name] === value) {
+              continue
+            } else {
+              element.removeEventListener(
+                name,
+                oldAttributes[name] as NodeAttributeListener,
+              )
+            }
+          }
+
+          element.addEventListener(
+            name,
+            value as NodeAttributeListener,
+          )
         } else {
           if (name === 'class') {
             if (typeof (value) === 'object') {
@@ -52,12 +65,18 @@ const updateAttributes = (
                 value = classNames
               }
             }
+            element.className = value as string
           } else if (name === 'style') {
             if (typeof (value) === 'object') {
               if (Array.isArray(value)) {
-                value = value.join(';')
+                for (const style of value) {
+                  const [styleProperty, ...styleValue] = (style as string).split(':');
+                  (element as HTMLElement).style.setProperty(
+                    styleProperty,
+                    styleValue.join(':'),
+                  )
+                }
               } else {
-                let styles: string = ''
                 for (let styleProperty in value) {
                   let styleValue: boolean | string | number | (boolean | string | number)[] = value[styleProperty]
 
@@ -67,12 +86,14 @@ const updateAttributes = (
                     .toLowerCase()
 
                   if (Array.isArray(styleValue)) {
-                    styles += ';' + styleProperty + ':' + styleValue.join(' ')
-                  } else if (styleValue) {
-                    styles += ';' + styleProperty + ':' + styleValue
+                    styleValue = styleValue.join(' ')
                   }
+
+                  (element as HTMLElement).style.setProperty(
+                    styleProperty,
+                    styleValue.toString(),
+                  )
                 }
-                value = styles
               }
             }
           } else {
@@ -98,9 +119,9 @@ const updateAttributes = (
               (element as HTMLInputElement).checked = newAttributes[name] as boolean
               // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
             }
-          }
 
-          element.setAttribute(name, (value as string))
+            element.setAttribute(name, (value as string))
+          }
         }
       }
     }
@@ -109,24 +130,25 @@ const updateAttributes = (
   // Cleanup old attributes.
   if (oldAttributes) {
     for (const name in oldAttributes) {
-      if (typeof (oldAttributes[name]) === 'function') {
-        element.removeEventListener(
-          name,
-          oldAttributes[name] as NodeAttributeListener,
-        )
-      } else if (
+      if (
         !newAttributes
-        || !(name in newAttributes)
         || !newAttributes[name]
       ) {
-        if (name === 'value') {
-          // Reset value separately.
-          (element as HTMLInputElement).value = ''
-          // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
-        } else if (name === 'checked') {
-          (element as HTMLInputElement).checked = false
+        if (typeof (oldAttributes[name]) === 'function') {
+          element.removeEventListener(
+            name,
+            oldAttributes[name] as NodeAttributeListener,
+          )
+        } else {
+          if (name === 'value') {
+            // Reset value separately.
+            (element as HTMLInputElement).value = ''
+            // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
+          } else if (name === 'checked') {
+            (element as HTMLInputElement).checked = false
+          }
+          element.removeAttribute(name)
         }
-        element.removeAttribute(name)
       }
     }
   }
@@ -194,12 +216,8 @@ export const prepare = (
                   (oldAbstract as NodeAbstract).c,
                   oldAbstract,
                 )
-              } else {
-                element.childNodes[newIndex].textContent = (
-                  typeof (newAbstract) === 'string'
-                    ? newAbstract
-                    : (newAbstract as TextAbstract).c
-                )
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract as string
               }
               break
             }
@@ -272,12 +290,6 @@ export const prepare = (
               )
             }
           } else {
-            childElement = (
-              typeof (newAbstract) === 'string'
-                ? newAbstract
-                : (newAbstract as TextAbstract).c
-            )
-
             const insertAdjacentText = (
               element: Node,
               elementAbstract?: NodeContent | null,
@@ -293,13 +305,13 @@ export const prepare = (
                 (element as Element)
                   .insertAdjacentText(
                     position,
-                    childElement as string,
+                    newAbstract as string,
                   )
               } else {
                 // Otherwise the position is always 'beforebegin'.
                 (element.parentNode as Element)
                   .insertBefore(
-                    document.createTextNode(childElement as string),
+                    document.createTextNode(newAbstract as string),
                     element,
                   )
               }

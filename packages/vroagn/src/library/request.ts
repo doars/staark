@@ -1,7 +1,13 @@
 import {
+  cloneRecursive,
+} from '@doars/staark-common/src/clone.js'
+
+import {
   delay,
 } from '../utilities/delay.js'
-import { getType } from '../utilities/type.js'
+import {
+  getType,
+} from '../utilities/type.js'
 
 export interface ResponseParser {
   types: string[],
@@ -60,7 +66,7 @@ export const create = (
 ) => {
   initialOptions = {
     ...DEFAULT_VALUES,
-    ...structuredClone(initialOptions),
+    ...cloneRecursive(initialOptions),
   }
 
   let lastExecutionTime = 0
@@ -287,7 +293,7 @@ export const create = (
   ): Promise<[Error | null, Response | null, any]> => {
     const options = {
       ...initialOptions,
-      ...structuredClone(sendOptions),
+      ...cloneRecursive(sendOptions),
     }
     if (initialOptions.headers) {
       options.headers = {

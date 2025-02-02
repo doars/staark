@@ -12,7 +12,6 @@
     <script type="module">
       import {
         match,
-        text,
       } from '../../dst/staark.js'
 
       console.log('match', match)
@@ -20,17 +19,17 @@
       console.log(
         'should be option-1',
         match('option-1', {
-          'option-1': text('option-1'),
-          'option-2': text('option-2'),
-          'option-3': text('option-3'),
+          'option-1': 'option-1',
+          'option-2': 'option-2',
+          'option-3': 'option-3',
         })
       )
       console.log(
         'should be option-2',
         match('option-2', {
-          'option-1': text('option-1'),
-          'option-2': text('option-2'),
-          'option-3': text('option-3'),
+          'option-1': 'option-1',
+          'option-2': 'option-2',
+          'option-3': 'option-3',
         })
       )
     </script>

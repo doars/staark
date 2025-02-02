@@ -1,10 +1,7 @@
-export const arrayify = function <T>(
+export const arrayify = <T>(
   data: T[] | T,
-): T[] {
-  if (Array.isArray(data)) {
-    return data
-  }
-  return [
-    data,
-  ]
-}
+): T[] => (
+  Array.isArray(data)
+    ? data :
+    [data,]
+)

@@ -1,5 +1,5 @@
 // ../staark-common/src/marker.ts
-var marker = Symbol();
+var marker = "n";
 
 // ../staark-common/src/node.ts
 var node = (type, attributesOrContents, contents) => {
@@ -16,23 +16,17 @@ var node = (type, attributesOrContents, contents) => {
 };
 
 // ../staark-common/src/array.ts
-var arrayify = function(data) {
-  if (Array.isArray(data)) {
-    return data;
-  }
-  return [
-    data
-  ];
-};
+var arrayify = (data) => Array.isArray(data) ? data : [data];
 
 // ../staark-common/src/element.ts
 var childrenToNodes = (element) => {
+  var _a;
   const abstractChildNodes = [];
   for (let i = 0; i < element.childNodes.length; i++) {
     const childNode = element.childNodes[i];
     if (childNode instanceof Text) {
       abstractChildNodes.push(
-        childNode.textContent ?? ""
+        (_a = childNode.textContent) != null ? _a : ""
       );
     } else {
       let attributes = {};
@@ -62,8 +56,20 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
       if (value) {
         const type = typeof value;
         if (type === "function") {
-          element.addEventListener(name, value);
-          continue;
+          if (oldAttributes && oldAttributes[name]) {
+            if (oldAttributes[name] === value) {
+              continue;
+            } else {
+              element.removeEventListener(
+                name,
+                oldAttributes[name]
+              );
+            }
+          }
+          element.addEventListener(
+            name,
+            value
+          );
         } else {
           if (name === "class") {
             if (typeof value === "object") {
@@ -79,22 +85,29 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
                 value = classNames;
               }
             }
+            element.className = value;
           } else if (name === "style") {
             if (typeof value === "object") {
               if (Array.isArray(value)) {
-                value = value.join(";");
+                for (const style of value) {
+                  const [styleProperty, ...styleValue] = style.split(":");
+                  element.style.setProperty(
+                    styleProperty,
+                    styleValue.join(":")
+                  );
+                }
               } else {
-                let styles = "";
                 for (let styleProperty in value) {
                   let styleValue = value[styleProperty];
                   styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
                   if (Array.isArray(styleValue)) {
-                    styles += ";" + styleProperty + ":" + styleValue.join(" ");
-                  } else if (styleValue) {
-                    styles += ";" + styleProperty + ":" + styleValue;
+                    styleValue = styleValue.join(" ");
                   }
+                  element.style.setProperty(
+                    styleProperty,
+                    styleValue.toString()
+                  );
                 }
-                value = styles;
               }
             }
           } else {
@@ -112,32 +125,35 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
             } else if (name === "checked") {
               element.checked = newAttributes[name];
             }
+            element.setAttribute(name, value);
           }
-          element.setAttribute(name, value);
         }
       }
     }
   }
   if (oldAttributes) {
     for (const name in oldAttributes) {
-      if (typeof oldAttributes[name] === "function") {
-        element.removeEventListener(
-          name,
-          oldAttributes[name]
-        );
-      } else if (!newAttributes || !(name in newAttributes) || !newAttributes[name]) {
-        if (name === "value") {
-          element.value = "";
-        } else if (name === "checked") {
-          element.checked = false;
+      if (!newAttributes || !newAttributes[name]) {
+        if (typeof oldAttributes[name] === "function") {
+          element.removeEventListener(
+            name,
+            oldAttributes[name]
+          );
+        } else {
+          if (name === "value") {
+            element.value = "";
+          } else if (name === "checked") {
+            element.checked = false;
+          }
+          element.removeAttribute(name);
         }
-        element.removeAttribute(name);
       }
     }
   }
 };
 var prepare = (rootElement, oldAbstractTree) => {
   const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
+    var _a, _b, _c;
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -175,8 +191,8 @@ var prepare = (rootElement, oldAbstractTree) => {
                   oldAbstract.c,
                   oldAbstract
                 );
-              } else {
-                element.childNodes[newIndex].textContent = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract;
               }
               break;
             }
@@ -219,7 +235,7 @@ var prepare = (rootElement, oldAbstractTree) => {
                 elementAbstract,
                 "afterbegin"
               );
-            } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+            } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
               insertAdjacentElement(
                 element.childNodes[newIndex]
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -233,16 +249,15 @@ var prepare = (rootElement, oldAbstractTree) => {
               );
             }
           } else {
-            childElement = typeof newAbstract === "string" ? newAbstract : newAbstract.c;
             const insertAdjacentText = (element2, elementAbstract2, position) => {
               if (position && (!elementAbstract2 || elementAbstract2.t)) {
                 element2.insertAdjacentText(
                   position,
-                  childElement
+                  newAbstract
                 );
               } else {
                 element2.parentNode.insertBefore(
-                  document.createTextNode(childElement),
+                  document.createTextNode(newAbstract),
                   element2
                 );
               }
@@ -253,7 +268,7 @@ var prepare = (rootElement, oldAbstractTree) => {
                 elementAbstract,
                 "afterbegin"
               );
-            } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+            } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
               insertAdjacentText(
                 element.childNodes[newIndex]
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -271,7 +286,7 @@ var prepare = (rootElement, oldAbstractTree) => {
         }
       }
     }
-    const elementLength = (oldChildAbstracts?.length ?? 0) + newCount;
+    const elementLength = ((_c = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _c : 0) + newCount;
     if (elementLength >= newIndex) {
       for (let i = elementLength - 1; i >= newIndex; i--) {
         element.childNodes[i].remove();
@@ -288,7 +303,7 @@ var prepare = (rootElement, oldAbstractTree) => {
       oldAbstractTree = void 0;
     }
   }
-  oldAbstractTree ??= childrenToNodes(_rootElement);
+  oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
   return (newAbstractTree) => {
     newAbstractTree = arrayify(newAbstractTree);
     updateElementTree(

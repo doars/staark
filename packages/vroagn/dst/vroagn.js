@@ -1,12 +1,61 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __async = (__this, __arguments, generator) => {
+  return new Promise((resolve, reject) => {
+    var fulfilled = (value) => {
+      try {
+        step(generator.next(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var rejected = (value) => {
+      try {
+        step(generator.throw(value));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
+    step((generator = generator.apply(__this, __arguments)).next());
+  });
+};
+
+// ../staark-common/src/clone.ts
+var cloneRecursive = (value) => {
+  if (typeof value === "object") {
+    const clone = Array.isArray(value) ? [] : {};
+    for (const key in value) {
+      clone[key] = cloneRecursive(value[key]);
+    }
+    return clone;
+  }
+  return value;
+};
+
 // src/utilities/delay.ts
-var delay = async (time) => {
+var delay = (time) => __async(void 0, null, function* () {
   if (time > 0) {
     return new Promise(
       (resolve) => setTimeout(resolve, time)
     );
   }
   return null;
-};
+});
 
 // src/utilities/type.ts
 var normalizeContentType = (contentType) => contentType.split(";")[0].trim().toLowerCase();
@@ -43,20 +92,17 @@ var DEFAULT_VALUES = {
   retryDelay: 500
 };
 var create = (initialOptions) => {
-  initialOptions = {
-    ...DEFAULT_VALUES,
-    ...structuredClone(initialOptions)
-  };
+  initialOptions = __spreadValues(__spreadValues({}, DEFAULT_VALUES), cloneRecursive(initialOptions));
   let lastExecutionTime = 0;
   let activeRequests = 0;
   let totalRequests = 0;
   let debounceTimeout = null;
-  const throttle = async (throttleValue) => {
+  const throttle = (throttleValue) => __async(void 0, null, function* () {
     const now = Date.now();
     const waitTime = throttleValue - (now - lastExecutionTime);
     lastExecutionTime = now + (waitTime > 0 ? waitTime : 0);
-    await delay(waitTime);
-  };
+    yield delay(waitTime);
+  });
   const debounce = (debounceValue) => {
     return new Promise((resolve) => {
       if (debounceTimeout) {
@@ -68,7 +114,7 @@ var create = (initialOptions) => {
       );
     });
   };
-  const sendRequest = async (options) => {
+  const sendRequest = (options) => __async(void 0, null, function* () {
     if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
       return [new Error("Maximum request limit reached"), null, null];
     }
@@ -96,8 +142,9 @@ var create = (initialOptions) => {
         options.timeout
       );
     }
-    const executeFetch = async () => {
-      const response2 = await (options.fetch ?? fetch)(url, config);
+    const executeFetch = () => __async(void 0, null, function* () {
+      var _a;
+      const response2 = yield ((_a = options.fetch) != null ? _a : fetch)(url, config);
       if (!response2.ok) {
         return [new Error("Invalid response"), response2, null];
       }
@@ -109,7 +156,7 @@ var create = (initialOptions) => {
           for (const parser of options.parsers) {
             foundParser = parser.types.includes(type);
             if (foundParser) {
-              result2 = await parser.parser(
+              result2 = yield parser.parser(
                 response2,
                 options,
                 type
@@ -121,45 +168,45 @@ var create = (initialOptions) => {
         if (!foundParser) {
           switch (type.toLowerCase()) {
             case "arraybuffer":
-              result2 = await response2.arrayBuffer();
+              result2 = yield response2.arrayBuffer();
               break;
             case "blob":
-              result2 = await response2.blob();
+              result2 = yield response2.blob();
               break;
             case "formdata":
-              result2 = await response2.formData();
+              result2 = yield response2.formData();
               break;
             case "text/plain":
             case "text":
             case "txt":
-              result2 = await response2.text();
+              result2 = yield response2.text();
               break;
             case "text/html-partial":
             case "html-partial":
-              result2 = await response2.text();
+              result2 = yield response2.text();
               const template = document.createElement("template");
               template.innerHTML = result2;
               result2 = template.content.childNodes;
               break;
             case "text/html":
             case "html":
-              result2 = await response2.text();
+              result2 = yield response2.text();
               result2 = new DOMParser().parseFromString(result2, "text/html");
               break;
             case "application/json":
             case "text/json":
             case "json":
-              result2 = await response2.json();
+              result2 = yield response2.json();
               break;
             case "image/svg+xml":
             case "svg":
-              result2 = await response2.text();
+              result2 = yield response2.text();
               result2 = new DOMParser().parseFromString(result2, "image/svg+xml");
               break;
             case "application/xml":
             case "text/xml":
             case "xml":
-              result2 = await response2.text();
+              result2 = yield response2.text();
               result2 = new DOMParser().parseFromString(result2, "application/xml");
               break;
           }
@@ -168,17 +215,18 @@ var create = (initialOptions) => {
       } catch (error2) {
         return [error2 || new Error("Thrown parsing error is falsy"), response2, null];
       }
-    };
-    const retryRequest = async () => {
+    });
+    const retryRequest = () => __async(void 0, null, function* () {
+      var _a;
       let attempt = 0;
       const retryAttempts = options.retryAttempts || 0;
       const retryDelay = options.retryDelay || 0;
       while (attempt < retryAttempts) {
-        const [error2, response2, result2] = await executeFetch();
+        const [error2, response2, result2] = yield executeFetch();
         if (!error2) {
           return [error2, response2, result2];
         }
-        if (!options.retryCodes?.includes(response2.status || 200)) {
+        if (!((_a = options.retryCodes) == null ? void 0 : _a.includes(response2.status || 200))) {
           return [new Error("Invalid status code"), response2, result2];
         }
         attempt++;
@@ -199,38 +247,32 @@ var create = (initialOptions) => {
             }
           }
         }
-        await delay(delayTime);
+        yield delay(delayTime);
       }
       return executeFetch();
-    };
-    const [error, response, result] = await retryRequest();
+    });
+    const [error, response, result] = yield retryRequest();
     if (!response.ok) {
       return [new Error(response.statusText), response, result];
     }
     return [error, response, result];
-  };
-  return async (sendOptions) => {
-    const options = {
-      ...initialOptions,
-      ...structuredClone(sendOptions)
-    };
+  });
+  return (sendOptions) => __async(void 0, null, function* () {
+    const options = __spreadValues(__spreadValues({}, initialOptions), cloneRecursive(sendOptions));
     if (initialOptions.headers) {
-      options.headers = {
-        ...initialOptions.headers,
-        ...options.headers
-      };
+      options.headers = __spreadValues(__spreadValues({}, initialOptions.headers), options.headers);
     }
     if (options.debounce) {
-      await debounce(options.debounce);
+      yield debounce(options.debounce);
     }
     if (options.delay) {
-      await delay(options.delay);
+      yield delay(options.delay);
     }
     if (options.throttle) {
-      await throttle(options.throttle);
+      yield throttle(options.throttle);
     }
     if (options.maxConcurrency && activeRequests >= options.maxConcurrency) {
-      await new Promise((resolve) => {
+      yield new Promise((resolve) => {
         let interval = null;
         const wait = () => {
           if (activeRequests >= options.maxConcurrency) {
@@ -246,12 +288,12 @@ var create = (initialOptions) => {
       });
     }
     activeRequests++;
-    const results = await sendRequest(
+    const results = yield sendRequest(
       options
     );
     activeRequests--;
     return results;
-  };
+  });
 };
 
 // src/library/parsers/csv.ts
@@ -261,19 +303,18 @@ var tsvTypes = [
 ];
 var csvParser = (options) => {
   return {
-    types: options?.types || [
+    types: (options == null ? void 0 : options.types) || [
       "csv",
       "text/csv",
       ...tsvTypes
     ],
-    parser: async (response, requestOptions, type) => {
-      const optionsTemp = {
+    parser: (response, requestOptions, type) => __async(void 0, null, function* () {
+      const optionsTemp = __spreadValues({
         columnDelimiter: tsvTypes.includes(type) ? "	" : ",",
         rowDelimiter: "\n",
-        escapeCharacter: '"',
-        ...options
-      };
-      const string = await response.text();
+        escapeCharacter: '"'
+      }, options);
+      const string = yield response.text();
       const rows = [];
       let currentRow = [];
       let currentField = "";
@@ -323,7 +364,7 @@ var csvParser = (options) => {
         });
       }
       return rows;
-    }
+    })
   };
 };
 
@@ -331,8 +372,8 @@ var csvParser = (options) => {
 var iniParser = (options = {}) => {
   return {
     types: options.types || ["ini"],
-    parser: async (response, requestOptions) => {
-      const text = await response.text();
+    parser: (response, requestOptions) => __async(void 0, null, function* () {
+      const text = yield response.text();
       const result = {};
       const lines = text.split(/\r?\n/).map((line) => line.trim());
       let currentSection = "";
@@ -359,7 +400,7 @@ var iniParser = (options = {}) => {
         }
       }
       return result;
-    }
+    })
   };
 };
 
@@ -419,8 +460,8 @@ var parseInlineTable = (tableString) => {
 var tomlParser = (options = {}) => {
   return {
     types: options.types || ["toml", "application/toml"],
-    parser: async (response, requestOptions) => {
-      const text = await response.text();
+    parser: (response, requestOptions) => __async(void 0, null, function* () {
+      const text = yield response.text();
       const result = {};
       let currentTable = result;
       let currentArray = null;
@@ -498,7 +539,7 @@ var tomlParser = (options = {}) => {
         }
       }
       return result;
-    }
+    })
   };
 };
 
@@ -551,8 +592,8 @@ var parseValue = (value, anchors) => {
 var yamlParser = (options = {}) => {
   return {
     types: options.types || ["yaml", "application/yaml", "text/yaml"],
-    parser: async (response, requestOptions) => {
-      const lines = (await response.text()).split("\n");
+    parser: (response, requestOptions) => __async(void 0, null, function* () {
+      const lines = (yield response.text()).split("\n");
       const result = {};
       let currentObject = result;
       let indentStack = [result];
@@ -622,7 +663,7 @@ var yamlParser = (options = {}) => {
         }
       }
       return result;
-    }
+    })
   };
 };
 export {

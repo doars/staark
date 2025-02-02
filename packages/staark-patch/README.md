@@ -57,7 +57,7 @@ As you can read above, update re-renders the view with the current value of `sta
 
 Then there is also another second parameter for the `prepare` function. This parameter can be the abstract node tree of the existing HTML. Typically rendered on the server and the provided to the client. See the [staark isomorphic](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) package for more in formation on this. And also important to note to make it easier, if the existing abstract node tree is a string it will automatically be parsed as JSON.
 
-The full build of the library also exports the `factory`, `fctory`, `nde`, and `text` functions from staark so these don't have te imported from there separately. And do note that the `memo` function is not exported because this is not supported since there is no state to provide to these memoization functions.
+The full build of the library also exports the `factory`, `fctory`, and `nde` functions from staark so these don't have te imported from there separately. And do note that the `memo` function is not exported because this is not supported since there is no state to provide to these memoization functions.
 
 ## Installation
 

@@ -23,14 +23,7 @@
   __export(array_exports, {
     arrayify: () => arrayify
   });
-  var arrayify = function(data) {
-    if (Array.isArray(data)) {
-      return data;
-    }
-    return [
-      data
-    ];
-  };
+  var arrayify = (data) => Array.isArray(data) ? data : [data];
 
   // src/attribute.ts
   var attribute_exports = {};
@@ -51,19 +44,11 @@
   });
   var cloneRecursive = (value) => {
     if (typeof value === "object") {
-      if (Array.isArray(value)) {
-        const clone = [];
-        for (let i = 0; i < value.length; i++) {
-          clone.push(cloneRecursive(value[i]));
-        }
-        value = clone;
-      } else {
-        const clone = {};
-        for (const key in value) {
-          clone[key] = cloneRecursive(value[key]);
-        }
-        value = clone;
+      const clone = Array.isArray(value) ? [] : {};
+      for (const key in value) {
+        clone[key] = cloneRecursive(value[key]);
       }
+      return clone;
     }
     return value;
   };
@@ -77,25 +62,14 @@
     if (valueA === valueB) {
       return true;
     }
-    if (valueA instanceof Date && valueB instanceof Date) {
-      return valueA.getTime() === valueB.getTime();
-    }
-    if (!valueA || !valueB || typeof valueA !== "object" && typeof valueB !== "object") {
+    if (!valueA || !valueB || typeof valueA !== "object" || typeof valueB !== "object") {
       return valueA === valueB;
     }
-    if (valueA === null || valueA === void 0 || valueB === null || valueB === void 0) {
-      return false;
+    if (valueA instanceof Date) {
+      return valueB instanceof Date && valueA.getTime() === valueB.getTime();
     }
-    if (valueA.prototype !== valueB.prototype) {
-      return false;
-    }
-    let keys = Object.keys(valueA);
-    if (keys.length !== Object.keys(valueB).length) {
-      return false;
-    }
-    return keys.every(
-      (key) => equalRecursive(valueA[key], valueB[key])
-    );
+    const keys = Object.keys(valueA);
+    return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
   };
 
   // src/conditional.ts
@@ -131,7 +105,7 @@
   __export(marker_exports, {
     marker: () => marker
   });
-  var marker = Symbol();
+  var marker = "n";
 
   // src/node.ts
   var node = (type, attributesOrContents, contents) => {
@@ -149,12 +123,13 @@
 
   // src/element.ts
   var childrenToNodes = (element) => {
+    var _a;
     const abstractChildNodes = [];
     for (let i = 0; i < element.childNodes.length; i++) {
       const childNode = element.childNodes[i];
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          childNode.textContent ?? ""
+          (_a = childNode.textContent) != null ? _a : ""
         );
       } else {
         let attributes = {};
@@ -345,10 +320,10 @@
   // src/identifier.ts
   var identifier_exports = {};
   __export(identifier_exports, {
-    uniqueIdentifier: () => uniqueIdentifier
+    identifier: () => identifier
   });
   var identifierCount = 0;
-  var uniqueIdentifier = () => "-" + identifierCount++;
+  var identifier = (prefix) => prefix + "-" + identifierCount++;
 
   // src/match.ts
   var match_exports = {};
@@ -395,16 +370,6 @@
     };
   };
 
-  // src/text.ts
-  var text_exports = {};
-  __export(text_exports, {
-    text: () => text
-  });
-  var text = (contents) => ({
-    _: marker,
-    c: Array.isArray(contents) ? contents.join("") : "" + contents
-  });
-
   // src/index.iife.ts
   iife([
     "staark",
@@ -423,8 +388,7 @@
     match: match_exports,
     memo: memo_exports,
     nde: nde_exports,
-    node: node_exports,
-    text: text_exports
+    node: node_exports
   });
 })();
 //# sourceMappingURL=staark-common.iife.js.map

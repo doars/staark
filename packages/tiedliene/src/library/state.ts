@@ -1,4 +1,7 @@
 import {
+  cloneRecursive,
+} from '@doars/staark-common/src/clone.js'
+import {
   Change,
   determineDiff,
   applyDiff,
@@ -13,7 +16,7 @@ export const manageState = function (
   state: Record<string, any>,
   options?: ManageOptions,
 ) {
-  state = structuredClone(state)
+  state = cloneRecursive(state)
   options = Object.assign({
     maximumHistory: 50,
   }, options)
@@ -24,13 +27,13 @@ export const manageState = function (
   return {
     get: (
     ) => {
-      return structuredClone(state)
+      return cloneRecursive(state)
     },
 
     set: (
       newState: Record<string, any>,
     ) => {
-      newState = structuredClone(newState)
+      newState = cloneRecursive(newState)
 
       const diffs = determineDiff(state, newState)
       if (diffs.length > 0) {
@@ -51,7 +54,7 @@ export const manageState = function (
       }
 
       state = newState
-      return structuredClone(state)
+      return cloneRecursive(state)
     },
 
     undo: (
@@ -75,7 +78,7 @@ export const manageState = function (
         }
       }
 
-      return structuredClone(state)
+      return cloneRecursive(state)
     },
 
     redo: (
@@ -99,7 +102,7 @@ export const manageState = function (
         }
       }
 
-      return structuredClone(state)
+      return cloneRecursive(state)
     },
   }
 }

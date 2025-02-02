@@ -14,23 +14,21 @@
         memo,
         mount,
         node,
-        text,
       } from '../../dst/staark.js'
 
       console.log('memo', memo)
       console.log('mount', mount)
       console.log('node', node)
-      console.log('text', text)
 
       const renderCount1 = (state) =>
         node('div', [
-          text('with memo, will update, use memo input: '),
-          text(state.count),
+          'with memo, will update, use memo input: ',
+          state.count,
         ])
       const renderCount2 = (state) => node('div', [
         node('div', [
-          text('with memo, will not update: '),
-          text(state.count),
+          'with memo, will not update: ',
+          state.count,
         ])
       ])
 
@@ -40,9 +38,10 @@
           document.getElementById('app'),
           (state) => [
             // Without memo function, should always update.
-            node('div',
-              [text('without memo, will update: '), text(state.count)]
-            ),
+            node('div', [
+              'without memo, will update: ',
+              state.count,
+            ]),
 
             // With memo function, but given valid input, therefore should update.
             memo(
@@ -60,10 +59,10 @@
             node('div', [
               node('button', {
                 click: () => state.count++,
-              }, text('add')),
+              }, 'add'),
               node('button', {
                 click: () => state.count--,
-              }, text('subtract')),
+              }, 'subtract'),
             ]),
           ],
           { count: 0, },

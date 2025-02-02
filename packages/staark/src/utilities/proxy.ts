@@ -1,102 +1,86 @@
 export const proxify = (
   root: Record<string, any>,
-  onChange: () => void,
-): Record<string, any> => {
-  // Setup WeakMap to keep track of created proxies.
+  onChange: () => void
+) => {
   const map = new WeakMap()
 
-  /**
-   * Remove object from being kept track of.
-   * @param {Record<string, any>} target Object that is being kept track of.
-   */
-  const remove = (
-    target: Record<string, any>,
-  ): void => {
-    // Check if target exists in case of recursion.
-    if (map.has(target)) {
-      // Remove target from the map.
-      const revocable = map.get(target)
-      map.delete(revocable)
-
-      // Recursively remove properties as well.
-      for (const property in revocable.proxy) {
-        if (typeof (revocable.proxy[property]) === 'object') {
-          remove(revocable.proxy[property])
+  const handler = {
+    deleteProperty: (
+      target: Record<string, any>,
+      key: string,
+    ) => {
+      if (Reflect.has(target, key)) {
+        const value = target[key]
+        if (
+          typeof value === 'object'
+          && value
+          && map.has(value)
+        ) {
+          map.get(value).revoke()
         }
-      }
 
-      revocable.revoke()
+        const deleted = Reflect.deleteProperty(target, key)
+        if (deleted) {
+          onChange()
+        }
+        return deleted
+      }
+      return true
+    },
+
+    set: (
+      target: Record<string, any>,
+      key: string,
+      value: any,
+    ) => {
+      const existingValue = target[key]
+      if (existingValue !== value) {
+        if (
+          typeof existingValue === 'object'
+          && existingValue
+          && map.has(existingValue)
+        ) {
+          map.get(existingValue).revoke()
+        }
+
+        target[key] = (
+          typeof value === 'object'
+            && value
+            ? (
+              map.has(value)
+                ? map.get(value).proxy
+                : createProxy(value)
+            )
+            : value
+        )
+
+        onChange()
+      }
+      return true
     }
   }
 
-  /**
-   * Add object to start keeping track of it.
-   * @param {Object} target Object that is being kept track of.
-   * @returns {Proxy} Object to access and mutate.
-   */
-  const add = (
-    target: Record<string, any>,
+  const createProxy = (
+    target: Record<string, any>
   ): Record<string, any> => {
-    // Exit early if proxy already exists prevent recursion.
     if (map.has(target)) {
-      return map.get(target)
+      return map.get(target).proxy
     }
 
-    // Recursively create proxies for each property.
     for (const key in target) {
-      if (target[key] && typeof (target[key]) === 'object') {
-        target[key] = add(target[key])
+      const value = target[key]
+      if (
+        value
+        && typeof value === 'object'
+      ) {
+        target[key] = createProxy(value)
       }
     }
 
-    const revocable = Proxy.revocable(target, {
-      deleteProperty: (
-        target: Record<string, any>,
-        key: string,
-      ): boolean => {
-        if (Reflect.has(target, key)) {
-          remove(target)
-
-          const deleted = Reflect.deleteProperty(target, key)
-
-          if (deleted) {
-            onChange()
-          }
-
-          return deleted
-        }
-        return true
-      },
-
-      set: (
-        target: Record<string, any>,
-        key: string,
-        value: any,
-      ): boolean => {
-        const existingValue = target[key]
-        if (existingValue !== value) {
-          // Remove existing value if value is an object.
-          if (typeof (existingValue) === 'object') {
-            remove(existingValue)
-          }
-
-          // Add proxy if value is an object.
-          if (value && typeof (value) === 'object') {
-            value = add(value)
-          }
-          target[key] = value
-
-          // Dispatch set event. If the target is an array and a new item has been pushed then the length has also changed, therefore a more generalizable path will be dispatched.
-          onChange()
-        }
-        return true
-      },
-    })
-
-    map.set(revocable, target)
-
+    const revocable = Proxy.revocable(target, handler)
+    map.set(target, revocable)
     return revocable.proxy
   }
 
-  return add(root)
+  return createProxy(root)
 }

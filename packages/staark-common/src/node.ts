@@ -4,13 +4,16 @@ import {
 import {
   MemoAbstract,
 } from './memo.js'
-import {
-  TextAbstract,
-} from './text.js'
 
-export type NodeAttributeListener = (
-  event: Event
-) => unknown
+type _NodeAttributeListener = {
+  (event: Event, state: Record<string, any>): unknown
+  (event: Event): unknown
+  (): unknown
+}
+
+export interface NodeAttributeListener extends _NodeAttributeListener {
+  f?: _NodeAttributeListener
+}
 
 export type NodeAttributes =
   Record<string,
@@ -28,11 +31,11 @@ export type NodeAttributes =
 export type NodeContent =
   string |
   MemoAbstract |
-  NodeAbstract |
-  TextAbstract
+  NodeAbstract
 
 export type NodeAbstract = {
-  _: Symbol
+  // Discriminator
+  _: string,
   // Attributes
   a?: NodeAttributes
   // Content

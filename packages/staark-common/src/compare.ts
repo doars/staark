@@ -5,37 +5,31 @@ export const equalRecursive = (
   if (valueA === valueB) {
     return true
   }
-  if (
-    valueA instanceof Date
-    && valueB instanceof Date
-  ) {
-    return valueA.getTime() === valueB.getTime()
-  }
+
   if (
     !valueA
     || !valueB
-    || (
-      typeof valueA !== 'object' && typeof valueB !== 'object'
-    )
+    || typeof valueA !== 'object'
+    || typeof valueB !== 'object'
   ) {
     return valueA === valueB
   }
+
   if (
-    valueA === null
-    || valueA === undefined
-    || valueB === null
-    || valueB === undefined
-  ) {
-    return false
+    valueA instanceof Date) {
+    return (
+      valueB instanceof Date
+      && valueA.getTime() === valueB.getTime()
+    )
   }
-  if (valueA.prototype !== valueB.prototype) {
-    return false
-  }
-  let keys = Object.keys(valueA)
-  if (keys.length !== Object.keys(valueB).length) {
-    return false
-  }
-  return keys.every(
-    (key: string): boolean => equalRecursive(valueA[key], valueB[key]),
+
+  // if (valueA.prototype !== valueB.prototype) {
+  //   return false
+  // }
+
+  const keys = Object.keys(valueA)
+  return (
+    keys.length === Object.keys(valueB).length
+    && keys.every(k => equalRecursive(valueA[k], valueB[k]))
   )
 }

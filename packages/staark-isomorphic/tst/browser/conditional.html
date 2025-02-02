@@ -12,7 +12,6 @@
     <script type="module">
       import {
         conditional,
-        text,
       } from '../../dst/staark-isomorphic.js'
 
       console.log('conditional', conditional)
@@ -21,16 +20,16 @@
         'should be true',
         conditional(
           true,
-          text('true'),
-          text('false'),
+          'true',
+          'false',
         )
       )
       console.log(
         'should be false',
         conditional(
           false,
-          text('true'),
-          text('false'),
+          'true',
+          'false',
         )
       )
     </script>

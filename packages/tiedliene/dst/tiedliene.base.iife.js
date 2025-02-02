@@ -12,6 +12,18 @@
     subject[path[path.length - 1]] = data;
   };
 
+  // ../staark-common/src/clone.ts
+  var cloneRecursive = (value) => {
+    if (typeof value === "object") {
+      const clone = Array.isArray(value) ? [] : {};
+      for (const key in value) {
+        clone[key] = cloneRecursive(value[key]);
+      }
+      return clone;
+    }
+    return value;
+  };
+
   // src/library/diff.ts
   var setValueAtPath = (record, path, value) => {
     let current = record;
@@ -22,7 +34,7 @@
       }
       current = current[key];
     }
-    current[path[path.length - 1]] = structuredClone(value);
+    current[path[path.length - 1]] = cloneRecursive(value);
   };
   var deleteValueAtPath = (record, path) => {
     let current = record;
@@ -46,7 +58,7 @@
         changes.unshift({
           type: "delete",
           path: currentPath,
-          old: structuredClone(before[key])
+          old: cloneRecursive(before[key])
         });
       } else if (typeof before[key] === "object" && typeof after[key] === "object") {
         changes.unshift(
@@ -56,8 +68,8 @@
         changes.unshift({
           type: "set",
           path: currentPath,
-          old: structuredClone(before[key]),
-          new: structuredClone(after[key])
+          old: cloneRecursive(before[key]),
+          new: cloneRecursive(after[key])
         });
       }
     }
@@ -66,7 +78,7 @@
         changes.unshift({
           type: "set",
           path: [...path, key],
-          new: structuredClone(after[key])
+          new: cloneRecursive(after[key])
         });
       }
     }
