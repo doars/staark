@@ -57,14 +57,14 @@ export const mount = (
     initialState = JSON.parse(initialState) as Record<string, any>
   }
   initialState ??= {}
-  let proxyChanged = true
+  let updatePromise: Promise<void> | null = null
   const triggerUpdate = (
-  ): void => {
-    if (!proxyChanged) {
-      proxyChanged = true
-      Promise.resolve()
+  ): Promise<void> | null => {
+    if (!updatePromise) {
+      updatePromise = Promise.resolve()
         .then(updateAbstracts)
     }
+    return updatePromise
   }
   let state = (
     Object.getPrototypeOf(initialState) === Proxy.prototype
@@ -130,13 +130,7 @@ export const mount = (
             } else if (name === 'style') {
               if (typeof (value) === 'object') {
                 if (Array.isArray(value)) {
-                  for (const style of value) {
-                    const [styleProperty, ...styleValue] = (style as string).split(':');
-                    (element as HTMLElement).style.setProperty(
-                      styleProperty,
-                      styleValue.join(':'),
-                    )
-                  }
+                  (((element as HTMLElement).style as unknown) as string) = value.join(';')
                 } else {
                   for (let styleProperty in value) {
                     let styleValue: boolean | string | number | (boolean | string | number)[] = value[styleProperty]
@@ -154,6 +148,7 @@ export const mount = (
                       styleProperty,
                       styleValue.toString(),
                     )
+                    // FIX: Old styles are not removed properly!
                   }
                 }
               }
@@ -201,6 +196,10 @@ export const mount = (
               name,
               oldAttributes[name] as NodeAttributeListener,
             )
+          } else if (name === 'class') {
+            element.className = ''
+          } else if (name === 'style') {
+            (((element as HTMLElement).style as unknown) as string) = ''
           } else {
             if (name === 'value') {
               // Reset value separately.
@@ -478,10 +477,10 @@ export const mount = (
       active
       && !updating
       // Only update if changes to the state have been made.
-      && proxyChanged
+      && updatePromise
     ) {
       updating = true
-      proxyChanged = false
+      updatePromise = null
 
       let newAbstractTree = arrayify(
         renderView(state),
@@ -497,11 +496,14 @@ export const mount = (
       newMemoMap = new WeakMap()
 
       updating = false
-      if (proxyChanged) {
+      if (updatePromise) {
         throw new Error('update during render')
       }
     }
   }
+  // Trigger update first so the promise that is checked gets set.
+  triggerUpdate()
+  // Now perform initial update.
   updateAbstracts()
 
   return [

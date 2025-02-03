@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.1
+
+- Update function now returns a promise that resolves after rendering.
+
 ## 1.7.0
 
 - Update `@doars/staark-common` dependency.

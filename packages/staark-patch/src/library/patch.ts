@@ -69,13 +69,7 @@ const updateAttributes = (
           } else if (name === 'style') {
             if (typeof (value) === 'object') {
               if (Array.isArray(value)) {
-                for (const style of value) {
-                  const [styleProperty, ...styleValue] = (style as string).split(':');
-                  (element as HTMLElement).style.setProperty(
-                    styleProperty,
-                    styleValue.join(':'),
-                  )
-                }
+                (((element as HTMLElement).style as unknown) as string) = value.join(';')
               } else {
                 for (let styleProperty in value) {
                   let styleValue: boolean | string | number | (boolean | string | number)[] = value[styleProperty]
@@ -93,6 +87,7 @@ const updateAttributes = (
                     styleProperty,
                     styleValue.toString(),
                   )
+                  // FIX: Old styles are not removed properly!
                 }
               }
             }
@@ -139,6 +134,10 @@ const updateAttributes = (
             name,
             oldAttributes[name] as NodeAttributeListener,
           )
+        } else if (name === 'class') {
+          element.className = ''
+        } else if (name === 'style') {
+          (((element as HTMLElement).style as unknown) as string) = ''
         } else {
           if (name === 'value') {
             // Reset value separately.
