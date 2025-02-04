@@ -10,6 +10,6 @@ export const size = async (filePath) => {
     return
   }
 
-  size = (size / 1024).toFixed(2) + 'kB'
+  size = (size / 1024).toFixed(2) + 'KB'
   console.log(size + ' is ' + path.basename(filePath) + ' when using brotli compression!')
 }

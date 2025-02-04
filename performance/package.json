@@ -1,0 +1,33 @@
+{
+  "author": {
+    "name": "Ron Dekker",
+    "website": "https://rondekker.com"
+  },
+  "name": "@doars/staark-benchmarks",
+  "private": true,
+  "description": "",
+  "keywords": [],
+  "version": "1.0.0",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "NODE_ENV=production node config.esbuild.js",
+    "benchmark": "node --expose-gc src/index.js --minified",
+    "profile": "node --expose-gc src/index.js --profile --run-count=1",
+    "lint": "echo 'no lint setup'",
+    "test:runtime": "echo 'no runtime tests'",
+    "upgrade": "npm-check-updates --upgrade --target minor"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.1.1"
+  },
+  "dependencies": {
+    "@doars/staark-patch": "x",
+    "@doars/staark": "x",
+    "hyperapp": "^2.0.22",
+    "mithril": "^2.2.13",
+    "redom": "^4.3.0",
+    "snabbdom": "^3.6.2",
+    "superfine": "^8.2.0"
+  }
+}

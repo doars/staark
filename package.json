@@ -2,8 +2,8 @@
   "private": true,
   "name": "@doars/staark-workspace",
   "workspaces": [
-    "benchmarks/libraries",
-    "packages/*"
+    "packages/*",
+    "performance"
   ],
   "type": "module",
   "packageManager": "yarn@1.22.22",
