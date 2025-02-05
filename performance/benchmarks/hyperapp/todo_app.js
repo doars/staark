@@ -7,12 +7,10 @@ window.benchmark = {
   setup: async function ({
     rootNode,
   }) {
-    window.ITERATIONS = 1e3
-
     const { app, h, text } = window.hyperapp
 
     const todos = []
-    for (let i = 0; i < window.ITERATIONS; i++) {
+    for (let i = 0; i < ITERATIONS; i++) {
       todos.push({
         text: 'original',
         id: i,
@@ -60,39 +58,42 @@ window.benchmark = {
     window.dispatch = app({
       node: rootNode,
       view: (state) =>
-        h('main', {}, [
-          h('h1', {}, text('To-do List')),
-          h('input', {
-            type: 'text',
-            oninput: updateInput,
-            value: state.value,
-          }),
-          h('ul', {},
-            state.todos.map((todo) =>
-              h('li', {
-                class: 'task-item ' + (todo.completed ? 'completed' : ''),
-                'data-id': todo.id,
-              }, [
-                h('span', {
-                  class: 'task-text',
-                  style: {
-                    'text-decoration': todo.completed ? 'line-through' : 'none',
-                  },
-                }, text(todo.text)),
-                h('button', {
-                  class: 'toggle-button',
-                  onclick: completeTodo,
-                }, text(todo.completed ? 'Undo' : 'Complete')),
-                h('button', {
-                  class: 'delete-button',
-                  onclick: deleteTodo,
-                }, text('Delete')),
-              ]),
+        // NOTE: This library allows you to modify the root node and disconnects it from the DOM when the tag name of the root node is changed. Hence an additional virtual node for it is included.
+        h('div', {}, [
+          h('main', {}, [
+            h('h1', {}, text('To-do List')),
+            h('input', {
+              type: 'text',
+              oninput: updateInput,
+              value: state.value,
+            }),
+            h('ul', {},
+              state.todos.map((todo) =>
+                h('li', {
+                  class: 'task-item ' + (todo.completed ? 'completed' : ''),
+                  'data-id': todo.id,
+                }, [
+                  h('span', {
+                    class: 'task-text',
+                    style: {
+                      'text-decoration': todo.completed ? 'line-through' : 'none',
+                    },
+                  }, text(todo.text)),
+                  h('button', {
+                    class: 'toggle-button',
+                    onclick: completeTodo,
+                  }, text(todo.completed ? 'Undo' : 'Complete')),
+                  h('button', {
+                    class: 'delete-button',
+                    onclick: deleteTodo,
+                  }, text('Delete')),
+                ]),
+              ),
             ),
-          ),
-          h('button', {
-            onclick: addTodo,
-          }, text('New!')),
+            h('button', {
+              onclick: addTodo,
+            }, text('New!')),
+          ]),
         ]),
       init: {
         counter: 0,
@@ -101,14 +102,14 @@ window.benchmark = {
       },
     })
 
-    return new Promise(requestAnimationFrame) // TODO: App returns before being done.
+    await new Promise(requestAnimationFrame)
   },
 
   run: async function ({
     rootNode,
   }) {
     const todos = []
-    for (let i = 0; i < window.ITERATIONS; i++) {
+    for (let i = 0; i < ITERATIONS; i++) {
       todos.push({
         text: 'updated',
         id: i,
@@ -119,7 +120,7 @@ window.benchmark = {
       todos: todos,
     })
 
-    return new Promise(requestAnimationFrame) // TODO: App returns before being done.
+    await new Promise(requestAnimationFrame)
   },
 
   cleanup: async function ({

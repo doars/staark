@@ -12,8 +12,8 @@
   "type": "module",
   "scripts": {
     "build": "NODE_ENV=production node config.esbuild.js",
-    "benchmark": "node --expose-gc src/index.js --minified",
-    "profile": "node --expose-gc src/index.js --profile --run-count=1",
+    "benchmark": "node src/index.js --minified",
+    "profile": "node src/index.js --profile --run-count=1",
     "lint": "echo 'no lint setup'",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"

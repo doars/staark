@@ -79,6 +79,7 @@ const calculateStats = (
 
 async function runBenchmark (
   browser,
+  helpersCode,
   libraryCode,
   benchmarkCode,
   profilePath,
@@ -89,11 +90,10 @@ async function runBenchmark (
   await client.send('HeapProfiler.enable');
 
   await page.addScriptTag({
-    content: (
-      libraryCode
-        ? libraryCode
-        : ''
-    ) + '(function(){' + benchmarkCode + '}())',
+    content:
+      (libraryCode ? libraryCode : '')
+      + '(function(){' + helpersCode + '}())'
+      + '(function(){' + benchmarkCode + '}())',
   })
 
   page.on('console', (message) => {
@@ -204,6 +204,10 @@ async function runBenchmarks () {
     ],
   })
 
+  const helpersCode = await fsPromises.readFile(
+    path.join(projectDirectory, 'src', 'helpers.js'),
+  )
+
   const libraries = await fsPromises.readdir(
     path.join(projectDirectory, DIRECTORY_BENCHMARK),
   )
@@ -244,16 +248,17 @@ async function runBenchmarks () {
     )
     if (options.minified) {
       console.log(
-        fmtLabel('Minified')
-        + fmtKB(libraryMinifiedSize)
-        + '\n' + fmtLabel('Compressed')
+        // fmtLabel('Minified')
+        // + fmtKB(libraryMinifiedSize)
+        // + '\n' +
+        fmtLabel('Min+brotli')
         + fmtKB(libraryCompressedSize)
-        + '\n' + fmtLabel('Space saved')
-        + fmtPercent(
-          libraryMinifiedSize > 0
-            ? ((1 - (libraryCompressedSize / libraryMinifiedSize)) * 100)
-            : 0
-        )
+        // + '\n' + fmtLabel('Space saved')
+        // + fmtPercent(
+        //   libraryMinifiedSize > 0
+        //     ? ((1 - (libraryCompressedSize / libraryMinifiedSize)) * 100)
+        //     : 0
+        // )
       )
     }
 
@@ -289,6 +294,7 @@ async function runBenchmarks () {
         results.push(
           await runBenchmark(
             browser,
+            helpersCode,
             libraryCode,
             benchmarkCode,
             (i === options.runCount - 1) ? profilePath : false,

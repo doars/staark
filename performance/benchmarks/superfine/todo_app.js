@@ -60,7 +60,7 @@ window.benchmark = {
     update = () => {
       patch(
         rootNode,
-        // NOTE: Superfine allows you to modify the root node and disconnected it from the DOM when the tag name of the root node has changed. Hence an additional virtual node for it is included.
+        // NOTE: This library allows you to modify the root node and disconnects it from the DOM when the tag name of the root node is changed. Hence an additional virtual node for it is included.
         h('div', {}, [
           h('main', {}, [
             h('h1', {}, text('To-do List')),

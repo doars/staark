@@ -16,15 +16,15 @@ window.benchmark = {
         this.app = app
         this.todo = todo
 
-        this.el = window.redom.el('li.task-item', {
+        this.el = el('li.task-item', {
           'data-id': todo.id,
         }, [
-          this.span = window.redom.el('span.task-text', todo.text),
-          this.toggleButton = window.redom.el(
+          this.span = el('span.task-text', todo.text),
+          this.toggleButton = el(
             'button.toggle-button',
             todo.completed ? 'Undo' : 'Complete'
           ),
-          this.deleteButton = window.redom.el('button.delete-button', 'Delete')
+          this.deleteButton = el('button.delete-button', 'Delete')
         ])
 
         this.toggleButton.addEventListener('click', (event) => {
