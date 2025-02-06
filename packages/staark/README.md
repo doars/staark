@@ -54,19 +54,9 @@ In the example above the text will always be shown. However it only updates when
 
 Also note how the click listener has been extracted outside of the view function. This can be done because the first parameter is the event like in vanilla javascript and the second parameter of a function is the state. Extracting the listener is beneficial as it will always remove and re-add the same listener when defined inside the view function. This happens because in JavaScript a new function is always different when re-defined and can't be compared against. For example `{} === {}` results in `true`, but `(() => {}) === (() => {})` is always `false`.
 
-In addition to the functions provided it is good to know that some attribute properties are treated differently. As you have probably noticed in the examples above a function gets added as a listener making reactivity easy to handle. The `class` and `style` are also handled differently, the value of attributes with that name are automatically converted from arrays or objects to a single string.
+In addition to the functions provided it is good to know that some attribute properties are treated differently. As you have probably noticed in the examples above a function gets added as a listener making reactivity easy to handle. The `class` and `style` are also handled differently, the value of attributes with that name are automatically converted from objects to a single string.
 
 ```JavaScript
-let attributes = {
-  class: [
-    'nav-link',
-    'active',
-  ],
-  style: [
-    'color: red',
-    'text-decoration: underline',
-  ],
-} // Will become <... class=".nav-link .active" style="color:red;text-decoration:underline;">
 attributes = {
   class: {
     'btn-link': false,
@@ -78,9 +68,15 @@ attributes = {
     textDecoration: 'underline',
   },
 } // Will become <... class=".nav-link .active" style="color:red;text-decoration:underline;">
+let attributes = {
+  class: [
+    'nav-link',
+    'active',
+  ],
+} // Will become <... class=".nav-link .active">
 ```
 
-As you can see in the example above the style properties are automatically converted from camel case to kebab case. This is not done for class names since capital letters could be intended.
+As you can see in the example above the style properties are automatically converted from camel case to kebab case. This is not done for class names since capital letters could be intended. Also note that the class can be expressed using an array as well.
 
 All the functionality above is part of the base library there is an expanded version which has a bit more non-essential functionality to make development simpler. The first of these being the `conditional` and `match` functions. These allow you to easily add branching into rendering the node tree. The `conditional` function takes in a statement, if the statement is true the first parameter will be returned, otherwise the second parameter will be returned. For the `match` function the first parameter is the key of one of the entries into the second parameter, the matching one will be returned by the function.
 

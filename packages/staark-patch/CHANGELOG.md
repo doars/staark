@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.1
+
+- Fix bug relating to clearing old styles.
+
 ## 1.4.0
 
 - `text` abstract removed.

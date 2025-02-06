@@ -3,6 +3,7 @@
 ## 1.7.1
 
 - Update function now returns a promise that resolves after rendering.
+- Fix bug relating to clearing old styles.
 
 ## 1.7.0
 

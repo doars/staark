@@ -66,28 +66,45 @@ const updateAttributes = (
               }
             }
             element.className = value as string
-          } else if (name === 'style') {
-            if (typeof (value) === 'object') {
-              if (Array.isArray(value)) {
-                (((element as HTMLElement).style as unknown) as string) = value.join(';')
-              } else {
-                for (let styleProperty in value) {
-                  let styleValue: boolean | string | number | (boolean | string | number)[] = value[styleProperty]
+          } else if (
+            name === 'style'
+            && typeof (value) === 'object'
+          ) {
+            // Apply updated styles.
+            for (let styleName in value) {
+              let styleValue = (value as Record<string, boolean | string | null | undefined | number | (boolean | string | number)[]>)[styleName]
 
-                  // Convert to kebab case.
-                  styleProperty = styleProperty
+              // Convert to kebab case.
+              styleName = styleName
+                .replace(MATCH_CAPITALS, HYPHENATE)
+                .toLowerCase()
+
+              if (Array.isArray(styleValue)) {
+                styleValue = styleValue.join(' ')
+              }
+
+              (element as HTMLElement).style.setProperty(
+                styleName,
+                styleValue as string,
+              )
+            }
+
+            // Remove old styles.
+            if (
+              oldAttributes
+              && oldAttributes[name]
+              && typeof (oldAttributes[name]) === 'object'
+              && !Array.isArray(oldAttributes[name])
+            ) {
+              for (let styleName in oldAttributes[name]) {
+                if (!(styleName in value)) {
+                  styleName = styleName
                     .replace(MATCH_CAPITALS, HYPHENATE)
-                    .toLowerCase()
+                    .toLowerCase();
 
-                  if (Array.isArray(styleValue)) {
-                    styleValue = styleValue.join(' ')
-                  }
-
-                  (element as HTMLElement).style.setProperty(
-                    styleProperty,
-                    styleValue.toString(),
+                  (element as HTMLElement).style.removeProperty(
+                    styleName,
                   )
-                  // FIX: Old styles are not removed properly!
                 }
               }
             }

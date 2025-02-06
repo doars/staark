@@ -100,26 +100,24 @@
                 }
               }
               element.className = value;
-            } else if (name === "style") {
-              if (typeof value === "object") {
-                if (Array.isArray(value)) {
-                  for (const style of value) {
-                    const [styleProperty, ...styleValue] = style.split(":");
-                    element.style.setProperty(
-                      styleProperty,
-                      styleValue.join(":")
-                    );
-                  }
-                } else {
-                  for (let styleProperty in value) {
-                    let styleValue = value[styleProperty];
-                    styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                    if (Array.isArray(styleValue)) {
-                      styleValue = styleValue.join(" ");
-                    }
-                    element.style.setProperty(
-                      styleProperty,
-                      styleValue.toString()
+            } else if (name === "style" && typeof value === "object") {
+              for (let styleName in value) {
+                let styleValue = value[styleName];
+                styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
+                if (Array.isArray(styleValue)) {
+                  styleValue = styleValue.join(" ");
+                }
+                element.style.setProperty(
+                  styleName,
+                  styleValue
+                );
+              }
+              if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
+                for (let styleName in oldAttributes[name]) {
+                  if (!(styleName in value)) {
+                    styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
+                    element.style.removeProperty(
+                      styleName
                     );
                   }
                 }
@@ -153,6 +151,10 @@
               name,
               oldAttributes[name]
             );
+          } else if (name === "class") {
+            element.className = "";
+          } else if (name === "style") {
+            element.style = "";
           } else {
             if (name === "value") {
               element.value = "";

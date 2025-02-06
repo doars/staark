@@ -149,12 +149,12 @@
       initialState = JSON.parse(initialState);
     }
     initialState != null ? initialState : initialState = {};
-    let proxyChanged = true;
+    let updatePromise = null;
     const triggerUpdate = () => {
-      if (!proxyChanged) {
-        proxyChanged = true;
-        Promise.resolve().then(updateAbstracts);
+      if (!updatePromise) {
+        updatePromise = Promise.resolve().then(updateAbstracts);
       }
+      return updatePromise;
     };
     let state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
       initialState,
@@ -200,26 +200,24 @@
                   }
                 }
                 element.className = value;
-              } else if (name === "style") {
-                if (typeof value === "object") {
-                  if (Array.isArray(value)) {
-                    for (const style of value) {
-                      const [styleProperty, ...styleValue] = style.split(":");
-                      element.style.setProperty(
-                        styleProperty,
-                        styleValue.join(":")
-                      );
-                    }
-                  } else {
-                    for (let styleProperty in value) {
-                      let styleValue = value[styleProperty];
-                      styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                      if (Array.isArray(styleValue)) {
-                        styleValue = styleValue.join(" ");
-                      }
-                      element.style.setProperty(
-                        styleProperty,
-                        styleValue.toString()
+              } else if (name === "style" && typeof value === "object") {
+                for (let styleName in value) {
+                  let styleValue = value[styleName];
+                  styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
+                  if (Array.isArray(styleValue)) {
+                    styleValue = styleValue.join(" ");
+                  }
+                  element.style.setProperty(
+                    styleName,
+                    styleValue
+                  );
+                }
+                if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
+                  for (let styleName in oldAttributes[name]) {
+                    if (!(styleName in value)) {
+                      styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
+                      element.style.removeProperty(
+                        styleName
                       );
                     }
                   }
@@ -254,6 +252,10 @@
                 name,
                 oldAttributes[name]
               );
+            } else if (name === "class") {
+              element.className = "";
+            } else if (name === "style") {
+              element.style = "";
             } else {
               if (name === "value") {
                 element.value = "";
@@ -451,9 +453,9 @@
     oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
     let active = true, updating = false;
     const updateAbstracts = () => {
-      if (active && !updating && proxyChanged) {
+      if (active && !updating && updatePromise) {
         updating = true;
-        proxyChanged = false;
+        updatePromise = null;
         let newAbstractTree = arrayify(
           renderView(state)
         );
@@ -466,11 +468,12 @@
         oldMemoMap = newMemoMap;
         newMemoMap = /* @__PURE__ */ new WeakMap();
         updating = false;
-        if (proxyChanged) {
+        if (updatePromise) {
           throw new Error("update during render");
         }
       }
     };
+    triggerUpdate();
     updateAbstracts();
     return [
       triggerUpdate,
