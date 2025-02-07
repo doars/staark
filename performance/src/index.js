@@ -90,10 +90,11 @@ async function runBenchmark (
   await client.send('HeapProfiler.enable');
 
   await page.addScriptTag({
-    content:
-      (libraryCode ? libraryCode : '')
-      + '(function(){' + helpersCode + '}())'
-      + '(function(){' + benchmarkCode + '}())',
+    content: (libraryCode ? libraryCode : ''),
+  })
+  await page.addScriptTag({
+    // '(function(){' + helpersCode + '}())'
+    content: '(function(){' + benchmarkCode + '}())',
   })
 
   page.on('console', (message) => {
@@ -112,22 +113,41 @@ async function runBenchmark (
     window: window,
   }))
 
-  // TODO: Add sourcemap data.
-
   const callBenchmark = async (
     functionName,
   ) => {
-    let profileData,
-      result
+    const traceFilePath = (
+      profilePath
+        ? profilePath + '-' + functionName + '.json'
+        : null
+    )
+    if (traceFilePath) {
+      const directoryPath = path.dirname(profilePath)
+      if (directoryPath) {
+        if (!fs.existsSync(directoryPath)) {
+          fs.mkdirSync(directoryPath, {
+            recursive: true,
+          })
+        }
+      }
+      if (fs.existsSync(traceFilePath)) {
+        fs.unlinkSync(traceFilePath)
+      }
+    }
 
     await client.send('HeapProfiler.collectGarbage')
 
-    if (profilePath) {
-      await client.send('Profiler.enable')
-      await client.send('Profiler.start', {
-        includeNativeFunctions: true,
-        samplingInterval: 10,
-        preciseCoverageDeltaInterval: -1
+    if (traceFilePath) {
+      await page.tracing.start({
+        path: traceFilePath,
+        categories: [
+          '-*',
+          'blink',
+          'devtools.timeline',
+          'disabled-by-default-devtools.timeline',
+          'v8',
+          'disabled-by-default-v8.cpu_profiler',
+        ],
       })
     }
 
@@ -148,26 +168,10 @@ async function runBenchmark (
         memory: (performance.memory?.usedJSHeapSize || 0) - startMemory,
       }
     }
-    result = await page.evaluate(runner, context, functionName)
+    const result = await page.evaluate(runner, context, functionName)
 
     if (profilePath) {
-      profileData = (await client.send('Profiler.stop', {
-        profile: true,
-        keepProfile: true,
-      })).profile
-      if (profileData) {
-        const filePath = profilePath + '-' + functionName + '.json'
-        const directoryPath = path.dirname(filePath)
-        if (directoryPath) {
-          if (!fs.existsSync(directoryPath)) {
-            fs.mkdirSync(directoryPath, true)
-          }
-        }
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath)
-        }
-        fs.writeFileSync(filePath, JSON.stringify(profileData))
-      }
+      await page.tracing.stop()
     }
 
     return result
@@ -235,12 +239,29 @@ async function runBenchmarks () {
       libraryName + (options.minified ? '.min' : '') + '.js',
     )
     let libraryCode
-    let libraryMinifiedSize = 0
     let libraryCompressedSize = 0
     if (fs.existsSync(libraryPath)) {
-      libraryCode = await fsPromises.readFile(libraryPath, 'utf8')
-      libraryMinifiedSize = (await fsPromises.stat(libraryPath)).size
-      libraryCompressedSize = await brotliSize.sync(libraryCode)
+      libraryCode = (
+        await fsPromises.readFile(libraryPath, 'utf8')
+      ).trimEnd()
+      // Remove sourcemap reference.
+      const lines = libraryCode.split('\n')
+      if (lines[lines.length - 1].startsWith('//# sourceMappingURL=')) {
+        lines.pop()
+      }
+      libraryCode = lines.join('\n')
+
+      if (options.minified) {
+        libraryCompressedSize = await brotliSize.sync(libraryCode)
+      }
+
+      // Append inline sourcemap.
+      const sourceMapPath = libraryPath + '.map'
+      if (fs.existsSync(sourceMapPath)) {
+        const sourceMapContent = await fsPromises.readFile(sourceMapPath, 'utf8')
+        const base64SourceMap = Buffer.from(sourceMapContent).toString('base64')
+        libraryCode += '\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,' + base64SourceMap
+      }
     }
 
     console.log(
@@ -248,17 +269,8 @@ async function runBenchmarks () {
     )
     if (options.minified) {
       console.log(
-        // fmtLabel('Minified')
-        // + fmtKB(libraryMinifiedSize)
-        // + '\n' +
         fmtLabel('Min+brotli')
         + fmtKB(libraryCompressedSize)
-        // + '\n' + fmtLabel('Space saved')
-        // + fmtPercent(
-        //   libraryMinifiedSize > 0
-        //     ? ((1 - (libraryCompressedSize / libraryMinifiedSize)) * 100)
-        //     : 0
-        // )
       )
     }
 
@@ -348,7 +360,7 @@ async function runBenchmarks () {
 
       if (profilePath) {
         resultsMessage +=
-          '\n' + fmtLabel('Profile graphs')
+          '\n' + fmtLabel('Profile graph at')
           + profilePath.substring(projectDirectory.length + 1)
       }
 
