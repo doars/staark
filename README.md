@@ -31,6 +31,10 @@ If you are using the libraries and are running into an problem that you don't kn
 
 If you are using _staark_ then please let me know, I would love to hear about it!
 
+## Comparisons
+
+Curious how _staark_ compares to other similar libraries? Checkout the [performance](https://github.com/doars/staark/tree/main/performance#readme) directory where it's compared to some other libraries in build size, runtime performance, and memory usage. As a bonus the difference and similarities are also explained for some.
+
 ## Future ideas
 
 - Add support for `memo` nodes to `staark-patch` and `staark-isomorphic`'s patch functions.

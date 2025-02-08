@@ -389,12 +389,19 @@ export const prepare = (
   return (
     newAbstractTree: NodeContent[] | NodeContent,
   ): void => {
-    newAbstractTree = arrayify(newAbstractTree)
-    updateElementTree(
-      _rootElement,
-      newAbstractTree,
-      oldAbstractTree as NodeContent[],
-    )
-    oldAbstractTree = newAbstractTree
+    if (newAbstractTree) {
+      newAbstractTree = arrayify(newAbstractTree)
+      updateElementTree(
+        _rootElement,
+        newAbstractTree,
+        oldAbstractTree as NodeContent[],
+      )
+      oldAbstractTree = newAbstractTree
+    } else {
+      for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+        _rootElement.childNodes[i].remove()
+      }
+      oldAbstractTree = []
+    }
   }
 }

@@ -7,14 +7,15 @@ import brotliSize from 'brotli-size'
 
 const ARGUMENT_BENCHMARK = '--benchmark='
 const ARGUMENT_LIBRARY = '--library='
-const ARGUMENT_RUN_COUNT = '--run-count='
+const ARGUMENT_ITERATIONS = '--iterations='
+const ARGUMENT_COMPLEXITY = '--complexity='
 
 const DIRECTORY_BENCHMARK = 'benchmarks'
 const DIRECTORY_LIBRARY = 'dst'
 const DIRECTORY_PROFILE = 'profiles'
 
 const fmtLabel =
-  (value) => '  ' + value.padEnd(13, ' ') + ' '
+  (value, prefix = '') => (prefix + value).padEnd(14, ' ') + ' '
 const fmtKB =
   (bytes, prefix = '') => (prefix + (bytes / 1024).toFixed(2)).padStart(8, ' ') + 'KB'
 const fmtMB =
@@ -32,9 +33,13 @@ const projectDirectory = path.join(fileDirectory, '..')
 const options = {
   benchmark: null,
   library: null,
+  sizes: false,
+
   minified: false,
   profile: false,
-  runCount: 16,
+
+  complexity: 10,
+  iterations: 16,
 }
 const args = process.argv.slice(2)
 args.forEach(arg => {
@@ -43,15 +48,21 @@ args.forEach(arg => {
     options.library = arg.substring(ARGUMENT_LIBRARY.length)
   } else if (arg.startsWith(ARGUMENT_BENCHMARK)) {
     options.benchmark = arg.substring(ARGUMENT_BENCHMARK.length)
-  } else if (arg.startsWith(ARGUMENT_RUN_COUNT)) {
-    options.runCount = Number.parseInt(
-      arg.substring(ARGUMENT_RUN_COUNT.length),
+  } else if (arg.startsWith(ARGUMENT_COMPLEXITY)) {
+    options.complexity = Number.parseInt(
+      arg.substring(ARGUMENT_COMPLEXITY.length),
+    )
+  } else if (arg.startsWith(ARGUMENT_ITERATIONS)) {
+    options.iterations = Number.parseInt(
+      arg.substring(ARGUMENT_ITERATIONS.length),
     )
   } else if (arg === '--profile') {
     // Set the flag to true if the argument is exactly the flag.
     options.profile = true
   } else if (arg === '--minified') {
     options.minified = true
+  } else if (arg === '--sizes') {
+    options.sizes = true
   }
 })
 
@@ -108,10 +119,11 @@ async function runBenchmark (
     document.body.appendChild(rootNode)
   })
 
-  const context = await page.evaluateHandle(() => ({
+  const context = await page.evaluateHandle((options) => ({
+    complexity: options.complexity,
     rootNode: document.querySelector('div'),
     window: window,
-  }))
+  }), options)
 
   const callBenchmark = async (
     functionName,
@@ -239,8 +251,12 @@ async function runBenchmarks () {
       libraryName + (options.minified ? '.min' : '') + '.js',
     )
     let libraryCode
+    let librarySize = 0
     let libraryCompressedSize = 0
     if (fs.existsSync(libraryPath)) {
+      const libraryStat = await fsPromises.stat(libraryPath)
+      librarySize = libraryStat.size
+
       libraryCode = (
         await fsPromises.readFile(libraryPath, 'utf8')
       ).trimEnd()
@@ -267,9 +283,15 @@ async function runBenchmarks () {
     console.log(
       '\n' + libraryName
     )
-    if (options.minified) {
+    if (
+      options.minified
+      && options.sizes
+    ) {
       console.log(
-        fmtLabel('Min+brotli')
+        fmtLabel('Minified')
+        + fmtKB(librarySize)
+        + '\n'
+        + fmtLabel('Min+brotli')
         + fmtKB(libraryCompressedSize)
       )
     }
@@ -302,14 +324,14 @@ async function runBenchmarks () {
 
       // Run benchmark multiple times for statistics.
       const results = []
-      for (let i = 0; i < options.runCount; i++) {
+      for (let i = 0; i < options.iterations; i++) {
         results.push(
           await runBenchmark(
             browser,
             helpersCode,
             libraryCode,
             benchmarkCode,
-            (i === options.runCount - 1) ? profilePath : false,
+            (i === options.iterations - 1) ? profilePath : false,
           ),
         )
       }
@@ -325,12 +347,12 @@ async function runBenchmarks () {
         )
 
         resultsMessage +=
-          '\n' + fmtLabel('Setup time')
+          '\n' + fmtLabel('Setup time', '  ')
           + fmtMs(setupTime.average, 'x̄') + ','
           + fmtMs(setupTime.min, '∧') + ','
           + fmtMs(setupTime.max, '∨') + ','
           + fmtPercent(setupTime.marginOfError, '±')
-          + '\n' + fmtLabel('Setup memory')
+          + '\n' + fmtLabel('Setup memory', '  ')
           + fmtMB(setupMemory.average, 'x̄') + ','
           + fmtMB(setupMemory.min, '∧') + ','
           + fmtMB(setupMemory.max, '∨') + ','
@@ -346,12 +368,12 @@ async function runBenchmarks () {
         )
 
         resultsMessage +=
-          '\n' + fmtLabel('Run time')
+          '\n' + fmtLabel('Run time', '  ')
           + fmtMs(runTime.average, 'x̄') + ','
           + fmtMs(runTime.min, '∧') + ','
           + fmtMs(runTime.max, '∨') + ','
           + fmtPercent(runTime.marginOfError, '±')
-          + '\n' + fmtLabel('Run memory')
+          + '\n' + fmtLabel('Run memory', '  ')
           + fmtMB(runMemory.average, 'x̄') + ','
           + fmtMB(runMemory.min, '∧') + ','
           + fmtMB(runMemory.max, '∨') + ','

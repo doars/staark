@@ -66,7 +66,7 @@ export const node = (
         ? Array.isArray(contents)
           ? contents
           : [contents] as NodeContent[]
-        : []
+        : undefined
     ),
     t: type.toUpperCase(),
   }

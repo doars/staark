@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+
+- Removed the creation of an empty array when no children are provided.
+
 ## 1.5.0
 
 - `text` abstract removed.

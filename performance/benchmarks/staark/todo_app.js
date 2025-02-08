@@ -1,17 +1,16 @@
-const ITERATIONS = 1e4
-
 let update = null,
   unmount = null,
   state = null
 
 window.benchmark = {
   setup: async function ({
+    complexity,
     rootNode,
   }) {
     const { mount, node } = window.staark
 
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'original',
         id: i,
@@ -102,10 +101,10 @@ window.benchmark = {
   },
 
   run: async function ({
-    rootNode,
+    complexity,
   }) {
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'updated',
         id: i,

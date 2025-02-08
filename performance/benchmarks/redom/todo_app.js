@@ -1,15 +1,23 @@
-const ITERATIONS = 1e4
-
 let appInstance = null
 
 window.benchmark = {
   setup: async function ({
+    complexity,
     rootNode,
   }) {
     const {
       el,
       list,
     } = window.redom
+
+    const todos = []
+    for (let i = 0; i < complexity * 100; i++) {
+      todos.push({
+        text: 'original',
+        id: i,
+        completed: false,
+      })
+    }
 
     class TodoItem {
       constructor(app, todo) {
@@ -118,29 +126,19 @@ window.benchmark = {
       }
     }
 
-    const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
-      todos.push({
-        text: 'original',
-        id: i,
-        completed: false,
-      })
-    }
-    const initialState = {
+    appInstance = new App({
       counter: 0,
       todos: todos,
       value: '',
-    }
-
-    appInstance = new App(initialState)
+    })
     rootNode.appendChild(appInstance.el)
   },
 
   run: async function ({
-    rootNode,
+    complexity,
   }) {
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'updated',
         id: i,

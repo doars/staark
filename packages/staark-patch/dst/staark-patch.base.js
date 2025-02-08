@@ -10,7 +10,7 @@ var node = (type, attributesOrContents, contents) => {
   return {
     _: marker,
     a: attributesOrContents,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : [],
+    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
     t: type.toUpperCase()
   };
 };
@@ -307,13 +307,20 @@ var prepare = (rootElement, oldAbstractTree) => {
   }
   oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
   return (newAbstractTree) => {
-    newAbstractTree = arrayify(newAbstractTree);
-    updateElementTree(
-      _rootElement,
-      newAbstractTree,
-      oldAbstractTree
-    );
-    oldAbstractTree = newAbstractTree;
+    if (newAbstractTree) {
+      newAbstractTree = arrayify(newAbstractTree);
+      updateElementTree(
+        _rootElement,
+        newAbstractTree,
+        oldAbstractTree
+      );
+      oldAbstractTree = newAbstractTree;
+    } else {
+      for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+        _rootElement.childNodes[i].remove();
+      }
+      oldAbstractTree = [];
+    }
   };
 };
 export {

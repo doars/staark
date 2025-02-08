@@ -39,7 +39,7 @@
     return {
       _: marker,
       a: attributesOrContents,
-      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
+      c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
       t: type.toUpperCase()
     };
   };
@@ -234,7 +234,7 @@
     return {
       _: marker,
       a: attributes,
-      c: contents ? Array.isArray(contents) ? contents : [contents] : [],
+      c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
       t: type.toUpperCase()
     };
   };
@@ -329,13 +329,20 @@
     return rendered;
   };
   var stringifyPatch = (abstractTree) => {
-    abstractTree = arrayify(abstractTree != null ? abstractTree : []);
-    return [
-      renderElements(
+    if (abstractTree) {
+      abstractTree = arrayify(abstractTree);
+      return [
+        renderElements(
+          abstractTree
+        ),
         abstractTree
-      ),
-      abstractTree
-    ];
+      ];
+    } else {
+      return [
+        "",
+        []
+      ];
+    }
   };
   var stringify = (renderView, initialState) => {
     if (!initialState) {

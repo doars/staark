@@ -128,13 +128,20 @@ const renderElements = (
 export const stringifyPatch = (
   abstractTree?: NodeContent[] | NodeContent,
 ): [string, NodeContent[]] => {
-  abstractTree = arrayify(abstractTree ?? [])
-  return [
-    renderElements(
+  if (abstractTree) {
+    abstractTree = arrayify(abstractTree)
+    return [
+      renderElements(
+        abstractTree,
+      ),
       abstractTree,
-    ),
-    abstractTree,
-  ]
+    ]
+  } else {
+    return [
+      '',
+      [],
+    ]
+  }
 }
 
 export const stringify = (

@@ -1,16 +1,15 @@
-const ITERATIONS = 1e4
-
 let dispatch = null,
   setTodos = null
 
 window.benchmark = {
   setup: async function ({
+    complexity,
     rootNode,
   }) {
     const { app, h, text } = window.hyperapp
 
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'original',
         id: i,
@@ -106,10 +105,10 @@ window.benchmark = {
   },
 
   run: async function ({
-    rootNode,
+    complexity,
   }) {
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'updated',
         id: i,

@@ -14,6 +14,7 @@ export const nde = (
   contents?: NodeContent[] | NodeContent,
 ): NodeAbstract => {
   const [type, attributes] = selectorToTokenizer(selector)
+
   return {
     _: marker,
     a: attributes,
@@ -22,7 +23,7 @@ export const nde = (
         ? Array.isArray(contents)
           ? contents
           : [contents] as NodeContent[]
-        : []
+        : undefined
     ),
     t: type.toUpperCase(),
   }

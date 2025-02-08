@@ -13,13 +13,13 @@
   "scripts": {
     "build": "NODE_ENV=production node config.esbuild.js",
     "benchmark": "node src/index.js --minified",
-    "profile": "node src/index.js --profile --run-count=1",
+    "profile": "node src/index.js --profile --iterations=1",
     "lint": "echo 'no lint setup'",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "devDependencies": {
-    "puppeteer": "^24.1.1"
+    "puppeteer": "^24.2.0"
   },
   "dependencies": {
     "@doars/staark-patch": "x",

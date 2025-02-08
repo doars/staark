@@ -17,7 +17,7 @@ var node = (type, attributesOrContents, contents) => {
   return {
     _: marker,
     a: attributesOrContents,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : [],
+    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
     t: type.toUpperCase()
   };
 };

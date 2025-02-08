@@ -1,16 +1,16 @@
-const ITERATIONS = 1e4
-
 let state = null,
   update = null
 
 window.benchmark = {
   setup: async function ({
+    complexity,
     rootNode,
   }) {
     const {
       h, init,
       classModule, eventListenersModule, propsModule, styleModule,
     } = window.snabbdom
+
     const patch = init([
       classModule,
       eventListenersModule,
@@ -19,7 +19,7 @@ window.benchmark = {
     ])
 
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'original',
         id: i,
@@ -131,10 +131,10 @@ window.benchmark = {
   },
 
   run: async function ({
-    rootNode,
+    complexity,
   }) {
     const todos = []
-    for (let i = 0; i < ITERATIONS; i++) {
+    for (let i = 0; i < complexity * 100; i++) {
       todos.push({
         text: 'updated',
         id: i,
