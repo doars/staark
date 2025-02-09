@@ -88,7 +88,7 @@ export const mount = (
           if (type === 'function') {
             // Wrap listeners so comparisons can be done between updates.
             const oldValue = oldAttributes?.[name] as NodeAttributeListener | undefined
-            if (oldValue?.f !== (value as NodeAttributeListener).f) {
+            if (oldValue?.f !== (value as NodeAttributeListener)) {
               if (oldValue) {
                 element.removeEventListener(
                   name,

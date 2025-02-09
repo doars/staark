@@ -351,7 +351,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           const type = typeof value;
           if (type === "function") {
             const oldValue = oldAttributes == null ? void 0 : oldAttributes[name];
-            if ((oldValue == null ? void 0 : oldValue.f) !== value.f) {
+            if ((oldValue == null ? void 0 : oldValue.f) !== value) {
               if (oldValue) {
                 element.removeEventListener(
                   name,

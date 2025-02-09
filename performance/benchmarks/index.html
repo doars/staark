@@ -106,7 +106,7 @@
 
           // Load library and benchmark scripts
           Promise.all([
-            loadScript('../dst/' + library + '.min.js'),
+            loadScript('../dst/' + library + '.js'),
             loadScript('./' + library + '/' + benchmark + '.js')
           ]).then(() => {
             setupBenchmarkControls()

@@ -26,7 +26,7 @@
     "@doars/staark-patch": "x",
     "@doars/staark": "x",
     "hyperapp": "^2.0.22",
-    "mithril": "^2.2.13",
+    "mithril": "^2.2.14",
     "snabbdom": "^3.6.2",
     "superfine": "^8.2.0"
   }

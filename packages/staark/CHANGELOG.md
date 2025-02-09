@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.3
+
+- Removed console log.
+
+## 1.7.2
+
+- Fix bug in event listener handling.
+
 ## 1.7.1
 
 - Update function now returns a promise that resolves after rendering.
