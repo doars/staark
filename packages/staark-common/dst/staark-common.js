@@ -1,5 +1,9 @@
 // src/array.ts
-var arrayify = (data) => Array.isArray(data) ? data : [data];
+var arrayify = (data) => {
+  var _a;
+  return (_a = arrayifyOrUndefined(data)) != null ? _a : [];
+};
+var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
 // src/attribute.ts
 var SUFFIX_MULTIPLE = "[]";
@@ -42,10 +46,7 @@ var conditional = (condition, onTruth, onFalse) => {
   if (typeof result === "function") {
     result = result();
   }
-  if (result) {
-    return arrayify(result);
-  }
-  return [];
+  return arrayify(result);
 };
 
 // src/marker.ts
@@ -60,7 +61,7 @@ var node = (type, attributesOrContents, contents) => {
   return {
     _: marker,
     a: attributesOrContents,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
+    c: arrayifyOrUndefined(contents),
     t: type.toUpperCase()
   };
 };
@@ -69,16 +70,15 @@ var node = (type, attributesOrContents, contents) => {
 var childrenToNodes = (element) => {
   var _a;
   const abstractChildNodes = [];
-  for (let i = 0; i < element.childNodes.length; i++) {
-    const childNode = element.childNodes[i];
+  for (const childNode of element.childNodes) {
     if (childNode instanceof Text) {
       abstractChildNodes.push(
         (_a = childNode.textContent) != null ? _a : ""
       );
     } else {
-      let attributes = {};
-      for (let i2 = 0; i2 < childNode.attributes.length; i2++) {
-        const attribute = childNode.attributes[i2];
+      const elementChild = childNode;
+      const attributes = {};
+      for (const attribute of elementChild.attributes) {
         attributes[attribute.name] = attribute.value;
       }
       abstractChildNodes.push(
@@ -257,17 +257,14 @@ var identifier = (prefix) => prefix + "-" + identifierCount++;
 
 // src/match.ts
 var match = (pattern, lookup) => {
+  let result;
   if (lookup && pattern in lookup && lookup[pattern]) {
-    let result = lookup[pattern];
+    result = lookup[pattern];
     if (typeof result === "function") {
       result = result();
-      if (!result) {
-        return [];
-      }
     }
-    return arrayify(result);
   }
-  return [];
+  return arrayify(result);
 };
 
 // src/memo.ts
@@ -283,12 +280,13 @@ var nde = (selector, contents) => {
   return {
     _: marker,
     a: attributes,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
+    c: arrayifyOrUndefined(contents),
     t: type.toUpperCase()
   };
 };
 export {
   arrayify,
+  arrayifyOrUndefined,
   childrenToNodes,
   cloneRecursive,
   conditional,

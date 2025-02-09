@@ -39,7 +39,7 @@ const options = {
   profile: false,
 
   complexity: 10,
-  iterations: 16,
+  iterations: 10,
 }
 const args = process.argv.slice(2)
 args.forEach(arg => {
@@ -65,6 +65,7 @@ args.forEach(arg => {
     options.sizes = true
   }
 })
+console.log('Running with options', options)
 
 const calculateStats = (
   items,
@@ -230,9 +231,18 @@ async function runBenchmarks () {
 
   for (const libraryName of libraries) {
     if (
-      options.library
-      && options.library !== libraryName
+      (
+        options.library
+        && options.library !== libraryName
+      )
+      || libraryName.startsWith('.')
     ) {
+      continue
+    }
+    const libraryDirectoryStat = await fsPromises.stat(
+      path.join(projectDirectory, DIRECTORY_BENCHMARK, libraryName),
+    )
+    if (!libraryDirectoryStat.isDirectory()) {
       continue
     }
 
@@ -296,97 +306,107 @@ async function runBenchmarks () {
       )
     }
 
-    for (const benchmarkFilePath of benchmarks) {
-      const benchmarkPath = path.join(benchmarksDirectory, benchmarkFilePath)
-      const benchmarkName = path.basename(benchmarkFilePath, '.js')
-      if (benchmarkName.startsWith('_')) {
-        console.log('- ' + benchmarkName.substring(1) + ': skipping')
-        continue
-      }
-      if (
-        options.benchmark
-        && options.benchmark !== benchmarkName
-      ) {
-        continue
-      }
-      const benchmarkCode = await fsPromises.readFile(benchmarkPath)
+    if (options.iterations > 0) {
+      for (const benchmarkFilePath of benchmarks) {
+        const benchmarkPath = path.join(benchmarksDirectory, benchmarkFilePath)
+        const benchmarkName = path.basename(benchmarkFilePath, '.js')
+        if (
+          benchmarkName.startsWith('.')
+          || benchmarkName.startsWith('_')
+        ) {
+          console.log('- ' + benchmarkName.substring(1) + ': skipping')
+          continue
+        }
+        if (
+          options.benchmark
+          && options.benchmark !== benchmarkName
+        ) {
+          continue
+        }
+        const benchmarkCode = await fsPromises.readFile(benchmarkPath)
 
-      const profilePath = (
-        options.profile
-          ? path.join(
-            projectDirectory,
-            DIRECTORY_PROFILE,
-            libraryName,
-            benchmarkName
+        const profilePath = (
+          options.profile
+            ? path.join(
+              projectDirectory,
+              DIRECTORY_PROFILE,
+              libraryName + '-' + benchmarkName,
+            )
+            : false
+        )
+
+        // Run benchmark multiple times for statistics.
+        const results = []
+        for (let i = 0; i < options.iterations; i++) {
+          results.push(
+            await runBenchmark(
+              browser,
+              helpersCode,
+              libraryCode,
+              benchmarkCode,
+              (i === options.iterations - 1) ? profilePath : false,
+            ),
           )
-          : false
-      )
+        }
 
-      // Run benchmark multiple times for statistics.
-      const results = []
-      for (let i = 0; i < options.iterations; i++) {
-        results.push(
-          await runBenchmark(
-            browser,
-            helpersCode,
-            libraryCode,
-            benchmarkCode,
-            (i === options.iterations - 1) ? profilePath : false,
-          ),
-        )
+        let resultsMessage = '- ' + benchmarkName
+
+        if (
+          results.length > 0
+          && results[0].setup
+        ) {
+          const setupMemory = calculateStats(
+            results.map(result => result.setup.memory),
+          )
+          const setupTime = calculateStats(
+            results.map(result => result.setup.time),
+          )
+
+          resultsMessage +=
+            '\n' + fmtLabel('Setup time', '  ')
+            + fmtMs(setupTime.average, 'x̄') + ','
+            + fmtMs(setupTime.min, '∧') + ','
+            + fmtMs(setupTime.max, '∨') + ','
+            + fmtPercent(setupTime.marginOfError, '±')
+            + '\n' + fmtLabel('Setup memory', '  ')
+            + fmtMB(setupMemory.average, 'x̄') + ','
+            + fmtMB(setupMemory.min, '∧') + ','
+            + fmtMB(setupMemory.max, '∨') + ','
+            + fmtPercent(setupMemory.marginOfError, '±')
+        }
+
+        if (
+          results.length > 0
+          && results[0].run
+        ) {
+          const runMemory = calculateStats(
+            results.map(result => result.run.memory),
+          )
+          const runTime = calculateStats(
+            results.map(result => result.run.time),
+          )
+
+          resultsMessage +=
+            '\n' + fmtLabel('Run time', '  ')
+            + fmtMs(runTime.average, 'x̄') + ','
+            + fmtMs(runTime.min, '∧') + ','
+            + fmtMs(runTime.max, '∨') + ','
+            + fmtPercent(runTime.marginOfError, '±')
+            + '\n' + fmtLabel('Run memory', '  ')
+            + fmtMB(runMemory.average, 'x̄') + ','
+            + fmtMB(runMemory.min, '∧') + ','
+            + fmtMB(runMemory.max, '∨') + ','
+            + fmtPercent(runMemory.marginOfError, '±')
+        }
+
+        if (profilePath) {
+          resultsMessage +=
+            '\n' + fmtLabel('Profile graph at')
+            + profilePath.substring(projectDirectory.length + 1)
+        }
+
+        console.log(resultsMessage)
       }
-
-      let resultsMessage = '- ' + benchmarkName
-
-      if (results[0].setup) {
-        const setupMemory = calculateStats(
-          results.map(result => result.setup.memory),
-        )
-        const setupTime = calculateStats(
-          results.map(result => result.setup.time),
-        )
-
-        resultsMessage +=
-          '\n' + fmtLabel('Setup time', '  ')
-          + fmtMs(setupTime.average, 'x̄') + ','
-          + fmtMs(setupTime.min, '∧') + ','
-          + fmtMs(setupTime.max, '∨') + ','
-          + fmtPercent(setupTime.marginOfError, '±')
-          + '\n' + fmtLabel('Setup memory', '  ')
-          + fmtMB(setupMemory.average, 'x̄') + ','
-          + fmtMB(setupMemory.min, '∧') + ','
-          + fmtMB(setupMemory.max, '∨') + ','
-          + fmtPercent(setupMemory.marginOfError, '±')
-      }
-
-      if (results[0].run) {
-        const runMemory = calculateStats(
-          results.map(result => result.run.memory),
-        )
-        const runTime = calculateStats(
-          results.map(result => result.run.time),
-        )
-
-        resultsMessage +=
-          '\n' + fmtLabel('Run time', '  ')
-          + fmtMs(runTime.average, 'x̄') + ','
-          + fmtMs(runTime.min, '∧') + ','
-          + fmtMs(runTime.max, '∨') + ','
-          + fmtPercent(runTime.marginOfError, '±')
-          + '\n' + fmtLabel('Run memory', '  ')
-          + fmtMB(runMemory.average, 'x̄') + ','
-          + fmtMB(runMemory.min, '∧') + ','
-          + fmtMB(runMemory.max, '∨') + ','
-          + fmtPercent(runMemory.marginOfError, '±')
-      }
-
-      if (profilePath) {
-        resultsMessage +=
-          '\n' + fmtLabel('Profile graph at')
-          + profilePath.substring(projectDirectory.length + 1)
-      }
-
-      console.log(resultsMessage)
     }
   }
 

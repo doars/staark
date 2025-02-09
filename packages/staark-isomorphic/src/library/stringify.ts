@@ -1,5 +1,5 @@
 import {
-  arrayify,
+  arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
   MemoAbstract,
@@ -127,27 +127,20 @@ const renderElements = (
 
 export const stringifyPatch = (
   abstractTree?: NodeContent[] | NodeContent,
-): [string, NodeContent[]] => {
-  if (abstractTree) {
-    abstractTree = arrayify(abstractTree)
-    return [
-      renderElements(
-        abstractTree,
-      ),
+): [string, NodeContent[] | undefined] => {
+  abstractTree = arrayifyOrUndefined(abstractTree) as NodeContent[] | undefined
+  return [
+    renderElements(
       abstractTree,
-    ]
-  } else {
-    return [
-      '',
-      [],
-    ]
-  }
+    ),
+    abstractTree,
+  ]
 }
 
 export const stringify = (
   renderView: ViewFunction,
   initialState?: Record<string, any>,
-): [string, NodeContent[]] => {
+): [string, NodeContent[] | undefined] => {
   if (!initialState) {
     initialState = {}
   }
@@ -161,7 +154,7 @@ export const stringify = (
         if (abstract) {
           if ((abstract as MemoAbstract).m) {
             rendered += renderElements(
-              arrayify(
+              arrayifyOrUndefined(
                 (abstract as MemoAbstract).r(
                   initialState,
                   (abstract as MemoAbstract).m,
@@ -188,7 +181,7 @@ export const stringify = (
     return rendered
   }
 
-  const abstractTree = arrayify(
+  const abstractTree = arrayifyOrUndefined(
     renderView(initialState),
   )
   return [
@@ -200,7 +193,7 @@ export const stringify = (
 }
 
 const customStringify = (
-  data: Record<string, any>,
+  data?: Record<string, any>,
 ): string => {
   if (
     typeof data === 'number'

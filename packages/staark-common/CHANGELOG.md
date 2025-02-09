@@ -2,7 +2,8 @@
 
 ## 1.5.1
 
-- Removed the creation of an empty array when no children are provided.
+- Performance improvements.
+- Added `arrifyOrUndefined` function.
 
 ## 1.5.0
 

@@ -8,16 +8,15 @@ export const childrenToNodes = (
   element: Element | ChildNode,
 ) => {
   const abstractChildNodes: NodeContent[] = []
-  for (let i = 0; i < element.childNodes.length; i++) {
-    const childNode = element.childNodes[i]
+  for (const childNode of element.childNodes) {
     if (childNode instanceof Text) {
       abstractChildNodes.push(
         childNode.textContent ?? ''
       )
     } else {
-      let attributes: NodeAttributes = {}
-      for (let i = 0; i < (childNode as Element).attributes.length; i++) {
-        const attribute = (childNode as Element).attributes[i]
+      const elementChild = childNode as Element
+      const attributes: NodeAttributes = {}
+      for (const attribute of elementChild.attributes) {
         attributes[attribute.name] = attribute.value
       }
 

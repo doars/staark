@@ -1,5 +1,9 @@
 // ../staark-common/src/array.ts
-var arrayify = (data) => Array.isArray(data) ? data : [data];
+var arrayify = (data) => {
+  var _a;
+  return (_a = arrayifyOrUndefined(data)) != null ? _a : [];
+};
+var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
 // ../staark-common/src/conditional.ts
 var conditional = (condition, onTruth, onFalse) => {
@@ -7,10 +11,7 @@ var conditional = (condition, onTruth, onFalse) => {
   if (typeof result === "function") {
     result = result();
   }
-  if (result) {
-    return arrayify(result);
-  }
-  return [];
+  return arrayify(result);
 };
 
 // ../staark-common/src/marker.ts
@@ -25,7 +26,7 @@ var node = (type, attributesOrContents, contents) => {
   return {
     _: marker,
     a: attributesOrContents,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
+    c: arrayifyOrUndefined(contents),
     t: type.toUpperCase()
   };
 };
@@ -194,17 +195,14 @@ var identifier = (prefix) => prefix + "-" + identifierCount++;
 
 // ../staark-common/src/match.ts
 var match = (pattern, lookup) => {
+  let result;
   if (lookup && pattern in lookup && lookup[pattern]) {
-    let result = lookup[pattern];
+    result = lookup[pattern];
     if (typeof result === "function") {
       result = result();
-      if (!result) {
-        return [];
-      }
     }
-    return arrayify(result);
   }
-  return [];
+  return arrayify(result);
 };
 
 // ../staark-common/src/memo.ts
@@ -220,7 +218,7 @@ var nde = (selector, contents) => {
   return {
     _: marker,
     a: attributes,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
+    c: arrayifyOrUndefined(contents),
     t: type.toUpperCase()
   };
 };
@@ -315,20 +313,13 @@ var renderElements = (abstracts) => {
   return rendered;
 };
 var stringifyPatch = (abstractTree) => {
-  if (abstractTree) {
-    abstractTree = arrayify(abstractTree);
-    return [
-      renderElements(
-        abstractTree
-      ),
+  abstractTree = arrayifyOrUndefined(abstractTree);
+  return [
+    renderElements(
       abstractTree
-    ];
-  } else {
-    return [
-      "",
-      []
-    ];
-  }
+    ),
+    abstractTree
+  ];
 };
 var stringify = (renderView, initialState) => {
   if (!initialState) {
@@ -341,7 +332,7 @@ var stringify = (renderView, initialState) => {
         if (abstract) {
           if (abstract.m) {
             rendered += renderElements2(
-              arrayify(
+              arrayifyOrUndefined(
                 abstract.r(
                   initialState,
                   abstract.m
@@ -367,7 +358,7 @@ var stringify = (renderView, initialState) => {
     }
     return rendered;
   };
-  const abstractTree = arrayify(
+  const abstractTree = arrayifyOrUndefined(
     renderView(initialState)
   );
   return [

@@ -97,21 +97,18 @@ window.benchmark = {
       }
     )
 
-    await update()
+    // First render is immediately triggered so nu manual call is required.
   },
 
   run: async function ({
     complexity,
   }) {
-    const todos = []
     for (let i = 0; i < complexity * 100; i++) {
-      todos.push({
-        text: 'updated',
-        id: i,
-        completed: i % 2 === 0,
-      })
+      state.todos[i].text = 'updated'
+      if (i % 2 === 0) {
+        state.todos[i].completed = true
+      }
     }
-    state.todos = todos
 
     await update()
   },

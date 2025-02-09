@@ -11,10 +11,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "NODE_ENV=production node config.esbuild.js",
     "benchmark": "node src/index.js --minified",
-    "profile": "node src/index.js --profile --iterations=1",
+    "build": "NODE_ENV=production node config.esbuild.js",
     "lint": "echo 'no lint setup'",
+    "profile": "node src/index.js --profile --iterations=1",
+    "sizes": "node src/index.js --minified --sizes --iterations=0",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
@@ -26,7 +27,6 @@
     "@doars/staark": "x",
     "hyperapp": "^2.0.22",
     "mithril": "^2.2.13",
-    "redom": "^4.3.0",
     "snabbdom": "^3.6.2",
     "superfine": "^8.2.0"
   }

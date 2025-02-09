@@ -2,8 +2,8 @@
 
 ## 1.4.1
 
+- Performance improvements.
 - Fix bug relating to clearing old styles.
-- Added check to quickly unmount the app.
 
 ## 1.4.0
 

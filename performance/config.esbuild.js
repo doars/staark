@@ -7,9 +7,6 @@ const files = [{
   from: 'src/libraries/mithril.ts',
   to: 'dst/mithril.js',
 }, {
-  from: 'src/libraries/redom.ts',
-  to: 'dst/redom.js',
-}, {
   from: 'src/libraries/snabbdom.ts',
   to: 'dst/snabbdom.js',
 }, {

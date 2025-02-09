@@ -69,60 +69,62 @@ window.benchmark = {
     let vnode = rootNode
 
     update = () => {
-      const newVnode = h('main', [
-        h('h1', 'To-do List'),
-        h('input', {
-          props: {
-            type: 'text',
-            value: state.value,
-          },
-          on: {
-            input: updateInput,
-          },
-        }),
-        h('ul',
-          state.todos.map((todo) =>
-            h('li', {
-              class: {
-                'task-item': true,
-                'completed': todo.completed,
-              },
-              attrs: {
-                'data-id': todo.id,
-              },
-            }, [
-              h('span', {
+      const newVnode = h('div', [
+        h('main', [
+          h('h1', 'To-do List'),
+          h('input', {
+            props: {
+              type: 'text',
+              value: state.value,
+            },
+            on: {
+              input: updateInput,
+            },
+          }),
+          h('ul',
+            state.todos.map((todo) =>
+              h('li', {
                 class: {
-                  'task-text': true,
+                  'task-item': true,
+                  'completed': todo.completed,
                 },
-                style: {
-                  textDecoration: todo.completed ? 'line-through' : 'none',
+                attrs: {
+                  'data-id': todo.id,
                 },
-              }, todo.text),
-              h('button', {
-                class: {
-                  'toggle-button': true,
-                },
-                on: {
-                  click: completeTodo,
-                },
-              }, todo.completed ? 'Undo' : 'Complete'),
-              h('button', {
-                class: {
-                  'delete-button': true,
-                },
-                on: {
-                  click: deleteTodo,
-                },
-              }, 'Delete'),
-            ]),
+              }, [
+                h('span', {
+                  class: {
+                    'task-text': true,
+                  },
+                  style: {
+                    textDecoration: todo.completed ? 'line-through' : 'none',
+                  },
+                }, todo.text),
+                h('button', {
+                  class: {
+                    'toggle-button': true,
+                  },
+                  on: {
+                    click: completeTodo,
+                  },
+                }, todo.completed ? 'Undo' : 'Complete'),
+                h('button', {
+                  class: {
+                    'delete-button': true,
+                  },
+                  on: {
+                    click: deleteTodo,
+                  },
+                }, 'Delete'),
+              ]),
+            ),
           ),
-        ),
-        h('button', {
-          on: {
-            click: addTodo,
-          },
-        }, 'New!'),
+          h('button', {
+            on: {
+              click: addTodo,
+            },
+          }, 'New!'),
+        ]),
       ])
       vnode = patch(vnode, newVnode)
     }
@@ -132,6 +134,7 @@ window.benchmark = {
 
   run: async function ({
     complexity,
+    rootNode,
   }) {
     const todos = []
     for (let i = 0; i < complexity * 100; i++) {

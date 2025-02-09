@@ -1,5 +1,9 @@
 // ../staark-common/src/array.ts
-var arrayify = (data) => Array.isArray(data) ? data : [data];
+var arrayify = (data) => {
+  var _a;
+  return (_a = arrayifyOrUndefined(data)) != null ? _a : [];
+};
+var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
 // ../staark-common/src/conditional.ts
 var conditional = (condition, onTruth, onFalse) => {
@@ -7,10 +11,7 @@ var conditional = (condition, onTruth, onFalse) => {
   if (typeof result === "function") {
     result = result();
   }
-  if (result) {
-    return arrayify(result);
-  }
-  return [];
+  return arrayify(result);
 };
 
 // ../staark-common/src/marker.ts
@@ -25,7 +26,7 @@ var node = (type, attributesOrContents, contents) => {
   return {
     _: marker,
     a: attributesOrContents,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
+    c: arrayifyOrUndefined(contents),
     t: type.toUpperCase()
   };
 };
@@ -194,17 +195,14 @@ var identifier = (prefix) => prefix + "-" + identifierCount++;
 
 // ../staark-common/src/match.ts
 var match = (pattern, lookup) => {
+  let result;
   if (lookup && pattern in lookup && lookup[pattern]) {
-    let result = lookup[pattern];
+    result = lookup[pattern];
     if (typeof result === "function") {
       result = result();
-      if (!result) {
-        return [];
-      }
     }
-    return arrayify(result);
   }
-  return [];
+  return arrayify(result);
 };
 
 // ../staark-common/src/memo.ts
@@ -220,7 +218,7 @@ var nde = (selector, contents) => {
   return {
     _: marker,
     a: attributes,
-    c: contents ? Array.isArray(contents) ? contents : [contents] : void 0,
+    c: arrayifyOrUndefined(contents),
     t: type.toUpperCase()
   };
 };
@@ -256,16 +254,15 @@ var equalRecursive = (valueA, valueB) => {
 var childrenToNodes = (element) => {
   var _a;
   const abstractChildNodes = [];
-  for (let i = 0; i < element.childNodes.length; i++) {
-    const childNode = element.childNodes[i];
+  for (const childNode of element.childNodes) {
     if (childNode instanceof Text) {
       abstractChildNodes.push(
         (_a = childNode.textContent) != null ? _a : ""
       );
     } else {
-      let attributes = {};
-      for (let i2 = 0; i2 < childNode.attributes.length; i2++) {
-        const attribute = childNode.attributes[i2];
+      const elementChild = childNode;
+      const attributes = {};
+      for (const attribute of elementChild.attributes) {
         attributes[attribute.name] = attribute.value;
       }
       abstractChildNodes.push(
@@ -353,23 +350,23 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         if (value) {
           const type = typeof value;
           if (type === "function") {
-            if (oldAttributes && oldAttributes[name]) {
-              if (oldAttributes[name].f === value) {
-                continue;
+            const oldValue = oldAttributes == null ? void 0 : oldAttributes[name];
+            if ((oldValue == null ? void 0 : oldValue.f) !== value.f) {
+              if (oldValue) {
+                element.removeEventListener(
+                  name,
+                  oldValue
+                );
               }
-              element.removeEventListener(
+              const listener = newAttributes[name] = (event) => {
+                value(event, state);
+              };
+              listener.f = value;
+              element.addEventListener(
                 name,
-                oldAttributes[name]
+                listener
               );
             }
-            const listener = newAttributes[name] = function(event) {
-              value(event, state);
-            };
-            listener.f = value;
-            element.addEventListener(
-              name,
-              listener
-            );
           } else {
             if (name === "class") {
               if (typeof value === "object") {
@@ -409,19 +406,10 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 }
               }
             } else {
-              if (type === "boolean") {
-                if (!value) {
-                  element.removeAttribute(name);
-                  continue;
-                }
+              if (value === true) {
                 value = "true";
               } else if (type !== "string") {
                 value = value.toString();
-              }
-              if (name === "value" && element.value !== value) {
-                element.value = value;
-              } else if (name === "checked") {
-                element.checked = newAttributes[name];
               }
               element.setAttribute(name, value);
             }
@@ -441,13 +429,8 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           } else if (name === "class") {
             element.className = "";
           } else if (name === "style") {
-            element.style = "";
+            element.style.cssText = "";
           } else {
-            if (name === "value") {
-              element.value = "";
-            } else if (name === "checked") {
-              element.checked = false;
-            }
             element.removeAttribute(name);
           }
         }
@@ -469,7 +452,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           );
           if (!match2 || !equalRecursive(match2.m, newAbstract.m)) {
             match2 = {
-              c: arrayify(
+              c: arrayifyOrUndefined(
                 newAbstract.r(
                   state,
                   newAbstract.m
@@ -642,7 +625,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     if (active && !updating && updatePromise) {
       updating = true;
       updatePromise = null;
-      let newAbstractTree = arrayify(
+      let newAbstractTree = arrayifyOrUndefined(
         renderView(state)
       );
       updateElementTree(
@@ -654,9 +637,6 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
       oldMemoMap = newMemoMap;
       newMemoMap = /* @__PURE__ */ new WeakMap();
       updating = false;
-      if (updatePromise) {
-        throw new Error("update during render");
-      }
     }
   };
   triggerUpdate();

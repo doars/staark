@@ -2,7 +2,7 @@
 
 ## 1.6.1
 
-- Added check to quickly unmount the app.
+- Performance improvements.
 
 ## 1.6.0
 

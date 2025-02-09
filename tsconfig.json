@@ -6,6 +6,7 @@
     "forceConsistentCasingInFileNames": true,
     "lib": [
       "DOM",
+      "DOM.Iterable",
       "es2020"
     ],
     "module": "es2020",

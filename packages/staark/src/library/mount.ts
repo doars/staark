@@ -1,5 +1,5 @@
 import {
-  arrayify,
+  arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
   cloneRecursive
@@ -87,30 +87,27 @@ export const mount = (
           const type = typeof (value)
           if (type === 'function') {
             // Wrap listeners so comparisons can be done between updates.
-            if (
-              oldAttributes
-              && oldAttributes[name]
-            ) {
-              if ((oldAttributes[name] as NodeAttributeListener).f === value) {
-                continue
+            const oldValue = oldAttributes?.[name] as NodeAttributeListener | undefined
+            if (oldValue?.f !== (value as NodeAttributeListener).f) {
+              if (oldValue) {
+                element.removeEventListener(
+                  name,
+                  oldValue as NodeAttributeListener,
+                )
               }
-              element.removeEventListener(
+
+              const listener: NodeAttributeListener = newAttributes[name] = (
+                (event: Event) => {
+                  (value as NodeAttributeListener)(event, state)
+                }
+              ) as NodeAttributeListener
+              listener.f = (value as NodeAttributeListener)
+
+              element.addEventListener(
                 name,
-                oldAttributes[name] as NodeAttributeListener,
+                listener,
               )
             }
-
-            const listener: NodeAttributeListener = newAttributes[name] = (
-              function (event: Event) {
-                (value as NodeAttributeListener)(event, state)
-              } as NodeAttributeListener
-            )
-            listener.f = (value as NodeAttributeListener)
-
-            element.addEventListener(
-              name,
-              listener,
-            )
           } else {
             if (name === 'class') {
               if (typeof (value) === 'object') {
@@ -133,7 +130,9 @@ export const mount = (
             ) {
               // Apply updated styles.
               for (let styleName in value) {
-                let styleValue = (value as Record<string, boolean | string | null | undefined | number | (boolean | string | number)[]>)[styleName]
+                let styleValue = (
+                  value as Record<string, boolean | string | null | undefined | number | (boolean | string | number)[]>
+                )[styleName]
 
                 // Convert to kebab case.
                 styleName = styleName
@@ -171,27 +170,23 @@ export const mount = (
               }
             } else {
               // Ensure it is of type string.
-              if (type === 'boolean') {
-                if (!value) {
-                  element.removeAttribute(name)
-                  continue
-                }
+              if (value === true) {
                 value = 'true'
               } else if (type !== 'string') {
                 value = value.toString()
               }
 
-              if (
-                name === 'value'
-                && (element as HTMLInputElement).value !== value
-              ) {
-                // Update value separately as well.
-                (element as HTMLInputElement).value = value as string
-                // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-              } else if (name === 'checked') {
-                (element as HTMLInputElement).checked = newAttributes[name] as boolean
-                // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-              }
+              // Setting attribute will automatically update the elements checked and value state.
+              // if (
+              //   name === 'value'
+              //   && (element as HTMLInputElement).value !== value
+              // ) {
+              // (element as HTMLInputElement).value = value as string
+              // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
+              // } else if (name === 'checked') {
+              //   (element as HTMLInputElement).checked = !!value
+              // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
+              // }
 
               element.setAttribute(name, (value as string))
             }
@@ -216,15 +211,17 @@ export const mount = (
           } else if (name === 'class') {
             element.className = ''
           } else if (name === 'style') {
-            (((element as HTMLElement).style as unknown) as string) = ''
+            (element as HTMLElement).style.cssText = ''
           } else {
-            if (name === 'value') {
-              // Reset value separately.
-              (element as HTMLInputElement).value = ''
-              // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
-            } else if (name === 'checked') {
-              (element as HTMLInputElement).checked = false
-            }
+            // Setting attribute will automatically update the elements checked and value state.
+            // if (name === 'value') {
+            // (element as HTMLInputElement).value = ''
+            // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
+            // } else if (name === 'checked') {
+            //   (element as HTMLInputElement).checked = false
+            // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
+            // }
+
             element.removeAttribute(name)
           }
         }
@@ -256,7 +253,7 @@ export const mount = (
             || !equalRecursive(match.m, (newAbstract as MemoAbstract).m)
           ) {
             match = {
-              c: arrayify(
+              c: arrayifyOrUndefined(
                 (newAbstract as MemoAbstract).r(
                   state,
                   (newAbstract as MemoAbstract).m,
@@ -499,7 +496,7 @@ export const mount = (
       updating = true
       updatePromise = null
 
-      let newAbstractTree = arrayify(
+      let newAbstractTree = arrayifyOrUndefined(
         renderView(state),
       )
       updateElementTree(
@@ -507,15 +504,12 @@ export const mount = (
         newAbstractTree,
         oldAbstractTree as NodeContent[],
       )
-      // Store tree for next update
+      // Store tree for next update.
       oldAbstractTree = newAbstractTree
       oldMemoMap = newMemoMap
       newMemoMap = new WeakMap()
 
       updating = false
-      if (updatePromise) {
-        throw new Error('update during render')
-      }
     }
   }
   // Trigger update first so the promise that is checked gets set.

@@ -1,3 +1,4 @@
+import { arrayify, arrayifyOrUndefined } from './array.js'
 import {
   marker,
 } from './marker.js'
@@ -18,13 +19,7 @@ export const nde = (
   return {
     _: marker,
     a: attributes,
-    c: (
-      contents
-        ? Array.isArray(contents)
-          ? contents
-          : [contents] as NodeContent[]
-        : undefined
-    ),
+    c: arrayifyOrUndefined(contents) as NodeContent[] | undefined,
     t: type.toUpperCase(),
   }
 }

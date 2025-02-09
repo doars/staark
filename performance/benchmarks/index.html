@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark Tester</title>
+    <style>
+      [hidden] {
+        display: none;
+      }
+
+      .button-group {
+        margin: 1rem 0;
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      select {
+        display: block;
+        width: 12rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .results {
+        margin-top: 1rem;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div data-if="select-benchmark">
+      <h1>Verify benchmark</h1>
+      <form id="benchmarkForm">
+        <select name="library" required>
+          <option value="">Select library</option>
+          <option value="hyperapp">hyperapp</option>
+          <option value="mithril">mithril</option>
+          <option value="snabbdom">snabbdom</option>
+          <option value="staark">staark</option>
+          <option value="staark-patch">staark-patch</option>
+          <option value="superfine">superfine</option>
+        </select>
+        <select name="benchmark" required>
+          <option value="todo_app" selected="selected">Todo App</option>
+        </select>
+        <button type="submit">Test Benchmark</button>
+      </form>
+    </div>
+
+    <div data-if="benchmark-selected" hidden>
+      <a href="?" class="back-link">← Select Different Benchmark</a>
+      <h1>Testing: <span id="benchmarkTitle"></span></h1>
+
+      <div class="button-group">
+        <button type="button" id="setup-button">Setup</button>
+        <button type="button" id="run-button">Run</button>
+        <button type="button" id="cleanup-button">Cleanup</button>
+      </div>
+
+      <div class="results">
+        <div id="setup-results"></div>
+        <div id="run-results"></div>
+      </div>
+    </div>
+
+    <div id="app"></div>
+
+    <script>
+      (function () {
+        const params = new URLSearchParams(window.location.search)
+        const library = params.get('library')
+        const benchmark = params.get('benchmark')
+
+        const selectView = document.querySelector('[data-if="select-benchmark"]')
+        const benchmarkView = document.querySelector('[data-if="benchmark-selected"]')
+
+        // Handle form submission
+        document.getElementById('benchmarkForm')
+          ?.addEventListener('submit', (event) => {
+            event.preventDefault()
+            const formData = new FormData(event.target)
+            const params = new URLSearchParams(formData)
+            window.location.search = params.toString()
+          })
+
+        const loadScript = (src) => {
+          return new Promise((resolve, reject) => {
+            const script = document.createElement('script')
+            script.src = src
+            script.onload = resolve
+            script.onerror = reject
+            document.body.appendChild(script)
+          })
+        }
+
+        if (
+          library
+          && benchmark
+        ) {
+          selectView.hidden = true
+          benchmarkView.hidden = false
+          document.getElementById('benchmarkTitle').textContent =
+            library + ' - ' + benchmark
+
+          // Load library and benchmark scripts
+          Promise.all([
+            loadScript('../dst/' + library + '.min.js'),
+            loadScript('./' + library + '/' + benchmark + '.js')
+          ]).then(() => {
+            setupBenchmarkControls()
+          }).catch(error => {
+            console.error('Failed to load scripts:', error)
+          })
+        }
+
+        const setupBenchmarkControls = () => {
+          const container = document.createElement('div')
+          const app = document.getElementById('app')
+          app.appendChild(container)
+
+          const context = {
+            complexity: 10,
+            rootNode: container,
+            window: window,
+          }
+
+          const measurePerformance = async (fn) => {
+            const startMemory = performance.memory?.usedJSHeapSize || 0
+            const startTime = performance.now()
+
+            try {
+              await fn()
+            } catch (error) {
+              console.error('Benchmark failed:', error)
+              return {
+                error: error.message
+              }
+            }
+
+            return {
+              time: performance.now() - startTime,
+              memory: (performance.memory?.usedJSHeapSize || 0) - startMemory
+            }
+          }
+
+          const formatResults = (results) => {
+            if (results.error) {
+              return 'Error: ' + results.error
+            }
+            return `time: ${results.time.toFixed(2)}ms, memory: ${(results.memory / 1024 / 1024).toFixed(2)}MB`
+          }
+
+          let doneSetup = false
+          const doSetup = async () => {
+            document.getElementById('run-results').textContent = ''
+
+            const results = await measurePerformance(() =>
+              window.benchmark.setup?.(context)
+            )
+            document.getElementById('setup-results').textContent =
+              'Setup Results:\n' + formatResults(results)
+
+            doneSetup = true
+          }
+
+          const doRun = async () => {
+            if (!doneSetup) {
+              await doSetup()
+            }
+
+            const results = await measurePerformance(() =>
+              window.benchmark.run?.(context)
+            )
+            document.getElementById('run-results').textContent =
+              'Run Results:\n' + formatResults(results)
+          }
+
+          document.getElementById('setup-button')
+            .addEventListener('click', doSetup)
+
+          document.getElementById('run-button')
+            .addEventListener('click', doRun)
+
+          document.getElementById('cleanup-button')
+            .addEventListener('click', () => {
+              doneSetup = false
+
+              window.benchmark.cleanup?.(context)
+
+              document.getElementById('setup-results').textContent = ''
+              document.getElementById('run-results').textContent = ''
+            })
+        }
+      }())
+    </script>
+  </body>
+
+</html>

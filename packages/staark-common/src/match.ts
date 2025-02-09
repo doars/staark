@@ -7,19 +7,16 @@ export const match = (
   pattern: any,
   lookup: Record<any, NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined>,
 ): NodeAbstract[] => {
+  let result: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined
   if (
     lookup
     && (pattern in lookup)
     && lookup[pattern]
   ) {
-    let result: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined = lookup[pattern]
+    result = lookup[pattern]
     if (typeof (result) === 'function') {
       result = result()
-      if (!result) {
-        return []
-      }
     }
-    return arrayify(result)
   }
-  return []
+  return arrayify(result) as NodeAbstract[]
 }
