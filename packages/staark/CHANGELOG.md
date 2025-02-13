@@ -2,6 +2,7 @@
 
 ## 1.7.3
 
+- Performance improvements.
 - Removed console log.
 
 ## 1.7.2

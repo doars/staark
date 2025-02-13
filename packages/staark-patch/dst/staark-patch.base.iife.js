@@ -60,8 +60,6 @@
   };
 
   // src/library/patch.ts
-  var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
-  var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
   var updateAttributes = (element, newAttributes, oldAttributes) => {
     if (newAttributes) {
       for (const name in newAttributes) {
@@ -101,22 +99,25 @@
             } else if (name === "style" && typeof value === "object") {
               for (let styleName in value) {
                 let styleValue = value[styleName];
-                styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                if (Array.isArray(styleValue)) {
-                  styleValue = styleValue.join(" ");
+                if (styleName.includes("-", 1)) {
+                  element.style.setProperty(
+                    styleName,
+                    styleValue
+                  );
+                } else {
+                  element.style[styleName] = styleValue;
                 }
-                element.style.setProperty(
-                  styleName,
-                  styleValue
-                );
               }
               if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
                 for (let styleName in oldAttributes[name]) {
                   if (!(styleName in value)) {
-                    styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                    element.style.removeProperty(
-                      styleName
-                    );
+                    if (styleName.includes("-")) {
+                      element.style.removeProperty(
+                        styleName
+                      );
+                    } else {
+                      delete element.style[styleName];
+                    }
                   }
                 }
               }
@@ -152,7 +153,6 @@
     }
   };
   var updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
-    var _a, _b, _c;
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -172,10 +172,10 @@
                 oldChildAbstracts.splice(
                   newIndex - newCount,
                   0,
-                  ...oldChildAbstracts.splice(
+                  oldChildAbstracts.splice(
                     oldIndex,
                     1
-                  )
+                  )[0]
                 );
               }
               if (newAbstract.t) {
@@ -234,7 +234,7 @@
                 elementAbstract,
                 "afterbegin"
               );
-            } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
+            } else if (oldChildAbstracts && oldChildAbstracts.length + newCount > newIndex) {
               insertAdjacentElement(
                 element.childNodes[newIndex]
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -267,7 +267,7 @@
                 elementAbstract,
                 "afterbegin"
               );
-            } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
+            } else if (oldChildAbstracts && oldChildAbstracts.length + newCount > newIndex) {
               insertAdjacentText(
                 element.childNodes[newIndex]
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -285,10 +285,12 @@
         }
       }
     }
-    const elementLength = ((_c = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _c : 0) + newCount;
-    if (elementLength >= newIndex) {
-      for (let i = elementLength - 1; i >= newIndex; i--) {
-        element.childNodes[i].remove();
+    if (oldChildAbstracts) {
+      const elementLength = oldChildAbstracts.length + newCount;
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove();
+        }
       }
     }
   };
@@ -303,7 +305,7 @@
         oldAbstractTree = void 0;
       }
     }
-    oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
+    oldAbstractTree || (oldAbstractTree = childrenToNodes(_rootElement));
     return (newAbstractTree) => {
       newAbstractTree = arrayifyOrUndefined(newAbstractTree);
       updateElementTree(

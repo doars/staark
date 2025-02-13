@@ -127,13 +127,13 @@ var proxify = (root, onChange) => {
 };
 
 // src/library/mount.ts
-var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
-var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
 var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   if (typeof initialState === "string") {
     initialState = JSON.parse(initialState);
   }
-  initialState != null ? initialState : initialState = {};
+  if (!initialState) {
+    initialState = {};
+  }
   let updatePromise = null;
   const triggerUpdate = () => {
     if (!updatePromise) {
@@ -188,22 +188,25 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             } else if (name === "style" && typeof value === "object") {
               for (let styleName in value) {
                 let styleValue = value[styleName];
-                styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                if (Array.isArray(styleValue)) {
-                  styleValue = styleValue.join(" ");
+                if (styleName.includes("-", 1)) {
+                  element.style.setProperty(
+                    styleName,
+                    styleValue
+                  );
+                } else {
+                  element.style[styleName] = styleValue;
                 }
-                element.style.setProperty(
-                  styleName,
-                  styleValue
-                );
               }
               if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
                 for (let styleName in oldAttributes[name]) {
                   if (!(styleName in value)) {
-                    styleName = styleName.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                    element.style.removeProperty(
-                      styleName
-                    );
+                    if (styleName.includes("-")) {
+                      element.style.removeProperty(
+                        styleName
+                      );
+                    } else {
+                      delete element.style[styleName];
+                    }
                   }
                 }
               }
@@ -242,7 +245,6 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   let oldMemoMap = /* @__PURE__ */ new WeakMap();
   let newMemoMap = /* @__PURE__ */ new WeakMap();
   const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
-    var _a, _b, _c;
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -289,10 +291,10 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 oldChildAbstracts.splice(
                   newIndex - newCount,
                   0,
-                  ...oldChildAbstracts.splice(
+                  oldChildAbstracts.splice(
                     oldIndex,
                     1
-                  )
+                  )[0]
                 );
               }
               if (newAbstract.t) {
@@ -353,7 +355,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 elementAbstract,
                 "afterbegin"
               );
-            } else if (((_a = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _a : 0) + newCount > newIndex) {
+            } else if (oldChildAbstracts && oldChildAbstracts.length + newCount > newIndex) {
               insertAdjacentElement(
                 element.childNodes[newIndex]
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -386,7 +388,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 elementAbstract,
                 "afterbegin"
               );
-            } else if (((_b = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _b : 0) + newCount > newIndex) {
+            } else if (oldChildAbstracts && oldChildAbstracts.length + newCount > newIndex) {
               insertAdjacentText(
                 element.childNodes[newIndex]
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -404,10 +406,12 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         }
       }
     }
-    const elementLength = ((_c = oldChildAbstracts == null ? void 0 : oldChildAbstracts.length) != null ? _c : 0) + newCount;
-    if (elementLength >= newIndex) {
-      for (let i = elementLength - 1; i >= newIndex; i--) {
-        element.childNodes[i].remove();
+    if (oldChildAbstracts) {
+      const elementLength = oldChildAbstracts.length + newCount;
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove();
+        }
       }
     }
   };
@@ -421,7 +425,9 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
       oldAbstractTree = void 0;
     }
   }
-  oldAbstractTree != null ? oldAbstractTree : oldAbstractTree = childrenToNodes(_rootElement);
+  if (!oldAbstractTree) {
+    oldAbstractTree = childrenToNodes(_rootElement);
+  }
   let active = true, updating = false;
   const updateAbstracts = () => {
     if (active && !updating && updatePromise) {

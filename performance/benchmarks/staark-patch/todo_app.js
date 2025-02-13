@@ -6,7 +6,7 @@ window.benchmark = {
     complexity,
     rootNode,
   }) {
-    const { prepare, node } = window.staark
+    const { prepare, node } = window.staarkPatch
 
     const patch = prepare(rootNode)
 

@@ -11,7 +11,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "benchmark": "node src/index.js --minified",
+    "benchmark": "node src/index.js",
     "build": "NODE_ENV=production node config.esbuild.js",
     "lint": "echo 'no lint setup'",
     "profile": "node src/index.js --profile --iterations=1",
@@ -26,6 +26,7 @@
     "@doars/staark-patch": "x",
     "@doars/staark": "x",
     "hyperapp": "^2.0.22",
+    "incremental-dom": "^0.7.0",
     "mithril": "^2.2.14",
     "snabbdom": "^3.6.2",
     "superfine": "^8.2.0"

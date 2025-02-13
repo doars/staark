@@ -208,13 +208,15 @@
   var identifier = (prefix) => prefix + "-" + identifierCount++;
 
   // ../staark-common/src/match.ts
-  var match = (pattern, lookup) => {
+  var match = (pattern, lookup, fallback) => {
     let result;
     if (lookup && pattern in lookup && lookup[pattern]) {
       result = lookup[pattern];
       if (typeof result === "function") {
         result = result();
       }
+    } else {
+      result = fallback;
     }
     return arrayify(result);
   };

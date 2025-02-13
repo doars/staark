@@ -41,12 +41,6 @@ export type ViewFunction = (
   state: Record<string, any>,
 ) => NodeContent[] | NodeContent
 
-const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
-const HYPHENATE = (
-  part: string,
-  offset: number,
-) => (offset ? '-' : '') + part
-
 export const mount = (
   rootElement: HTMLElement | Element | string,
   renderView: ViewFunction,
@@ -56,7 +50,9 @@ export const mount = (
   if (typeof (initialState) === 'string') {
     initialState = JSON.parse(initialState) as Record<string, any>
   }
-  initialState ??= {}
+  if (!initialState) {
+    initialState = {}
+  }
   let updatePromise: Promise<void> | null = null
   const triggerUpdate = (
   ): Promise<void> | null => {
@@ -133,20 +129,15 @@ export const mount = (
                 let styleValue = (
                   value as Record<string, boolean | string | null | undefined | number | (boolean | string | number)[]>
                 )[styleName]
-
-                // Convert to kebab case.
-                styleName = styleName
-                  .replace(MATCH_CAPITALS, HYPHENATE)
-                  .toLowerCase()
-
-                if (Array.isArray(styleValue)) {
-                  styleValue = styleValue.join(' ')
+                if (styleName.includes('-', 1)) {
+                  (element as HTMLElement).style.setProperty(
+                    styleName,
+                    styleValue as string,
+                  )
+                } else {
+                  // @ts-ignore
+                  (element as HTMLElement).style[styleName] = styleValue as string
                 }
-
-                (element as HTMLElement).style.setProperty(
-                  styleName,
-                  styleValue as string,
-                )
               }
 
               // Remove old styles.
@@ -158,13 +149,14 @@ export const mount = (
               ) {
                 for (let styleName in oldAttributes[name]) {
                   if (!(styleName in value)) {
-                    styleName = styleName
-                      .replace(MATCH_CAPITALS, HYPHENATE)
-                      .toLowerCase();
-
-                    (element as HTMLElement).style.removeProperty(
-                      styleName,
-                    )
+                    if (styleName.includes('-')) {
+                      (element as HTMLElement).style.removeProperty(
+                        styleName,
+                      )
+                    } else {
+                      // @ts-ignore
+                      delete (element as HTMLElement).style[styleName]
+                    }
                   }
                 }
               }
@@ -270,12 +262,12 @@ export const mount = (
           newChildAbstracts.splice(
             newIndex,
             1,
+            // NOTE: Is a recursive clone required here?
             ...cloneRecursive(
               match.c,
             ),
           )
-          // NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that was just inserted in.
-          // We could have the resolve memoization return whether it was re-rendered, but this also means the nodes are not allowed to be re-used when morphing the DOM and this needs to be prevented by marking them as such.
+          // NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that was just inserted in. We could have the resolve memoization return whether it was re-rendered, but this also means the nodes are not allowed to be re-used when morphing the DOM and this needs to be prevented by marking them as such.
           newIndex--
           continue
         }
@@ -307,10 +299,10 @@ export const mount = (
                 oldChildAbstracts.splice(
                   newIndex - newCount,
                   0,
-                  ...oldChildAbstracts.splice(
+                  oldChildAbstracts.splice(
                     oldIndex,
                     1,
-                  )
+                  )[0]
                 )
               }
 
@@ -390,7 +382,10 @@ export const mount = (
                 elementAbstract,
                 'afterbegin',
               )
-            } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+            } else if (
+              oldChildAbstracts
+              && oldChildAbstracts.length + newCount > newIndex
+            ) {
               insertAdjacentElement(
                 (element.childNodes[newIndex] as Node),
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -436,7 +431,10 @@ export const mount = (
                 elementAbstract,
                 'afterbegin',
               )
-            } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+            } else if (
+              oldChildAbstracts
+              && oldChildAbstracts.length + newCount > newIndex
+            ) {
               insertAdjacentText(
                 element.childNodes[newIndex] as Node,
                 // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -455,10 +453,12 @@ export const mount = (
       }
     }
 
-    const elementLength = (oldChildAbstracts?.length ?? 0) + newCount
-    if (elementLength >= newIndex) {
-      for (let i = elementLength - 1; i >= newIndex; i--) {
-        element.childNodes[i].remove()
+    if (oldChildAbstracts) {
+      const elementLength = oldChildAbstracts.length + newCount
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove()
+        }
       }
     }
   }
@@ -481,7 +481,9 @@ export const mount = (
       oldAbstractTree = undefined
     }
   }
-  oldAbstractTree ??= childrenToNodes(_rootElement)
+  if (!oldAbstractTree) {
+    oldAbstractTree = childrenToNodes(_rootElement)
+  }
 
   let active: boolean = true,
     updating: boolean = false

@@ -15,12 +15,6 @@ export type PatchFunction = (
   newAbstractTree: NodeContent[] | NodeContent,
 ) => void
 
-const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
-const HYPHENATE = (
-  part: string,
-  offset: number,
-) => (offset ? '-' : '') + part
-
 const updateAttributes = (
   element: Element,
   newAttributes?: NodeAttributes,
@@ -68,21 +62,18 @@ const updateAttributes = (
           ) {
             // Apply updated styles.
             for (let styleName in value) {
-              let styleValue = (value as Record<string, boolean | string | null | undefined | number | (boolean | string | number)[]>)[styleName]
-
-              // Convert to kebab case.
-              styleName = styleName
-                .replace(MATCH_CAPITALS, HYPHENATE)
-                .toLowerCase()
-
-              if (Array.isArray(styleValue)) {
-                styleValue = styleValue.join(' ')
+              let styleValue = (
+                value as Record<string, boolean | string | null | undefined | number | (boolean | string | number)[]>
+              )[styleName]
+              if (styleName.includes('-', 1)) {
+                (element as HTMLElement).style.setProperty(
+                  styleName,
+                  styleValue as string,
+                )
+              } else {
+                // @ts-ignore
+                (element as HTMLElement).style[styleName] = styleValue as string
               }
-
-              (element as HTMLElement).style.setProperty(
-                styleName,
-                styleValue as string,
-              )
             }
 
             // Remove old styles.
@@ -94,13 +85,14 @@ const updateAttributes = (
             ) {
               for (let styleName in oldAttributes[name]) {
                 if (!(styleName in value)) {
-                  styleName = styleName
-                    .replace(MATCH_CAPITALS, HYPHENATE)
-                    .toLowerCase();
-
-                  (element as HTMLElement).style.removeProperty(
-                    styleName,
-                  )
+                  if (styleName.includes('-')) {
+                    (element as HTMLElement).style.removeProperty(
+                      styleName,
+                    )
+                  } else {
+                    // @ts-ignore
+                    delete (element as HTMLElement).style[styleName]
+                  }
                 }
               }
             }
@@ -168,6 +160,7 @@ const updateElementTree = (
   oldChildAbstracts?: NodeContent[],
   elementAbstract?: NodeContent,
 ): void => {
+  // TODO: Iterate over nodes and keep track of where you are in each list, both old and new abstracts. The index in the old and new abstracts does not have to be the same. If the index in the old list is lower than new list then new nodes have been inserted in which is fine. Doing this prevents mutating the old list.
   let newIndex = 0
   let newCount = 0
   if (newChildAbstracts) {
@@ -178,7 +171,7 @@ const updateElementTree = (
       let matched = false
       if (oldChildAbstracts) {
         for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
-          const oldAbstract = oldChildAbstracts[oldIndex];
+          const oldAbstract = oldChildAbstracts[oldIndex]
           if (
             (
               (oldAbstract as NodeAbstract).t
@@ -201,10 +194,10 @@ const updateElementTree = (
               oldChildAbstracts.splice(
                 newIndex - newCount,
                 0,
-                ...oldChildAbstracts.splice(
+                oldChildAbstracts.splice(
                   oldIndex,
                   1,
-                )
+                )[0]
               )
             }
 
@@ -280,7 +273,10 @@ const updateElementTree = (
               elementAbstract,
               'afterbegin',
             )
-          } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+          } else if (
+            oldChildAbstracts
+            && oldChildAbstracts.length + newCount > newIndex
+          ) {
             insertAdjacentElement(
               (element.childNodes[newIndex] as Node),
               // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -326,7 +322,10 @@ const updateElementTree = (
               elementAbstract,
               'afterbegin',
             )
-          } else if ((oldChildAbstracts?.length ?? 0) + newCount > newIndex) {
+          } else if (
+            oldChildAbstracts
+            && oldChildAbstracts.length + newCount > newIndex
+          ) {
             insertAdjacentText(
               element.childNodes[newIndex] as Node,
               // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
@@ -346,10 +345,12 @@ const updateElementTree = (
   }
 
   // Remove old elements.
-  const elementLength = (oldChildAbstracts?.length ?? 0) + newCount
-  if (elementLength >= newIndex) {
-    for (let i = elementLength - 1; i >= newIndex; i--) {
-      element.childNodes[i].remove()
+  if (oldChildAbstracts) {
+    const elementLength = oldChildAbstracts.length + newCount
+    if (elementLength >= newIndex) {
+      for (let i = elementLength - 1; i >= newIndex; i--) {
+        element.childNodes[i].remove()
+      }
     }
   }
 }
@@ -376,7 +377,7 @@ export const prepare = (
       oldAbstractTree = undefined
     }
   }
-  oldAbstractTree ??= childrenToNodes(_rootElement)
+  oldAbstractTree ||= childrenToNodes(_rootElement)
 
   return (
     newAbstractTree: NodeContent[] | NodeContent | undefined,

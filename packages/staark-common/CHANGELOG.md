@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.2
+
+- Added optional fallback parameter to match function.
+
 ## 1.5.1
 
 - Performance improvements.

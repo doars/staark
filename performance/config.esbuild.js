@@ -4,6 +4,9 @@ const files = [{
   from: 'src/libraries/hyperapp.ts',
   to: 'dst/hyperapp.js',
 }, {
+  from: 'src/libraries/incremental-dom.ts',
+  to: 'dst/incremental-dom.js',
+}, {
   from: 'src/libraries/mithril.ts',
   to: 'dst/mithril.js',
 }, {

@@ -6,6 +6,7 @@ type ResolveFunction = () => NodeAbstract[] | NodeAbstract | null | undefined
 export const match = (
   pattern: any,
   lookup: Record<any, NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined>,
+  fallback: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined,
 ): NodeAbstract[] => {
   let result: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined
   if (
@@ -17,6 +18,8 @@ export const match = (
     if (typeof (result) === 'function') {
       result = result()
     }
+  } else {
+    result = fallback
   }
   return arrayify(result) as NodeAbstract[]
 }

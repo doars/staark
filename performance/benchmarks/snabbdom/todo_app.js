@@ -8,11 +8,12 @@ window.benchmark = {
   }) {
     const {
       h, init,
-      classModule, eventListenersModule, propsModule, styleModule,
+      classModule, datasetModule, eventListenersModule, propsModule, styleModule,
     } = window.snabbdom
 
     const patch = init([
       classModule,
+      datasetModule,
       eventListenersModule,
       propsModule,
       styleModule,
