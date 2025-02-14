@@ -444,7 +444,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   };
   let oldMemoMap = /* @__PURE__ */ new WeakMap();
   let newMemoMap = /* @__PURE__ */ new WeakMap();
-  const updateElementTree = (element, newChildAbstracts, oldChildAbstracts, elementAbstract) => {
+  const updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -506,102 +506,38 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 updateElementTree(
                   element.childNodes[newIndex],
                   newAbstract.c,
-                  oldAbstract.c,
-                  oldAbstract
+                  oldAbstract.c
                 );
-              } else {
-                if (oldAbstract !== newAbstract) {
-                  element.childNodes[newIndex].textContent = newAbstract;
-                }
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract;
               }
               break;
             }
           }
         }
         if (!matched) {
-          let childElement;
+          let newNode;
           if (newAbstract.t) {
-            childElement = document.createElement(
+            newNode = document.createElement(
               newAbstract.t
             );
-            if (newAbstract.a) {
-              updateAttributes(
-                childElement,
-                newAbstract.a
-              );
-            }
-            if (newAbstract.c) {
-              updateElementTree(
-                childElement,
-                newAbstract.c
-              );
-            }
-            const insertAdjacentElement = (element2, elementAbstract2, position) => {
-              if (position && (!elementAbstract2 || elementAbstract2.t)) {
-                element2.insertAdjacentElement(
-                  position,
-                  childElement
-                );
-              } else {
-                element2.parentNode.insertBefore(
-                  childElement,
-                  element2
-                );
-              }
-            };
-            if (newIndex === 0) {
-              insertAdjacentElement(
-                element,
-                elementAbstract,
-                "afterbegin"
-              );
-            } else if (oldChildAbstracts && oldChildAbstracts.length + newCount > newIndex) {
-              insertAdjacentElement(
-                element.childNodes[newIndex]
-                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-                // 'beforebegin',
-              );
-            } else {
-              insertAdjacentElement(
-                element,
-                elementAbstract,
-                "beforeend"
-              );
-            }
+            updateAttributes(
+              newNode,
+              newAbstract.a
+            );
+            updateElementTree(
+              newNode,
+              newAbstract.c
+            );
           } else {
-            const insertAdjacentText = (element2, elementAbstract2, position) => {
-              if (position && (!elementAbstract2 || elementAbstract2.t)) {
-                element2.insertAdjacentText(
-                  position,
-                  newAbstract
-                );
-              } else {
-                element2.parentNode.insertBefore(
-                  document.createTextNode(newAbstract),
-                  element2
-                );
-              }
-            };
-            if (newIndex === 0) {
-              insertAdjacentText(
-                element,
-                elementAbstract,
-                "afterbegin"
-              );
-            } else if (oldChildAbstracts && oldChildAbstracts.length + newCount > newIndex) {
-              insertAdjacentText(
-                element.childNodes[newIndex]
-                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-                // 'beforebegin',
-              );
-            } else {
-              insertAdjacentText(
-                element,
-                elementAbstract,
-                "beforeend"
-              );
-            }
+            newNode = document.createTextNode(
+              newAbstract
+            );
           }
+          element.insertBefore(
+            newNode,
+            element.childNodes[newIndex]
+          );
           newCount++;
         }
       }
@@ -622,7 +558,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     try {
       oldAbstractTree = JSON.parse(oldAbstractTree);
     } catch (error) {
-      oldAbstractTree = void 0;
+      oldAbstractTree = null;
     }
   }
   if (!oldAbstractTree) {

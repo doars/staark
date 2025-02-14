@@ -45,7 +45,7 @@ export const mount = (
   rootElement: HTMLElement | Element | string,
   renderView: ViewFunction,
   initialState?: Record<string, any> | string,
-  oldAbstractTree?: NodeContent[] | string,
+  oldAbstractTree?: NodeContent[] | string | null,
 ): undefined | [GenericFunction<string[], void>, GenericFunctionUnknown, Record<string, any>] => {
   if (typeof (initialState) === 'string') {
     initialState = JSON.parse(initialState) as Record<string, any>
@@ -227,7 +227,6 @@ export const mount = (
     element: Element,
     newChildAbstracts?: NodeContent[],
     oldChildAbstracts?: NodeContent[],
-    elementAbstract?: NodeContent,
   ): void => {
     let newIndex = 0
     let newCount = 0
@@ -262,7 +261,7 @@ export const mount = (
           newChildAbstracts.splice(
             newIndex,
             1,
-            // NOTE: Is a recursive clone required here?
+            // NOTE: Is a recursive clone required here? Yes as long as the old abstract tree is mutated.
             ...cloneRecursive(
               match.c,
             ),
@@ -316,14 +315,9 @@ export const mount = (
                   (element.childNodes[newIndex] as Element),
                   (newAbstract as NodeAbstract).c,
                   (oldAbstract as NodeAbstract).c,
-                  oldAbstract,
                 )
-              } else {
-                if (
-                  (oldAbstract as string) !== (newAbstract as string)
-                ) {
-                  element.childNodes[newIndex].textContent = (newAbstract as string)
-                }
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract as string
               }
               break
             }
@@ -331,123 +325,29 @@ export const mount = (
         }
 
         if (!matched) {
-          let childElement: Element | string
+          let newNode: Node
           if ((newAbstract as NodeAbstract).t) {
-            childElement = document.createElement(
-              (newAbstract as NodeAbstract).t
+            newNode = document.createElement(
+              (newAbstract as NodeAbstract).t,
             )
-
-            if ((newAbstract as NodeAbstract).a) {
-              updateAttributes(
-                childElement,
-                (newAbstract as NodeAbstract).a,
-              )
-            }
-            if ((newAbstract as NodeAbstract).c) {
-              updateElementTree(
-                childElement,
-                (newAbstract as NodeAbstract).c,
-              )
-            }
-
-            const insertAdjacentElement = (
-              element: Node,
-              elementAbstract?: NodeContent | null,
-              position?: InsertPosition,
-            ) => {
-              if (
-                position
-                && (
-                  !elementAbstract
-                  || (elementAbstract as NodeAbstract).t
-                )
-              ) {
-                (element as Element)
-                  .insertAdjacentElement(
-                    position,
-                    childElement as Element,
-                  )
-              } else {
-                // Otherwise the position is always 'beforebegin'.
-                (element.parentNode as Element)
-                  .insertBefore(
-                    childElement as Element,
-                    element,
-                  )
-              }
-            }
-            if (newIndex === 0) {
-              insertAdjacentElement(
-                element,
-                elementAbstract,
-                'afterbegin',
-              )
-            } else if (
-              oldChildAbstracts
-              && oldChildAbstracts.length + newCount > newIndex
-            ) {
-              insertAdjacentElement(
-                (element.childNodes[newIndex] as Node),
-                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-                // 'beforebegin',
-              )
-            } else {
-              insertAdjacentElement(
-                element,
-                elementAbstract,
-                'beforeend',
-              )
-            }
+            updateAttributes(
+              newNode as HTMLElement,
+              (newAbstract as NodeAbstract).a,
+            )
+            updateElementTree(
+              newNode as HTMLElement,
+              (newAbstract as NodeAbstract).c,
+            )
           } else {
-            const insertAdjacentText = (
-              element: Node,
-              elementAbstract?: NodeContent | null,
-              position?: InsertPosition,
-            ) => {
-              if (
-                position
-                && (
-                  !elementAbstract
-                  || (elementAbstract as NodeAbstract).t
-                )
-              ) {
-                (element as Element)
-                  .insertAdjacentText(
-                    position,
-                    newAbstract as string,
-                  )
-              } else {
-                // Otherwise the position is always 'beforebegin'.
-                (element.parentNode as Element)
-                  .insertBefore(
-                    document.createTextNode(newAbstract as string),
-                    element,
-                  )
-              }
-            }
-            if (newIndex === 0) {
-              insertAdjacentText(
-                element,
-                elementAbstract,
-                'afterbegin',
-              )
-            } else if (
-              oldChildAbstracts
-              && oldChildAbstracts.length + newCount > newIndex
-            ) {
-              insertAdjacentText(
-                element.childNodes[newIndex] as Node,
-                // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-                // 'beforebegin',
-              )
-            } else {
-              insertAdjacentText(
-                element,
-                elementAbstract,
-                'beforeend',
-              )
-            }
+            newNode = document.createTextNode(
+              newAbstract as string,
+            )
           }
+
+          element.insertBefore(
+            newNode,
+            element.childNodes[newIndex],
+          )
           newCount++
         }
       }
@@ -478,7 +378,7 @@ export const mount = (
     try {
       oldAbstractTree = JSON.parse(oldAbstractTree) as NodeContent[]
     } catch (error) {
-      oldAbstractTree = undefined
+      oldAbstractTree = null
     }
   }
   if (!oldAbstractTree) {

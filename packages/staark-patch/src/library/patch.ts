@@ -158,9 +158,9 @@ const updateElementTree = (
   element: Element,
   newChildAbstracts?: NodeContent[],
   oldChildAbstracts?: NodeContent[],
-  elementAbstract?: NodeContent,
 ): void => {
-  // TODO: Iterate over nodes and keep track of where you are in each list, both old and new abstracts. The index in the old and new abstracts does not have to be the same. If the index in the old list is lower than new list then new nodes have been inserted in which is fine. Doing this prevents mutating the old list.
+  // TODO: Iterate over nodes and keep track of where you are in each list, both old and new abstracts. The index in the old and new child abstracts does not have to be the same. If the index in the old child abstracts is lower than new child abstracts then new nodes have been inserted in which is fine. Doing this prevents splice from needing to be called on the existing old child abstracts.
+
   let newIndex = 0
   let newCount = 0
   if (newChildAbstracts) {
@@ -211,7 +211,6 @@ const updateElementTree = (
                 (element.childNodes[newIndex] as Element),
                 (newAbstract as NodeAbstract).c,
                 (oldAbstract as NodeAbstract).c,
-                oldAbstract,
               )
             } else if (oldAbstract !== newAbstract) {
               element.childNodes[newIndex].textContent = newAbstract as string
@@ -222,123 +221,29 @@ const updateElementTree = (
       }
 
       if (!matched) {
-        let childElement: Element | string
+        let newNode: Node
         if ((newAbstract as NodeAbstract).t) {
-          childElement = document.createElement(
-            (newAbstract as NodeAbstract).t
+          newNode = document.createElement(
+            (newAbstract as NodeAbstract).t,
           )
-
-          if ((newAbstract as NodeAbstract).a) {
-            updateAttributes(
-              childElement,
-              (newAbstract as NodeAbstract).a,
-            )
-          }
-          if ((newAbstract as NodeAbstract).c) {
-            updateElementTree(
-              childElement,
-              (newAbstract as NodeAbstract).c,
-            )
-          }
-
-          const insertAdjacentElement = (
-            element: Node,
-            elementAbstract?: NodeContent | null,
-            position?: InsertPosition,
-          ) => {
-            if (
-              position &&
-              (
-                !elementAbstract
-                || (elementAbstract as NodeAbstract).t
-              )
-            ) {
-              (element as Element)
-                .insertAdjacentElement(
-                  position,
-                  childElement as Element,
-                )
-            } else {
-              // Otherwise the position is always 'beforebegin'.
-              (element.parentNode as Element)
-                .insertBefore(
-                  childElement as Element,
-                  element,
-                )
-            }
-          }
-          if (newIndex === 0) {
-            insertAdjacentElement(
-              element,
-              elementAbstract,
-              'afterbegin',
-            )
-          } else if (
-            oldChildAbstracts
-            && oldChildAbstracts.length + newCount > newIndex
-          ) {
-            insertAdjacentElement(
-              (element.childNodes[newIndex] as Node),
-              // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-              // 'beforebegin',
-            )
-          } else {
-            insertAdjacentElement(
-              element,
-              elementAbstract,
-              'beforeend',
-            )
-          }
+          updateAttributes(
+            newNode as HTMLElement,
+            (newAbstract as NodeAbstract).a,
+          )
+          updateElementTree(
+            newNode as HTMLElement,
+            (newAbstract as NodeAbstract).c,
+          )
         } else {
-          const insertAdjacentText = (
-            element: Node,
-            elementAbstract?: NodeContent | null,
-            position?: InsertPosition,
-          ) => {
-            if (
-              position &&
-              (
-                !elementAbstract
-                || (elementAbstract as NodeAbstract).t
-              )
-            ) {
-              (element as Element)
-                .insertAdjacentText(
-                  position,
-                  newAbstract as string,
-                )
-            } else {
-              // Otherwise the position is always 'beforebegin'.
-              (element.parentNode as Element)
-                .insertBefore(
-                  document.createTextNode(newAbstract as string),
-                  element,
-                )
-            }
-          }
-          if (newIndex === 0) {
-            insertAdjacentText(
-              element,
-              elementAbstract,
-              'afterbegin',
-            )
-          } else if (
-            oldChildAbstracts
-            && oldChildAbstracts.length + newCount > newIndex
-          ) {
-            insertAdjacentText(
-              element.childNodes[newIndex] as Node,
-              // (oldChildAbstracts as NodeContent[])[newIndex + newCount],
-              // 'beforebegin',
-            )
-          } else {
-            insertAdjacentText(
-              element,
-              elementAbstract,
-              'beforeend',
-            )
-          }
+          newNode = document.createTextNode(
+            newAbstract as string,
+          )
         }
+
+        element.insertBefore(
+          newNode,
+          element.childNodes[newIndex],
+        )
         newCount++
       }
     }
@@ -357,7 +262,7 @@ const updateElementTree = (
 
 export const prepare = (
   rootElement: HTMLElement | Element | string,
-  oldAbstractTree?: NodeContent[] | string,
+  oldAbstractTree?: NodeContent[] | string | null,
 ): PatchFunction => {
   const _rootElement = (
     typeof (rootElement) === 'string'
@@ -374,10 +279,12 @@ export const prepare = (
     try {
       oldAbstractTree = JSON.parse(oldAbstractTree) as NodeContent[]
     } catch (error) {
-      oldAbstractTree = undefined
+      oldAbstractTree = null
     }
   }
-  oldAbstractTree ||= childrenToNodes(_rootElement)
+  if (!oldAbstractTree) {
+    oldAbstractTree = childrenToNodes(_rootElement)
+  }
 
   return (
     newAbstractTree: NodeContent[] | NodeContent | undefined,
