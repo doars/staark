@@ -25,7 +25,10 @@
 
           node('textarea', {
             placeholder: 'Type something...',
-            input: (event) => {
+            input: (
+              event,
+              state,
+            ) => {
               state.text = event.target.value
             },
             style: {

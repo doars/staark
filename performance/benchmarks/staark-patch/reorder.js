@@ -12,7 +12,7 @@ window.benchmark = {
 
     update = () => {
       patch(
-        node('main', Array(10 * complexity).fill(null).map(
+        node('main', Array(100 * complexity).fill(null).map(
           (_, index) => {
             let number = index % 7
             if (ran) {

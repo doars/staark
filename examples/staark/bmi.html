@@ -42,6 +42,7 @@
             value: state.weight,
             input: (
               event,
+              state,
             ) => {
               state.weight = event.target.value
               calculateBMI(state)
@@ -59,6 +60,7 @@
             value: state.height,
             input: (
               event,
+              state,
             ) => {
               state.height = event.target.value
               calculateBMI(state)

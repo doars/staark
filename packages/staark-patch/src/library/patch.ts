@@ -104,18 +104,6 @@ const updateAttributes = (
               value = value.toString()
             }
 
-            // Setting attribute will automatically update the elements checked and value state.
-            // if (
-            //   name === 'value'
-            //   && (element as HTMLInputElement).value !== value
-            // ) {
-            // (element as HTMLInputElement).value = value as string
-            // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-            // } else if (name === 'checked') {
-            //   (element as HTMLInputElement).checked = !!value
-            // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-            // }
-
             element.setAttribute(name, (value as string))
           }
         }
@@ -139,14 +127,10 @@ const updateAttributes = (
           element.className = ''
         } else if (name === 'style') {
           (element as HTMLElement).style.cssText = ''
-        } else {
-          // Setting attribute will automatically update the elements checked and value state.
-          // if (name === 'value') {
-          // (element as HTMLInputElement).value = ''
+        } else if (name === 'value') {
+          (element as HTMLInputElement).value = ''
           // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
-          // } else if (name === 'checked') {
-          //   (element as HTMLInputElement).checked = false
-          // }
+        } else {
           element.removeAttribute(name)
         }
       }
@@ -159,8 +143,6 @@ const updateElementTree = (
   newChildAbstracts?: NodeContent[],
   oldChildAbstracts?: NodeContent[],
 ): void => {
-  // TODO: Iterate over nodes and keep track of where you are in each list, both old and new abstracts. The index in the old and new child abstracts does not have to be the same. If the index in the old child abstracts is lower than new child abstracts then new nodes have been inserted in which is fine. Doing this prevents splice from needing to be called on the existing old child abstracts.
-
   let newIndex = 0
   let newCount = 0
   if (newChildAbstracts) {
@@ -190,7 +172,7 @@ const updateElementTree = (
                 element.childNodes[oldIndex + newCount],
                 element.childNodes[newIndex],
               )
-              // Move node in abstract tree.
+              // Move node in abstract tree. TODO: Remove this pesky splicing so the old abstract tree is not mutated.
               oldChildAbstracts.splice(
                 newIndex - newCount,
                 0,

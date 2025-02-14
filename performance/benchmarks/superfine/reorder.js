@@ -13,7 +13,7 @@ window.benchmark = {
         rootNode,
         // NOTE: This library allows you to modify the root node and disconnects it from the DOM when the tag name of the root node is changed. Hence an additional virtual node for it is included.
         h('div', {}, [
-          h('main', {}, Array(10 * complexity).fill(null).map(
+          h('main', {}, Array(100 * complexity).fill(null).map(
             (_, index) => {
               let number = index % 7
               if (ran) {

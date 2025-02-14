@@ -24,7 +24,7 @@
           node('div', state.tabs.map(
             (tab, index) =>
               node('button', {
-                click: () => {
+                click: (event, state) => {
                   state.activeTab = index
                 },
                 type: 'button',

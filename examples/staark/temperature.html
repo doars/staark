@@ -26,7 +26,10 @@
           node('input', {
             type: 'number',
             value: state.celsius,
-            input: (event) => {
+            input: (
+              event,
+              state,
+            ) => {
               state.celsius = event.target.value
 
               const celsius = parseFloat(event.target.value)

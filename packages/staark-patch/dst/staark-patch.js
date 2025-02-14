@@ -331,6 +331,8 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
           element.className = "";
         } else if (name === "style") {
           element.style.cssText = "";
+        } else if (name === "value") {
+          element.value = "";
         } else {
           element.removeAttribute(name);
         }

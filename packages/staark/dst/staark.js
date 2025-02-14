@@ -279,16 +279,12 @@ var childrenToNodes = (element) => {
   return abstractChildNodes;
 };
 
-// src/utilities/proxy.ts
+// src/library/proxy.ts
 var proxify = (root, onChange) => {
   const map = /* @__PURE__ */ new WeakMap();
   const handler = {
     deleteProperty: (target, key) => {
       if (Reflect.has(target, key)) {
-        const value = target[key];
-        if (typeof value === "object" && value && map.has(value)) {
-          map.get(value).revoke();
-        }
         const deleted = Reflect.deleteProperty(target, key);
         if (deleted) {
           onChange();
@@ -300,30 +296,29 @@ var proxify = (root, onChange) => {
     set: (target, key, value) => {
       const existingValue = target[key];
       if (existingValue !== value) {
-        if (typeof existingValue === "object" && existingValue && map.has(existingValue)) {
-          map.get(existingValue).revoke();
+        if (value && typeof value === "object") {
+          value = add(value);
         }
-        target[key] = typeof value === "object" && value ? map.has(value) ? map.get(value).proxy : createProxy(value) : value;
+        target[key] = value;
         onChange();
       }
       return true;
     }
   };
-  const createProxy = (target) => {
+  const add = (target) => {
     if (map.has(target)) {
-      return map.get(target).proxy;
+      return map.get(target);
     }
     for (const key in target) {
-      const value = target[key];
-      if (value && typeof value === "object") {
-        target[key] = createProxy(value);
+      if (target[key] && typeof target[key] === "object") {
+        target[key] = add(target[key]);
       }
     }
-    const revocable = Proxy.revocable(target, handler);
-    map.set(target, revocable);
-    return revocable.proxy;
+    const proxy = new Proxy(target, handler);
+    map.set(target, proxy);
+    return proxy;
   };
-  return createProxy(root);
+  return add(root);
 };
 
 // src/library/mount.ts
@@ -435,6 +430,8 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             element.className = "";
           } else if (name === "style") {
             element.style.cssText = "";
+          } else if (name === "value") {
+            element.value = "";
           } else {
             element.removeAttribute(name);
           }

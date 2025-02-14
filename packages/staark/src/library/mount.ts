@@ -22,7 +22,7 @@ import {
 } from '@doars/staark-common/src/node.js'
 import {
   proxify,
-} from '../utilities/proxy.js'
+} from './proxy.js'
 
 export type GenericFunction<DataType, ReturnType> = (
   argument: DataType
@@ -168,18 +168,6 @@ export const mount = (
                 value = value.toString()
               }
 
-              // Setting attribute will automatically update the elements checked and value state.
-              // if (
-              //   name === 'value'
-              //   && (element as HTMLInputElement).value !== value
-              // ) {
-              // (element as HTMLInputElement).value = value as string
-              // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-              // } else if (name === 'checked') {
-              //   (element as HTMLInputElement).checked = !!value
-              // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-              // }
-
               element.setAttribute(name, (value as string))
             }
           }
@@ -204,16 +192,10 @@ export const mount = (
             element.className = ''
           } else if (name === 'style') {
             (element as HTMLElement).style.cssText = ''
-          } else {
-            // Setting attribute will automatically update the elements checked and value state.
-            // if (name === 'value') {
-            // (element as HTMLInputElement).value = ''
+          } else if (name === 'value') {
+            (element as HTMLInputElement).value = ''
             // Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
-            // } else if (name === 'checked') {
-            //   (element as HTMLInputElement).checked = false
-            // Don't dispatch a change event, the re-rendering should update everything: element.dispatchEvent(new Event('change'))
-            // }
-
+          } else {
             element.removeAttribute(name)
           }
         }

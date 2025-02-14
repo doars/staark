@@ -34,7 +34,7 @@
           }, (state.time / 10).toFixed(1) + ' seconds'),
 
           node('button', {
-            click: () => {
+            click: (event, state) => {
               if (!state.timerInterval) {
                 state.timerInterval = setInterval(
                   () => state.time++,
@@ -47,13 +47,13 @@
             },
           }, 'Start'),
           node('button', {
-            click: () => stopStopwatch(state),
+            click: (event, state) => stopStopwatch(state),
             style: {
               marginRight: '10px',
             },
           }, 'Stop'),
           node('button', {
-            click: () => {
+            click: (event, state) => {
               stopStopwatch(state)
               state.time = 0
             },

@@ -172,7 +172,7 @@
               node('div', {
                 class: 'uploader',
                 dragover: (event) => event.preventDefault(),
-                drop: (event) => {
+                drop: (event, state) => {
                   event.preventDefault()
                   let files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'))
                   console.log('files', files)
@@ -206,7 +206,7 @@
                 node('img', {
                   class: 'image',
                   src: imageA.url,
-                  click: () => {
+                  click: (event, state) => {
                     state.preferred = 'A'
                     rankImages(state)
                   },
@@ -214,7 +214,7 @@
                 node('img', {
                   class: 'image',
                   src: imageB.url,
-                  click: () => {
+                  click: (event, state) => {
                     state.preferred = 'B'
                     rankImages(state)
                   },

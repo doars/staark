@@ -104,55 +104,55 @@
             },
           }, [
             node('button', {
-              click: () => appendNumber(state, '7'),
+              click: (event, state) => appendNumber(state, '7'),
             }, '7'),
             node('button', {
-              click: () => appendNumber(state, '8'),
+              click: (event, state) => appendNumber(state, '8'),
             }, '8'),
             node('button', {
-              click: () => appendNumber(state, '9'),
+              click: (event, state) => appendNumber(state, '9'),
             }, '9'),
             node('button', {
-              click: () => setOperator(state, '/'),
+              click: (event, state) => setOperator(state, '/'),
             }, '/'),
 
             node('button', {
-              click: () => appendNumber(state, '4'),
+              click: (event, state) => appendNumber(state, '4'),
             }, '4'),
             node('button', {
-              click: () => appendNumber(state, '5'),
+              click: (event, state) => appendNumber(state, '5'),
             }, '5'),
             node('button', {
-              click: () => appendNumber(state, '6'),
+              click: (event, state) => appendNumber(state, '6'),
             }, '6'),
             node('button', {
-              click: () => setOperator(state, '*'),
+              click: (event, state) => setOperator(state, '*'),
             }, '*'),
 
             node('button', {
-              click: () => appendNumber(state, '1'),
+              click: (event, state) => appendNumber(state, '1'),
             }, '1'),
             node('button', {
-              click: () => appendNumber(state, '2'),
+              click: (event, state) => appendNumber(state, '2'),
             }, '2'),
             node('button', {
-              click: () => appendNumber(state, '3'),
+              click: (event, state) => appendNumber(state, '3'),
             }, '3'),
             node('button', {
-              click: () => setOperator(state, '-'),
+              click: (event, state) => setOperator(state, '-'),
             }, '-'),
 
             node('button', {
-              click: () => clearDisplay(state),
+              click: (event, state) => clearDisplay(state),
             }, 'C'),
             node('button', {
-              click: () => appendNumber(state, '0'),
+              click: (event, state) => appendNumber(state, '0'),
             }, '0'),
             node('button', {
-              click: () => calculateResult(state),
+              click: (event, state) => calculateResult(state),
             }, '='),
             node('button', {
-              click: () => setOperator(state, '+'),
+              click: (event, state) => setOperator(state, '+'),
             }, '+'),
           ]),
         ]),

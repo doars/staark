@@ -25,7 +25,7 @@ window.benchmark = {
       vnode = patch(
         vnode,
         h('div', [
-          h('main', Array(10 * complexity).fill(null).map(
+          h('main', Array(100 * complexity).fill(null).map(
             (_, index) => {
               let number = index % 7
               if (ran) {

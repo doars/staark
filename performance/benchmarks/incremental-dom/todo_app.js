@@ -76,7 +76,6 @@ window.benchmark = {
         for (const todo of state.todos) {
           elementOpen('li', '', null, 'data-id', todo.id, 'class', todo.completed ? 'task-item completed' : 'task-item')
 
-          // elementOpen('span', '', ['class', 'task-text', 'style', todo.completed ? 'text-decoration: line-through' : 'text-decoration: none'])
           elementOpen('span', '', null, 'class', 'task-text', 'style', todo.completed ? 'text-decoration: line-through;' : 'text-decoration: none;');
           text(todo.text)
           elementClose('span')

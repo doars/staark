@@ -25,13 +25,13 @@
           (state) => [
             (state.clicks % 2) === 0 ? (
               node('button', {
-                click: () => state.clicks += 1,
+                click: (event, state) => state.clicks += 1,
               }, 'Click me!')
             ) : node('span', 'Can\'t click me!'),
 
             (state.clicks % 2) === 1 ? (
               node('button', {
-                click: () => state.clicks += 1,
+                click: (event, state) => state.clicks += 1,
               }, 'Click me!')
             ) : node('span', 'Can\'t click me!'),
 
