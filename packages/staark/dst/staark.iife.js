@@ -295,7 +295,6 @@
 
   // src/library/proxy.ts
   var proxify = (root, onChange) => {
-    const map = /* @__PURE__ */ new WeakMap();
     const handler = {
       deleteProperty: (target, key) => {
         if (Reflect.has(target, key)) {
@@ -320,17 +319,12 @@
       }
     };
     const add = (target) => {
-      if (map.has(target)) {
-        return map.get(target);
-      }
       for (const key in target) {
         if (target[key] && typeof target[key] === "object") {
           target[key] = add(target[key]);
         }
       }
-      const proxy = new Proxy(target, handler);
-      map.set(target, proxy);
-      return proxy;
+      return new Proxy(target, handler);
     };
     return add(root);
   };
@@ -455,7 +449,7 @@
     };
     let oldMemoMap = /* @__PURE__ */ new WeakMap();
     let newMemoMap = /* @__PURE__ */ new WeakMap();
-    const updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
+    const updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
       let newIndex = 0;
       let newCount = 0;
       if (newChildAbstracts) {
@@ -514,7 +508,7 @@
                     newAbstract.a,
                     oldAbstract.a
                   );
-                  updateElementTree(
+                  updateChildren(
                     element.childNodes[newIndex],
                     newAbstract.c,
                     oldAbstract.c
@@ -536,7 +530,7 @@
                 newNode,
                 newAbstract.a
               );
-              updateElementTree(
+              updateChildren(
                 newNode,
                 newAbstract.c
               );
@@ -583,7 +577,7 @@
         let newAbstractTree = arrayifyOrUndefined(
           renderView(state)
         );
-        updateElementTree(
+        updateChildren(
           _rootElement,
           newAbstractTree,
           oldAbstractTree

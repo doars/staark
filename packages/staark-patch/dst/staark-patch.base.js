@@ -140,7 +140,7 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
     }
   }
 };
-var updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
+var updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
   let newIndex = 0;
   let newCount = 0;
   if (newChildAbstracts) {
@@ -172,7 +172,7 @@ var updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
                 newAbstract.a,
                 oldAbstract.a
               );
-              updateElementTree(
+              updateChildren(
                 element.childNodes[newIndex],
                 newAbstract.c,
                 oldAbstract.c
@@ -194,7 +194,7 @@ var updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
             newNode,
             newAbstract.a
           );
-          updateElementTree(
+          updateChildren(
             newNode,
             newAbstract.c
           );
@@ -236,7 +236,7 @@ var prepare = (rootElement, oldAbstractTree) => {
   }
   return (newAbstractTree) => {
     newAbstractTree = arrayifyOrUndefined(newAbstractTree);
-    updateElementTree(
+    updateChildren(
       _rootElement,
       newAbstractTree,
       oldAbstractTree

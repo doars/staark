@@ -154,7 +154,7 @@
       }
     }
   };
-  var updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
+  var updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -186,7 +186,7 @@
                   newAbstract.a,
                   oldAbstract.a
                 );
-                updateElementTree(
+                updateChildren(
                   element.childNodes[newIndex],
                   newAbstract.c,
                   oldAbstract.c
@@ -208,7 +208,7 @@
               newNode,
               newAbstract.a
             );
-            updateElementTree(
+            updateChildren(
               newNode,
               newAbstract.c
             );
@@ -250,7 +250,7 @@
     }
     return (newAbstractTree) => {
       newAbstractTree = arrayifyOrUndefined(newAbstractTree);
-      updateElementTree(
+      updateChildren(
         _rootElement,
         newAbstractTree,
         oldAbstractTree

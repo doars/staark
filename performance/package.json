@@ -20,7 +20,7 @@
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "devDependencies": {
-    "puppeteer": "^24.2.0"
+    "puppeteer": "^24.2.1"
   },
   "dependencies": {
     "@doars/staark-patch": "x",

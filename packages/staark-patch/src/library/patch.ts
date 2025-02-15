@@ -138,7 +138,7 @@ const updateAttributes = (
   }
 }
 
-const updateElementTree = (
+const updateChildren = (
   element: Element,
   newChildAbstracts?: NodeContent[],
   oldChildAbstracts?: NodeContent[],
@@ -189,7 +189,7 @@ const updateElementTree = (
                 (newAbstract as NodeAbstract).a,
                 (oldAbstract as NodeAbstract).a,
               )
-              updateElementTree(
+              updateChildren(
                 (element.childNodes[newIndex] as Element),
                 (newAbstract as NodeAbstract).c,
                 (oldAbstract as NodeAbstract).c,
@@ -212,7 +212,7 @@ const updateElementTree = (
             newNode as HTMLElement,
             (newAbstract as NodeAbstract).a,
           )
-          updateElementTree(
+          updateChildren(
             newNode as HTMLElement,
             (newAbstract as NodeAbstract).c,
           )
@@ -272,7 +272,7 @@ export const prepare = (
     newAbstractTree: NodeContent[] | NodeContent | undefined,
   ): void => {
     newAbstractTree = arrayifyOrUndefined(newAbstractTree) as NodeContent[] | undefined
-    updateElementTree(
+    updateChildren(
       _rootElement,
       newAbstractTree,
       oldAbstractTree as NodeContent[],

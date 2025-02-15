@@ -2,13 +2,6 @@ export const proxify = (
   root: Record<string, any>,
   onChange: () => void,
 ): Record<string, any> => {
-  // Setup WeakMap to keep track of created proxies.
-  // NOTE: Since these are not cleaned-up. Why keep track of it. Why not just keep creating proxies even for existing objects.
-  const map = new WeakMap<
-    Record<string, any>,
-    Record<string, any>
-  >()
-
   const handler = {
     deleteProperty: (
       target: Record<string, any>,
@@ -57,11 +50,6 @@ export const proxify = (
   const add = (
     target: Record<string, any>,
   ): Record<string, any> => {
-    // Exit early if proxy already exists prevent recursion.
-    if (map.has(target)) {
-      return map.get(target)!
-    }
-
     // Recursively create proxies for each property.
     for (const key in target) {
       if (
@@ -72,10 +60,7 @@ export const proxify = (
       }
     }
 
-    const proxy = new Proxy(target, handler)
-    map.set(target, proxy)
-
-    return proxy
+    return new Proxy(target, handler)
   }
 
   return add(root)

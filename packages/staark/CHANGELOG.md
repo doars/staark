@@ -4,6 +4,7 @@
 
 - Performance improvements.
 - Removed console log.
+- Update dependencies.
 
 ## 1.7.2
 

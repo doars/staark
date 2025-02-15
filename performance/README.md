@@ -8,15 +8,23 @@ Memory usage is checked in a rather crude manner. Before each iteration the garb
 
 The performance is measured in two phases. The first is the setup process this is where the library creates the initial app structure. After which the second phase is ran, this phase modifies the state and runs the library to modify the initial app structure into the new desired structure.
 
+### reorder
+
+The `reorder` benchmark creates a list of differing node types and then reorders them. This is done to see how well libraries are able to adjust when node types are changed.
+
 ### todo_app
 
-Currently only one benchmark is included called `todo_app` where a thousand rows are created and then modified in the for of an app to keep track of tasks. Simple enough to test how well the app handles adding nodes, modifying texts, and changing attributes over a list of data.
+With the `todo_app` there are a thousand rows created and then modified. Simple enough to test how well the app handles adding nodes, modifying texts, and changing attributes over a list of data.
 
 ## Libraries
 
 ### Hyperapp
 
 [Hyperapp](https://github.com/jorgebucaran/hyperapp#readme) is a similar library to [staark](https://github.com/doars/staark/tree/main/packages/staark#readme). It offers almost the same functionality with some exceptions. Out of the box it does not have the `factory`, `fctory`, and `nde` function, although these could be added as wrappers. Hyperapp also doesn't handle `class` and `style` attributes the same way, but the biggest difference is in how you as the user make changes to the state. Hyperapp expects you to return a new copy of the state with the mutations made as the return of a listener. This means only listeners can easily mutate the state at the end of the event. staark on the other had allows mutation of any key on the state no matter when, it will then after a change has been made re-render the application. This means staark allows you to comfortably use asynchronous functions such [fetch](https://github.com/doars/staark/tree/main/packages/vroagn#readme) and have it automatically update the interface afterwards. And an added bonus of staark is that if an event does not change the state then no re-rendering will happen.
+
+### Incremental DOM
+
+[incremental-dom](https://github.com/google/incremental-dom#readme)
 
 ### Mithril
 
@@ -32,13 +40,21 @@ Currently only one benchmark is included called `todo_app` where a thousand rows
 
 ## Results
 
+### Sizes
+
+Build size for IIFE builds.
+
 ```
 hyperapp
 Minified           4.30KB
 Min+brotli         1.80KB
 
+incremental-dom
+Minified           9.45KB
+Min+brotli         3.46KB
+
 mithril
-Minified          26.02KB
+Minified          25.82KB
 Min+brotli         8.67KB
 
 snabbdom
@@ -46,17 +62,46 @@ Minified          13.53KB
 Min+brotli         4.61KB
 
 staark
-Minified           4.22KB
-Min+brotli         1.72KB
+Minified           3.53KB
+Min+brotli         1.50KB
 
 staark-patch
-Minified           2.78KB
-Min+brotli         1.13KB
+Minified           2.32KB
+Min+brotli         0.98KB
 
 superfine
 Minified           2.84KB
 Min+brotli         1.21KB
 ```
+
+### reorder
+
+When ran with a complexity of _10_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
+
+```
+snabbdom
+- reorder
+  Setup time     x̄4.38ms,   ∧4.10ms,   ∨5.50ms,   ±0.99%
+  Setup memory   x̄0.20MB,   ∧0.20MB,   ∨0.20MB,   ±0.03%
+  Run time       x̄2.87ms,   ∧1.80ms,   ∨3.80ms,   ±3.25%
+  Run memory     x̄0.33MB,   ∧0.08MB,   ∨1.06MB,  ±14.82%
+
+staark-patch
+- reorder
+  Setup time     x̄3.40ms,   ∧3.10ms,   ∨4.00ms,   ±1.10%
+  Setup memory   x̄0.19MB,   ∧0.19MB,   ∨0.19MB,   ±0.00%
+  Run time       x̄3.93ms,   ∧3.00ms,   ∨6.20ms,   ±4.41%
+  Run memory     x̄0.13MB,   ∧0.13MB,   ∨0.13MB,   ±0.00%
+
+superfine
+- reorder
+  Setup time     x̄3.10ms,   ∧2.80ms,   ∨3.50ms,   ±0.75%
+  Setup memory   x̄0.25MB,   ∧0.25MB,   ∨0.26MB,   ±0.04%
+  Run time       x̄2.30ms,   ∧1.90ms,   ∨3.80ms,   ±4.02%
+  Run memory     x̄0.24MB,   ∧0.23MB,   ∨0.71MB,   ±3.81%
+```
+
+### todo_app
 
 When ran with a complexity of _10_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
 
@@ -67,6 +112,13 @@ hyperapp
   Setup memory   x̄1.04MB,   ∧1.02MB,   ∨1.10MB,   ±0.23%
   Run time      x̄14.76ms,  ∧12.70ms,  ∨20.30ms,   ±1.95%
   Run memory     x̄1.76MB,   ∧1.69MB,   ∨1.81MB,   ±0.22%
+
+incremental-dom
+- todo_app
+  Setup time    x̄20.72ms,  ∧17.20ms,  ∨32.40ms,   ±2.45%
+  Setup memory   x̄1.13MB,   ∧1.11MB,   ∨1.59MB,   ±1.10%
+  Run time       x̄6.55ms,   ∧5.40ms,  ∨15.50ms,   ±3.66%
+  Run memory     x̄0.56MB,   ∧0.06MB,   ∨0.99MB,   ±2.75%
 
 mithril
 - todo_app
@@ -86,15 +138,15 @@ staark
 - todo_app
   Setup time    x̄14.13ms,  ∧13.20ms,  ∨15.60ms,   ±0.50%
   Setup memory   x̄1.13MB,   ∧1.11MB,   ∨1.16MB,   ±0.21%
-  Run time      x̄10.51ms,   ∧9.70ms,  ∨13.00ms,   ±0.99%
-  Run memory     x̄1.03MB,   ∧1.00MB,   ∨1.36MB,   ±1.56%
+  Run time       x̄8.71ms,   ∧7.60ms,  ∨10.50ms,   ±0.97%
+  Run memory     x̄0.73MB,   ∧0.66MB,   ∨0.88MB,   ±0.90%
 
 staark-patch
 - todo_app
   Setup time    x̄14.24ms,  ∧13.30ms,  ∨19.90ms,   ±1.01%
   Setup memory   x̄0.76MB,   ∧0.75MB,   ∨0.79MB,   ±0.23%
-  Run time       x̄9.10ms,   ∧8.30ms,  ∨10.60ms,   ±1.10%
-  Run memory     x̄0.94MB,   ∧0.84MB,   ∨1.43MB,   ±2.30%
+  Run time       x̄7.58ms,   ∧6.10ms,  ∨10.20ms,   ±1.67%
+  Run memory     x̄0.62MB,   ∧0.55MB,   ∨1.08MB,   ±3.43%
 
 superfine
 - todo_app
@@ -102,52 +154,6 @@ superfine
   Setup memory   x̄0.99MB,   ∧0.98MB,   ∨1.01MB,   ±0.10%
   Run time      x̄10.78ms,   ∧9.80ms,  ∨12.90ms,   ±0.92%
   Run memory     x̄1.17MB,   ∧1.09MB,   ∨1.21MB,   ±0.26%
-```
-
-When ran with a complexity of _100_ and _10_ iterations on an Intel i5 MacBook Pro 2020:
-
-```
-hyperapp
-- todo_app
-  Setup time   x̄126.38ms, ∧121.30ms, ∨134.00ms,   ±1.94%
-  Setup memory  x̄11.30MB,  ∧11.24MB,  ∨11.39MB,   ±0.26%
-  Run time      x̄96.00ms,  ∧93.20ms, ∨102.80ms,   ±2.02%
-  Run memory     x̄8.48MB,   ∧8.28MB,   ∨8.61MB,   ±0.66%
-
-mithril
-- todo_app
-  Setup time   x̄122.40ms, ∧119.60ms, ∨129.10ms,   ±1.32%
-  Setup memory  x̄13.73MB,  ∧13.70MB,  ∨13.79MB,   ±0.11%
-  Run time      x̄54.19ms,  ∧52.50ms,  ∨57.70ms,   ±1.79%
-  Run memory    x̄10.75MB,  ∧10.37MB,  ∨10.84MB,   ±0.74%
-
-snabbdom
-- todo_app
-  Setup time   x̄125.31ms, ∧124.20ms, ∨127.50ms,   ±0.49%
-  Setup memory   x̄6.75MB,   ∧6.74MB,   ∨6.79MB,   ±0.13%
-  Run time      x̄58.84ms,  ∧56.80ms,  ∨61.00ms,   ±1.12%
-  Run memory     x̄5.25MB,   ∧5.24MB,   ∨5.28MB,   ±0.15%
-
-staark
-- todo_app
-  Setup time   x̄111.38ms, ∧108.90ms, ∨114.90ms,   ±1.00%
-  Setup memory   x̄9.47MB,   ∧9.42MB,   ∨9.51MB,   ±0.18%
-  Run time     x̄100.75ms,  ∧98.80ms, ∨103.80ms,   ±1.01%
-  Run memory     x̄7.48MB,   ∧7.41MB,   ∨7.55MB,   ±0.37%
-
-staark-patch
-- todo_app
-  Setup time   x̄104.30ms, ∧100.70ms, ∨107.30ms,   ±0.95%
-  Setup memory   x̄5.14MB,   ∧5.11MB,   ∨5.19MB,   ±0.33%
-  Run time      x̄89.37ms,  ∧88.20ms,  ∨91.30ms,   ±0.58%
-  Run memory     x̄7.06MB,   ∧7.02MB,   ∨7.12MB,   ±0.23%
-
-superfine
-- todo_app
-  Setup time   x̄118.94ms, ∧116.80ms, ∨121.50ms,   ±0.75%
-  Setup memory   x̄7.01MB,   ∧7.00MB,   ∨7.03MB,   ±0.08%
-  Run time      x̄79.79ms,  ∧75.20ms,  ∨85.20ms,   ±2.10%
-  Run memory     x̄9.37MB,   ∧9.30MB,   ∨9.42MB,   ±0.24%
 ```
 
 > For staark the base build is used which does not include added functions such as `factory` and `nde` Making the comparison with Hyperapp well suited.

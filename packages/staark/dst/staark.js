@@ -281,7 +281,6 @@ var childrenToNodes = (element) => {
 
 // src/library/proxy.ts
 var proxify = (root, onChange) => {
-  const map = /* @__PURE__ */ new WeakMap();
   const handler = {
     deleteProperty: (target, key) => {
       if (Reflect.has(target, key)) {
@@ -306,17 +305,12 @@ var proxify = (root, onChange) => {
     }
   };
   const add = (target) => {
-    if (map.has(target)) {
-      return map.get(target);
-    }
     for (const key in target) {
       if (target[key] && typeof target[key] === "object") {
         target[key] = add(target[key]);
       }
     }
-    const proxy = new Proxy(target, handler);
-    map.set(target, proxy);
-    return proxy;
+    return new Proxy(target, handler);
   };
   return add(root);
 };
@@ -441,7 +435,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   };
   let oldMemoMap = /* @__PURE__ */ new WeakMap();
   let newMemoMap = /* @__PURE__ */ new WeakMap();
-  const updateElementTree = (element, newChildAbstracts, oldChildAbstracts) => {
+  const updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -500,7 +494,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                   newAbstract.a,
                   oldAbstract.a
                 );
-                updateElementTree(
+                updateChildren(
                   element.childNodes[newIndex],
                   newAbstract.c,
                   oldAbstract.c
@@ -522,7 +516,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               newNode,
               newAbstract.a
             );
-            updateElementTree(
+            updateChildren(
               newNode,
               newAbstract.c
             );
@@ -569,7 +563,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
       let newAbstractTree = arrayifyOrUndefined(
         renderView(state)
       );
-      updateElementTree(
+      updateChildren(
         _rootElement,
         newAbstractTree,
         oldAbstractTree

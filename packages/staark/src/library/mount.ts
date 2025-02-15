@@ -205,7 +205,7 @@ export const mount = (
 
   let oldMemoMap: WeakMap<MemoFunction, MemoData> = new WeakMap()
   let newMemoMap: WeakMap<MemoFunction, MemoData> = new WeakMap()
-  const updateElementTree = (
+  const updateChildren = (
     element: Element,
     newChildAbstracts?: NodeContent[],
     oldChildAbstracts?: NodeContent[],
@@ -293,7 +293,7 @@ export const mount = (
                   (newAbstract as NodeAbstract).a,
                   (oldAbstract as NodeAbstract).a,
                 )
-                updateElementTree(
+                updateChildren(
                   (element.childNodes[newIndex] as Element),
                   (newAbstract as NodeAbstract).c,
                   (oldAbstract as NodeAbstract).c,
@@ -316,7 +316,7 @@ export const mount = (
               newNode as HTMLElement,
               (newAbstract as NodeAbstract).a,
             )
-            updateElementTree(
+            updateChildren(
               newNode as HTMLElement,
               (newAbstract as NodeAbstract).c,
             )
@@ -383,7 +383,7 @@ export const mount = (
       let newAbstractTree = arrayifyOrUndefined(
         renderView(state),
       )
-      updateElementTree(
+      updateChildren(
         _rootElement,
         newAbstractTree,
         oldAbstractTree as NodeContent[],

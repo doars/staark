@@ -3,6 +3,7 @@
 ## 1.4.2
 
 - Performance improvements.
+- Update dependencies.
 
 ## 1.4.1
 

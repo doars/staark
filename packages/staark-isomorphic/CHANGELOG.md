@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2
+
+- Update dependencies.
+
 ## 1.6.1
 
 - Performance improvements.
