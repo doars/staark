@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.4
+
+- Performance improvements.
+- Bundle size reduced.
+- Update dependencies.
+
 ## 1.7.3
 
 - Performance improvements.

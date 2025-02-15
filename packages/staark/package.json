@@ -6,7 +6,7 @@
   "name": "@doars/staark",
   "description": "A teeny-tiny framework for building web apps.",
   "keywords": [],
-  "version": "1.7.3",
+  "version": "1.7.4",
   "license": "MIT",
   "type": "module",
   "main": "dst/staark.js",
