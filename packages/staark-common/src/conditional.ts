@@ -16,5 +16,5 @@ export const conditional = (
   if (typeof (result) === 'function') {
     result = result()
   }
-  return arrayify(result) as NodeAbstract[]
+  return arrayify(result)
 }

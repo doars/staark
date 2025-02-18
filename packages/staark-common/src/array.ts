@@ -1,3 +1,5 @@
+type NonNullable<T> = T extends null | undefined ? never : T
+
 /**
  * Ensure the data is an array of not already. Non-truthy values are converted to empty arrays.
  * @param data Data to arrify
@@ -5,7 +7,7 @@
  */
 export const arrayify = <T>(
   data: T[] | T,
-): T[] => arrayifyOrUndefined(data) ?? []
+): NonNullable<T>[] => arrayifyOrUndefined(data) ?? []
 
 /**
  * Ensure the data is an array of not already. Non-truthy values are converted to undefined.
@@ -14,10 +16,10 @@ export const arrayify = <T>(
  */
 export const arrayifyOrUndefined = <T>(
   data: T[] | T,
-): T[] | undefined => (
+): NonNullable<T>[] | undefined => (
   data
     ? Array.isArray(data)
       ? data :
       [data,]
     : undefined
-)
+) as NonNullable<T>[] | undefined
