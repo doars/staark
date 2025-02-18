@@ -260,11 +260,11 @@ var match = (pattern, lookup, fallback) => {
   let result;
   if (lookup && pattern in lookup && lookup[pattern]) {
     result = lookup[pattern];
-    if (typeof result === "function") {
-      result = result();
-    }
   } else {
     result = fallback;
+  }
+  if (typeof result === "function") {
+    result = result();
   }
   return arrayify(result);
 };

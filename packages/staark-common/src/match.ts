@@ -15,11 +15,11 @@ export const match = (
     && lookup[pattern]
   ) {
     result = lookup[pattern]
-    if (typeof (result) === 'function') {
-      result = result()
-    }
   } else {
     result = fallback
+  }
+  if (typeof (result) === 'function') {
+    result = result()
   }
   return arrayify(result) as NodeAbstract[]
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.3
+
+- Allow fallback parameters of match function to be a function.
+
 ## 1.5.2
 
 - Added optional fallback parameter to match function.
