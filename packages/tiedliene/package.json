@@ -37,6 +37,6 @@
   ],
   "devDependencies": {},
   "dependencies": {
-    "@doars/staark-common": "^1.5.1"
+    "@doars/staark-common": "^1.5.3"
   }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.3
+
+- Update dependencies.
+
 ## 1.4.2
 
 - Performance improvements.

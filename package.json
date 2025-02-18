@@ -15,8 +15,8 @@
     "upgrade": "npm-check-updates --upgrade --target minor && yarn workspaces run upgrade && yarn install"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.24.0",
-    "@typescript-eslint/parser": "^8.24.0",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
     "chai": "^5.2.0",
     "brotli-size": "^4.0.0",
     "chokidar": "^4.0.3",

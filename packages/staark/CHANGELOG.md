@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.5
+
+- Update dependencies.
+
 ## 1.7.4
 
 - Performance improvements.
