@@ -21,7 +21,7 @@ IIFE build via a CDN
 
 ESM build via a CDN
 
-```JS
+```JavaScript
 // Bundle.
 import common from 'https://cdn.jsdelivr.net/npm/@doars/staark-common@1/dst/staark-common.js'
 // Bundle minified.

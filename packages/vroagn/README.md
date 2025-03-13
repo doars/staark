@@ -9,7 +9,7 @@ A teensy-tiny library for managing network requests.
 
 The heart of _vroagn_ is the `create` function, it helps you set up a reusable request configuration. Think of it like setting the table before a big feast—you get everything ready, and then just dig in whenever you're hungry (or in our case, need to make a request).
 
-```JS
+```JavaScript
 import { create } from '@doars/vroagn'
 
 const request = create({
@@ -25,7 +25,7 @@ Here, we set up a `GET` request to `https://api.example.com/data` with a retry p
 
 Once your request is created, sending it is as easy as pie. Just call the function with any additional options you need, and the library takes care of the rest.
 
-```JS
+```JavaScript
 const [error, response, result] = await request()
 console.log(error, response, result)
 ```
@@ -36,7 +36,7 @@ The library tries to be smart, it knows that different content types need differ
 
 But, what if you need to parse other data types? Say no more! The base library only contains a hand full of common parsing methods, but the full library has a few additional ones. For example parsing `CSV/TSV`, `INI`, `TOML` and even `YAML`.
 
-```JS
+```JavaScript
 import {
   create,
   csvParser,
@@ -60,7 +60,7 @@ Two of the aforementioned parsers, `TOML` and `YAML`, are rather simple implemen
 
 The example below is a wrapper function for the [`smol-toml`](https://github.com/squirrelchat/smol-toml#readme) library.
 
-```JS
+```JavaScript
 import { parse } from 'smol-toml'
 
 const tomlParser = (
@@ -79,7 +79,7 @@ const tomlParser = (
 
 And the example below is a wrapper for the [`js-yaml`](https://github.com/nodeca/js-yaml#readme) library.
 
-```JS
+```JavaScript
 import { load } from 'js-yaml'
 
 const yamlParser = (
@@ -100,7 +100,7 @@ You can of course also write an entirely new parser based on a custom data speci
 
 A custom fetch function can also be specified using the fetch options. The examples directory of the library contains an additional fetch function. This function writes successful requests to the browser's caches ensuring the cache is maintained between page reloads outside of the browsers build-in cache.
 
-```JS
+```JavaScript
 import { create } from '@doars/vroagn'
 import { cacheFetch } from '[...]/exm/cache.js'
 
@@ -120,7 +120,7 @@ console.log(error, response, result)
 
 _vroagn_ and [_staark_](https://github.com/doars/staark/tree/main/packages/staark#readme) are like peanut butter and jelly. They're great on their own, but together they're unstoppable. Let's see how you can combine them to fetch data dynamically in your _staark_ powered application.
 
-```JS
+```JavaScript
 import { mount, node } from '@doars/staark'
 import { create } from '@doars/vroagn'
 
@@ -224,7 +224,7 @@ IIFE build via a CDN
 
 ESM build via a CDN
 
-```JS
+```JavaScript
 // Base bundle.
 import { create } from 'https://cdn.jsdelivr.net/npm/@doars/vroagn@1/dst/vroagn.base.js'
 // Base bundle minified.

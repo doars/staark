@@ -12,7 +12,7 @@ To start using tiedliene, you need to understand the core functions: `determineD
 
 The `determineDiff` function is the cornerstone of tiedliene. It takes two states—an original state and a modified state—and returns a list of changes (diffs) that describe how to transform the original state into the modified state.
 
-```JS
+```JavaScript
 import { determineDiff } from '@doars/tiedliene'
 
 const oldState = {
@@ -35,7 +35,7 @@ In the example above, `determineDiff` compares `oldState` and `newState`, output
 
 Once you've determined the diffs, use `applyDiff` to apply these changes to an existing state. This function updates the current state based on the provided diffs.
 
-```JS
+```JavaScript
 import { applyDiff } from '@doars/tiedliene'
 
 let state = {
@@ -63,7 +63,7 @@ Here, `applyDiff` modifies the `state` according to the diffs, updating it to re
 
 With the `revertDiff` function, you can undo changes made to the state. This is particularly useful for implementing features like "undo" or "rollback" in your application.
 
-```JS
+```JavaScript
 import { revertDiff } from '@doars/tiedliene'
 
 const currentState = {
@@ -98,7 +98,7 @@ All the functionality above is part of the base library there is an expanded ver
 
 These methods makes it easy to implement undo and redo functionality in your application, keeping the history of state changes, and allowing users to navigate through past states.
 
-```JS
+```JavaScript
 import { manageState } from '@doars/tiedliene'
 
 const initialState = {
@@ -130,7 +130,7 @@ console.log(stateManager.get())
 
 tiedliene's functions are versatile and can be used with nested objects, arrays, or even custom objects like Proxies. The diffing, applying, and reverting mechanisms handle these cases smoothly, ensuring your state transitions are consistent and predictable.
 
-```JS
+```JavaScript
 const nestedState = {
   user: {
     name: 'Luke',
@@ -165,7 +165,7 @@ IIFE build via a CDN
 
 ESM build via a CDN
 
-```JS
+```JavaScript
 // Base bundle.
 import { determineDiff } from 'https://cdn.jsdelivr.net/npm/@doars/tiedliene@1/dst/tiedliene.base.js'
 // Base bundle minified.

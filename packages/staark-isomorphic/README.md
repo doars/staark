@@ -6,7 +6,7 @@ You have two primary functions at your disposal `stringify` and `stringifyFull`.
 
 The `stringify` function is your gateway to converting your application’s view into a static HTML string. This is particularly useful for generating the initial HTML on the server before sending it to the client. It takes in two parameters a `view` function that takes in the `state` and outputs the abstract node tree, and optionally an initial `state` object that your application starts with. When you call `stringify`, it returns an array with two elements, firstly the rendered HTML as a string, as well as the abstract node tree.
 
-```JS
+```JavaScript
 import { node as n, stringify } from '@doars/staark-isomorphic'
 
 const [html, tree] = stringify(
@@ -25,7 +25,7 @@ console.log(tree) // [...]
 
 The `stringifyFull` function goes a step further by not only rendering your view to a static HTML string but also serializing the abstract node tree and the entire application state. This is particularly useful when you need to transfer the initial state and abstract node structure from server to client. It takes in two parameters a `view` function that takes in the `state` and outputs the abstract node tree, and optionally an initial `state` object that your application starts with. When you call `stringifyFull`, it returns an array with three elements, firstly the rendered HTML as a string, as well as the serialized abstract node tree, and finally the serialized initial state.
 
-```JS
+```JavaScript
 import { node as n, stringifyFull } from '@doars/staark-isomorphic'
 
 const [html, tree, state] = stringifyFull(
@@ -74,7 +74,7 @@ The added benefit of stringify the abstract node tree and state is that this can
 
 If you don't care about the state because you might be using your own state solution then you'll only need the rendered abstract node tree. Well there are two functions specially made for this, the `stringifyPatch` and `stringifyPatchFull` functions. The difference between these and the previous two are that the first parameter is the abstract node tree that would be returned by the render function and that there is no second parameter for providing the state.
 
-```JS
+```JavaScript
 import { node as n, stringifyPatch } from '@doars/staark-isomorphic'
 
 const [html, tree] = stringifyPatch(
@@ -90,7 +90,7 @@ console.log(tree) // [...]
 
 And of course the `stringifyPatchFull` function will render not just the abstract node tree but stringify it as well.
 
-```JS
+```JavaScript
 import { node as n, stringifyPatchFull } from '@doars/staark-isomorphic'
 
 const [html, tree] = stringifyPatchFull(
@@ -153,7 +153,7 @@ IIFE build via a CDN
 
 ESM build via a CDN
 
-```JS
+```JavaScript
 // Bundle.
 import { stringify } from 'https://cdn.jsdelivr.net/npm/@doars/staark-isomorphic@1/dst/staark-isomorphic.js'
 // Bundle minified.

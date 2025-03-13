@@ -256,10 +256,10 @@ var identifierCount = 0;
 var identifier = (prefix) => prefix + "-" + identifierCount++;
 
 // src/match.ts
-var match = (pattern, lookup, fallback) => {
+var match = (key, lookup, fallback) => {
   let result;
-  if (lookup && pattern in lookup && lookup[pattern]) {
-    result = lookup[pattern];
+  if (lookup && key in lookup && lookup[key]) {
+    result = lookup[key];
   } else {
     result = fallback;
   }

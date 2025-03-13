@@ -37,6 +37,7 @@ Curious how _staark_ compares to other similar libraries? Checkout the [performa
 
 ## Future ideas
 
+- How can the state of the app work together with the browser's IndexedDB API?
 - Add support for `memo` nodes to `staark-patch` and `staark-isomorphic`'s patch functions.
 - Lifecycle hooks for reacting to when nodes are first created, or an attribute is updated, or removed from the DOM.
 - Have the CSV importer of `vroagn` check for a delimiter.

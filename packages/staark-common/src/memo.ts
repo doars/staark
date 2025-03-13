@@ -9,7 +9,7 @@ export type MemoFunction = (
 ) => NodeContent[] | NodeContent
 
 export type MemoAbstract = {
-  _: Symbol,
+  _: string,
   // Compare data
   m: any,
   // Render function
@@ -19,7 +19,7 @@ export type MemoAbstract = {
 export const memo = (
   render: MemoFunction,
   memory: any,
-) => ({
+): MemoAbstract => ({
   _: marker,
   r: render,
   m: memory,

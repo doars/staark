@@ -11,7 +11,7 @@ A teeny-tiny stateless framework for building web apps.
 
 To use staark patch, you need to know two main functions the `prepare` and `node`. With `prepare`, you set up the `patch` function, which will update a section of the node tree based on new abstract node tree you provide. The `node` function creates those abstract representations of document elements, which staark patch uses to manipulate the actual document.
 
-```JS
+```JavaScript
 import { node as n, prepare } from '@doars/staark-patch'
 
 const patch = prepare(
@@ -30,7 +30,7 @@ The `prepare` function attaches the `patch` function to the document’s first s
 
 Even though patch is stateless, you can still use it for dynamic updates by manually handling state changes within your code. The library provides an easy and efficient way to re-render parts of your document when you modify your data.
 
-```JS
+```JavaScript
 import { node as n, prepare } from '@doars/staark-patch'
 
 const patch = prepare(
@@ -82,7 +82,7 @@ IIFE build via a CDN
 
 ESM build via a CDN
 
-```JS
+```JavaScript
 // Base bundle.
 import { node as n, prepare } from 'https://cdn.jsdelivr.net/npm/@doars/staark-patch@1/dst/staark-patch.base.js'
 // Base bundle minified.

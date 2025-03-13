@@ -1,20 +1,20 @@
 import { arrayify } from './array.js'
-import { NodeAbstract } from './node.js'
+import { NodeContent } from './node.js'
 
-type ResolveFunction = () => NodeAbstract[] | NodeAbstract | null | undefined
+type ResolveFunction = () => NodeContent[] | NodeContent | null | undefined
 
 export const match = (
-  pattern: any,
-  lookup: Record<any, NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined>,
-  fallback: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined,
-): NodeAbstract[] => {
-  let result: NodeAbstract[] | NodeAbstract | ResolveFunction | null | undefined
+  key: any,
+  lookup: Record<any, NodeContent[] | NodeContent | ResolveFunction | null | undefined>,
+  fallback: NodeContent[] | NodeContent | ResolveFunction | null | undefined,
+): NodeContent[] => {
+  let result: NodeContent[] | NodeContent | ResolveFunction | null | undefined
   if (
     lookup
-    && (pattern in lookup)
-    && lookup[pattern]
+    && (key in lookup)
+    && lookup[key]
   ) {
-    result = lookup[pattern]
+    result = lookup[key]
   } else {
     result = fallback
   }
