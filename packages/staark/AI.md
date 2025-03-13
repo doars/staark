@@ -61,7 +61,7 @@ Parameters:
 
 Returns: An abstract node used for subsequent diffing and DOM rendering.
 
-### Attributes explained
+#### `attributes` explained
 
 Event listeners:
 - When an attribute's value is a function, it is automatically registered as an event listener.
