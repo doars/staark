@@ -218,7 +218,7 @@ IIFE build via a CDN
 
 ESM build via a CDN
 
-```JS
+```JavaScript
 // Base bundle.
 import { mount, node as n } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/dst/staark.base.js'
 // Base bundle minified.
@@ -232,3 +232,7 @@ import { mount, node as n } from 'https://cdn.jsdelivr.net/npm/@doars/staark@1/d
 ## Known issues
 
 - A `memo` function inside a `memo` function isn't going to see the benefits of memoization. After an update any memoized calls that haven't been used will be cleared from memory. This means that if the outer `memo` function was used the inner call's data will be culled, as a result during the next update when it might be needed the data will have already been lost. It is therefore not recommended to use `memo` function inside of one another. The library will of course still handle everything as intended, there just won't the performance boost you might be hoping for.
+
+## Artificial intelligence
+
+To make prompting easier you can use the contents of the [AI.md](https://github.com/doars/staark/blob/main/packages/staark/AI.md) file to give a model all the context required to build apps with staark. If you are only using the base build be sure to only include the first sections, or add the fact that you are only using the base build to the prompt context.
