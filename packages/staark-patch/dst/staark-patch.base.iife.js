@@ -1,7 +1,6 @@
-"use strict";
 (() => {
-  // ../../.scripts/iife.ts
-  var iife = function(path, data) {
+  // ../../.scripts/iife.js
+  var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
@@ -12,13 +11,13 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // ../staark-common/src/array.ts
+  // ../staark-common/src/array.js
   var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
-  // ../staark-common/src/marker.ts
+  // ../staark-common/src/marker.js
   var marker = "n";
 
-  // ../staark-common/src/node.ts
+  // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
     if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
       contents = attributesOrContents;
@@ -32,19 +31,17 @@
     };
   };
 
-  // ../staark-common/src/element.ts
+  // ../staark-common/src/element.js
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
-        const elementChild = childNode;
         const attributes = {};
-        for (const attribute of elementChild.attributes) {
+        for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
@@ -59,7 +56,7 @@
     return abstractChildNodes;
   };
 
-  // src/library/patch.ts
+  // src/library/patch.js
   var updateAttributes = (element, newAttributes, oldAttributes) => {
     if (newAttributes) {
       for (const name in newAttributes) {
@@ -67,7 +64,7 @@
         if (value) {
           const type = typeof value;
           if (type === "function") {
-            const oldValue = oldAttributes == null ? void 0 : oldAttributes[name];
+            const oldValue = oldAttributes?.[name];
             if (oldValue !== value) {
               if (oldValue) {
                 element.removeEventListener(
@@ -259,7 +256,7 @@
     };
   };
 
-  // src/index.base.iife.ts
+  // src/index.base.iife.js
   iife([
     "staark"
   ], {

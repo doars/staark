@@ -1,10 +1,10 @@
-// ../staark-common/src/array.ts
+// ../staark-common/src/array.js
 var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
-// ../staark-common/src/marker.ts
+// ../staark-common/src/marker.js
 var marker = "n";
 
-// ../staark-common/src/node.ts
+// ../staark-common/src/node.js
 var node = (type, attributesOrContents, contents) => {
   if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
     contents = attributesOrContents;
@@ -18,19 +18,17 @@ var node = (type, attributesOrContents, contents) => {
   };
 };
 
-// ../staark-common/src/element.ts
+// ../staark-common/src/element.js
 var childrenToNodes = (element) => {
-  var _a;
   const abstractChildNodes = [];
   for (const childNode of element.childNodes) {
     if (childNode instanceof Text) {
       abstractChildNodes.push(
-        (_a = childNode.textContent) != null ? _a : ""
+        childNode.textContent ?? ""
       );
     } else {
-      const elementChild = childNode;
       const attributes = {};
-      for (const attribute of elementChild.attributes) {
+      for (const attribute of childNode.attributes) {
         attributes[attribute.name] = attribute.value;
       }
       abstractChildNodes.push(
@@ -45,7 +43,7 @@ var childrenToNodes = (element) => {
   return abstractChildNodes;
 };
 
-// src/library/patch.ts
+// src/library/patch.js
 var updateAttributes = (element, newAttributes, oldAttributes) => {
   if (newAttributes) {
     for (const name in newAttributes) {
@@ -53,7 +51,7 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
       if (value) {
         const type = typeof value;
         if (type === "function") {
-          const oldValue = oldAttributes == null ? void 0 : oldAttributes[name];
+          const oldValue = oldAttributes?.[name];
           if (oldValue !== value) {
             if (oldValue) {
               element.removeEventListener(

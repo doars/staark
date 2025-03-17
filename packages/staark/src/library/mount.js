@@ -1,0 +1,404 @@
+import {
+  arrayifyOrUndefined,
+} from '@doars/staark-common/src/array.js'
+import {
+  cloneRecursive
+} from '@doars/staark-common/src/clone.js'
+import {
+  equalRecursive,
+} from '@doars/staark-common/src/compare.js'
+import {
+  childrenToNodes,
+} from '@doars/staark-common/src/element.js'
+import {
+  proxify,
+} from './proxy.js'
+
+/**
+ * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
+ * @typedef {import('@doars/staark-common/src/node.js').NodeAttributes} NodeAttributes
+ * @typedef {import('@doars/staark-common/src/node.js').NodeAttributeListener} NodeAttributeListener
+ * @typedef {import('@doars/staark-common/src/memo.js').MemoFunction} MemoFunction
+ * @typedef {import('@doars/staark-common/src/memo.js').MemoAbstract} MemoAbstract
+ * @typedef {import('@doars/staark-common/src/node.js').NodeAbstract} NodeAbstract
+ */
+
+/**
+ * @typedef {Object} MemoData
+ * @property {NodeContent[]} c
+ * @property {any} m
+ * @property {MemoFunction} r
+ */
+
+/**
+ * @param {HTMLElement | Element | string} rootElement
+ * @param {function(Object<string, any>): (NodeContent[] | NodeContent)} renderView
+ * @param {Object<string, any> | string} [initialState]
+ * @param {NodeContent[] | string | null} [oldAbstractTree]
+ * @returns {undefined | [function(string[]): void, function(): unknown, Object<string, any>]}
+ */
+export const mount = (
+  rootElement,
+  renderView,
+  initialState,
+  oldAbstractTree,
+) => {
+  if (typeof (initialState) === 'string') {
+    initialState = JSON.parse(initialState)
+  }
+  if (!initialState) {
+    initialState = {}
+  }
+  let updatePromise = null
+  const triggerUpdate = () => {
+    if (!updatePromise) {
+      updatePromise = Promise.resolve()
+        .then(updateAbstracts)
+    }
+    return updatePromise
+  }
+  let state = (
+    Object.getPrototypeOf(initialState) === Proxy.prototype
+      ? initialState
+      : proxify(
+        initialState,
+        triggerUpdate,
+      )
+  )
+
+  /**
+   * @param {Element} element
+   * @param {NodeAttributes} newAttributes
+   * @param {NodeAttributes} [oldAttributes]
+   */
+  const updateAttributes = (
+    element,
+    newAttributes,
+    oldAttributes,
+  ) => {
+    if (newAttributes) {
+      for (const name in newAttributes) {
+        let value = newAttributes[name]
+        if (value) {
+          const type = typeof (value)
+          if (type === 'function') {
+            const oldValue = oldAttributes?.[name]
+            if (oldValue?.f !== value) {
+              if (oldValue) {
+                element.removeEventListener(
+                  name,
+                  oldValue,
+                )
+              }
+
+              const listener = newAttributes[name] = (
+                (event) => {
+                  value(event, state)
+                }
+              )
+              listener.f = value
+
+              element.addEventListener(
+                name,
+                listener,
+              )
+            }
+          } else {
+            if (name === 'class') {
+              if (typeof (value) === 'object') {
+                if (Array.isArray(value)) {
+                  value = value.join(' ')
+                } else {
+                  let classNames = ''
+                  for (const className in value) {
+                    if (value[className]) {
+                      classNames += ' ' + className
+                    }
+                  }
+                  value = classNames
+                }
+              }
+              element.className = value
+            } else if (
+              name === 'style'
+              && typeof (value) === 'object'
+            ) {
+              for (let styleName in value) {
+                let styleValue = value[styleName]
+                if (styleName.includes('-', 1)) {
+                  element.style.setProperty(
+                    styleName,
+                    styleValue,
+                  )
+                } else {
+                  element.style[styleName] = styleValue
+                }
+              }
+
+              if (
+                oldAttributes
+                && oldAttributes[name]
+                && typeof (oldAttributes[name]) === 'object'
+                && !Array.isArray(oldAttributes[name])
+              ) {
+                for (let styleName in oldAttributes[name]) {
+                  if (!(styleName in value)) {
+                    if (styleName.includes('-')) {
+                      element.style.removeProperty(
+                        styleName,
+                      )
+                    } else {
+                      delete element.style[styleName]
+                    }
+                  }
+                }
+              }
+            } else {
+              if (value === true) {
+                value = 'true'
+              } else if (type !== 'string') {
+                value = value.toString()
+              }
+
+              element.setAttribute(name, value)
+            }
+          }
+        }
+      }
+    }
+
+    if (oldAttributes) {
+      for (const name in oldAttributes) {
+        const value = oldAttributes[name]
+        if (
+          !newAttributes
+          || !newAttributes[name]
+        ) {
+          if (typeof (value) === 'function') {
+            element.removeEventListener(
+              name,
+              oldAttributes[name],
+            )
+          } else if (name === 'class') {
+            element.className = ''
+          } else if (name === 'style') {
+            element.style.cssText = ''
+          } else if (name === 'value') {
+            element.value = ''
+          } else {
+            element.removeAttribute(name)
+          }
+        }
+      }
+    }
+  }
+
+  let oldMemoMap = new WeakMap()
+  let newMemoMap = new WeakMap()
+
+  /**
+   * @param {Element} element
+   * @param {NodeContent[]} [newChildAbstracts]
+   * @param {NodeContent[]} [oldChildAbstracts]
+   */
+  const updateChildren = (
+    element,
+    newChildAbstracts,
+    oldChildAbstracts,
+  ) => {
+    let newIndex = 0
+    let newCount = 0
+    if (newChildAbstracts) {
+      for (; newIndex < newChildAbstracts.length; newIndex++) {
+        const newAbstract = newChildAbstracts[newIndex]
+
+        if (newAbstract.r) {
+          let match = oldMemoMap.get(
+            newAbstract.r,
+          )
+          if (
+            !match
+            || !equalRecursive(match.m, newAbstract.m)
+          ) {
+            match = {
+              c: arrayifyOrUndefined(
+                newAbstract.r(
+                  state,
+                  newAbstract.m,
+                )
+              ),
+              m: newAbstract.m,
+              r: newAbstract.r,
+            }
+          }
+
+          newMemoMap.set(newAbstract.r, match)
+
+          // Splice nodes into the tree and re-run the loop again.
+          newChildAbstracts.splice(
+            newIndex,
+            1,
+            // NOTE: Is a recursive clone required here? Yes as long as the old abstract tree is mutated.
+            ...cloneRecursive(
+              match.c,
+            ),
+          )
+          // NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that was just inserted in. We could have the resolve memoization return whether it was re-rendered, but this also means the nodes are not allowed to be re-used when morphing the DOM and this needs to be prevented by marking them as such.
+          newIndex--
+          continue
+        }
+
+        let matched = false
+        if (oldChildAbstracts) {
+          for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
+            const oldAbstract = oldChildAbstracts[oldIndex]
+            if (
+              (
+                oldAbstract.t
+                && newAbstract.t === oldAbstract.t
+              )
+              || (
+                !oldAbstract.t
+                && !newAbstract.t
+              )
+            ) {
+              matched = true
+
+              if (newIndex !== (oldIndex + newCount)) {
+                element.insertBefore(
+                  element.childNodes[oldIndex + newCount],
+                  element.childNodes[newIndex],
+                )
+                oldChildAbstracts.splice(
+                  newIndex - newCount,
+                  0,
+                  oldChildAbstracts.splice(
+                    oldIndex,
+                    1,
+                  )[0]
+                )
+              }
+
+              if (newAbstract.t) {
+                updateAttributes(
+                  element.childNodes[newIndex],
+                  newAbstract.a,
+                  oldAbstract.a,
+                )
+                updateChildren(
+                  element.childNodes[newIndex],
+                  newAbstract.c,
+                  oldAbstract.c,
+                )
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract
+              }
+              break
+            }
+          }
+        }
+
+        if (!matched) {
+          let newNode
+          if (newAbstract.t) {
+            newNode = document.createElement(
+              newAbstract.t,
+            )
+            updateAttributes(
+              newNode,
+              newAbstract.a,
+            )
+            updateChildren(
+              newNode,
+              newAbstract.c,
+            )
+          } else {
+            newNode = document.createTextNode(
+              newAbstract,
+            )
+          }
+
+          element.insertBefore(
+            newNode,
+            element.childNodes[newIndex],
+          )
+          newCount++
+        }
+      }
+    }
+
+    if (oldChildAbstracts) {
+      const elementLength = oldChildAbstracts.length + newCount
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove()
+        }
+      }
+    }
+  }
+
+  const _rootElement = (
+    typeof (rootElement) === 'string'
+      ? (
+        document.querySelector(rootElement)
+        || document.body.appendChild(
+          document.createElement('div')
+        )
+      )
+      : rootElement
+  )
+
+  if (typeof (oldAbstractTree) === 'string') {
+    try {
+      oldAbstractTree = JSON.parse(oldAbstractTree)
+    } catch (error) {
+      oldAbstractTree = null
+    }
+  }
+  if (!oldAbstractTree) {
+    oldAbstractTree = childrenToNodes(_rootElement)
+  }
+
+  let active = true,
+    updating = false
+  const updateAbstracts = () => {
+    if (
+      active
+      && !updating
+      && updatePromise
+    ) {
+      updating = true
+      updatePromise = null
+
+      let newAbstractTree = arrayifyOrUndefined(
+        renderView(state),
+      )
+      updateChildren(
+        _rootElement,
+        newAbstractTree,
+        oldAbstractTree,
+      )
+      oldAbstractTree = newAbstractTree
+      oldMemoMap = newMemoMap
+      newMemoMap = new WeakMap()
+
+      updating = false
+    }
+  }
+  triggerUpdate()
+  updateAbstracts()
+
+  return [
+    triggerUpdate,
+    () => {
+      if (active) {
+        active = false
+
+        for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+          _rootElement.childNodes[i].remove()
+        }
+      }
+    },
+    state,
+  ]
+}

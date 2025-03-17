@@ -1,7 +1,6 @@
-"use strict";
 (() => {
-  // ../../.scripts/iife.ts
-  var iife = function(path, data) {
+  // ../../.scripts/iife.js
+  var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
@@ -12,20 +11,20 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // ../staark-common/src/marker.ts
+  // ../staark-common/src/marker.js
   var marker = "n";
 
-  // ../staark-common/src/memo.ts
+  // ../staark-common/src/memo.js
   var memo = (render, memory) => ({
     _: marker,
     r: render,
     m: memory
   });
 
-  // ../staark-common/src/array.ts
+  // ../staark-common/src/array.js
   var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
-  // ../staark-common/src/node.ts
+  // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
     if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
       contents = attributesOrContents;
@@ -39,7 +38,7 @@
     };
   };
 
-  // ../staark-common/src/clone.ts
+  // ../staark-common/src/clone.js
   var cloneRecursive = (value) => {
     if (typeof value === "object") {
       const clone = Array.isArray(value) ? [] : {};
@@ -51,7 +50,7 @@
     return value;
   };
 
-  // ../staark-common/src/compare.ts
+  // ../staark-common/src/compare.js
   var equalRecursive = (valueA, valueB) => {
     if (valueA === valueB) {
       return true;
@@ -66,19 +65,17 @@
     return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
   };
 
-  // ../staark-common/src/element.ts
+  // ../staark-common/src/element.js
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
-        const elementChild = childNode;
         const attributes = {};
-        for (const attribute of elementChild.attributes) {
+        for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
@@ -93,9 +90,14 @@
     return abstractChildNodes;
   };
 
-  // src/library/proxy.ts
+  // src/library/proxy.js
   var proxify = (root, onChange) => {
     const handler = {
+      /**
+       * @param {Record<string, any>} target
+       * @param {string} key
+       * @returns {boolean}
+       */
       deleteProperty: (target, key) => {
         if (Reflect.has(target, key)) {
           const deleted = Reflect.deleteProperty(target, key);
@@ -106,6 +108,12 @@
         }
         return true;
       },
+      /**
+       * @param {Record<string, any>} target
+       * @param {string} key
+       * @param {any} value
+       * @returns {boolean}
+       */
       set: (target, key, value) => {
         const existingValue = target[key];
         if (existingValue !== value) {
@@ -129,7 +137,7 @@
     return add(root);
   };
 
-  // src/library/mount.ts
+  // src/library/mount.js
   var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     if (typeof initialState === "string") {
       initialState = JSON.parse(initialState);
@@ -155,8 +163,8 @@
           if (value) {
             const type = typeof value;
             if (type === "function") {
-              const oldValue = oldAttributes == null ? void 0 : oldAttributes[name];
-              if ((oldValue == null ? void 0 : oldValue.f) !== value) {
+              const oldValue = oldAttributes?.[name];
+              if (oldValue?.f !== value) {
                 if (oldValue) {
                   element.removeEventListener(
                     name,
@@ -404,7 +412,7 @@
     ];
   };
 
-  // src/index.base.iife.ts
+  // src/index.base.iife.js
   iife([
     "staark"
   ], {

@@ -6,11 +6,10 @@
   "name": "@doars/staark-isomorphic",
   "description": "A server side rendering library for staark.",
   "keywords": [],
-  "version": "1.6.3",
+  "version": "1.6.4",
   "license": "MIT",
   "type": "module",
-  "main": "dst/staark-isomorphic.js",
-  "types": "src/index.ts",
+  "main": "src/index.js",
   "homepage": "https://github.com/doars/staark#readme",
   "repository": {
     "type": "git",
@@ -23,9 +22,9 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "NODE_ENV=development node config.esbuild.js",
-    "build": "NODE_ENV=production node config.esbuild.js",
-    "lint": "eslint src/**/*.ts --cache --fix --no-error-on-unmatched-pattern",
+    "develop": "NODE_ENV=development node config.bundle.js",
+    "build": "NODE_ENV=production node config.bundle.js",
+    "lint": "eslint src/**/*.js --cache --fix",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
@@ -35,8 +34,7 @@
     "CHANGELOG.md",
     "README.md"
   ],
-  "devDependencies": {},
   "dependencies": {
-    "@doars/staark-common": "^1.5.3"
+    "@doars/staark-common": "^1.5.4"
   }
 }

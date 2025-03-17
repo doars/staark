@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.4
+
+- Rewrite from TypeScript to JavaScript.
+
 ## 1.4.3
 
 - Update dependencies.

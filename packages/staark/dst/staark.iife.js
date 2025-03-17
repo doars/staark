@@ -1,7 +1,6 @@
-"use strict";
 (() => {
-  // ../../.scripts/iife.ts
-  var iife = function(path, data) {
+  // ../../.scripts/iife.js
+  var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
@@ -12,14 +11,11 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // ../staark-common/src/array.ts
-  var arrayify = (data) => {
-    var _a;
-    return (_a = arrayifyOrUndefined(data)) != null ? _a : [];
-  };
+  // ../staark-common/src/array.js
+  var arrayify = (data) => arrayifyOrUndefined(data) || [];
   var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
-  // ../staark-common/src/conditional.ts
+  // ../staark-common/src/conditional.js
   var conditional = (condition, onTruth, onFalse) => {
     let result = condition ? onTruth : onFalse;
     if (typeof result === "function") {
@@ -28,10 +24,10 @@
     return arrayify(result);
   };
 
-  // ../staark-common/src/marker.ts
+  // ../staark-common/src/marker.js
   var marker = "n";
 
-  // ../staark-common/src/node.ts
+  // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
     if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
       contents = attributesOrContents;
@@ -45,8 +41,13 @@
     };
   };
 
-  // ../staark-common/src/factory.ts
+  // ../staark-common/src/factory.js
   var factory = new Proxy({}, {
+    /**
+     * @param {FactoryCache} target
+     * @param {string} type
+     * @returns {Factory}
+     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
@@ -63,7 +64,7 @@
     }
   });
 
-  // ../staark-common/src/selector.ts
+  // ../staark-common/src/selector.js
   var BRACKET_CLOSE = "]";
   var BRACKET_OPEN = "[";
   var DOT = ".";
@@ -71,6 +72,12 @@
   var HASH = "#";
   var QUOTE_SINGLE = "'";
   var QUOTE_DOUBLE = '"';
+  var TokenTypes = {
+    attribute: 0,
+    class: 1,
+    id: 2,
+    type: 3
+  };
   var selectorToTokenizer = (selector) => {
     const length = selector.length;
     let i = 0;
@@ -78,25 +85,25 @@
     const attributes = {};
     let tokenA = "";
     let tokenB = true;
-    let tokenType = 3 /* type */;
+    let tokenType = TokenTypes.type;
     const storeToken = () => {
       if (tokenA) {
         switch (tokenType) {
-          case 0 /* attribute */:
+          case TokenTypes.attribute:
             attributes[tokenA] = tokenB === true ? true : tokenB;
             tokenB = true;
             break;
-          case 1 /* class */:
+          case TokenTypes.class:
             if (!attributes.class) {
               attributes.class = tokenA;
               break;
             }
             attributes.class += " " + tokenA;
             break;
-          case 2 /* id */:
+          case TokenTypes.id:
             attributes.id = tokenA;
             break;
-          case 3 /* type */:
+          case TokenTypes.type:
             type = tokenA;
             break;
         }
@@ -161,15 +168,15 @@
       i++;
       if (character === HASH) {
         storeToken();
-        tokenType = 2 /* id */;
+        tokenType = TokenTypes.id;
         continue;
       } else if (character === DOT) {
         storeToken();
-        tokenType = 1 /* class */;
+        tokenType = TokenTypes.class;
         continue;
       } else if (character === BRACKET_OPEN) {
         storeToken();
-        tokenType = 0 /* attribute */;
+        tokenType = TokenTypes.attribute;
         parseAttribute();
         continue;
       }
@@ -178,8 +185,13 @@
     return [type, attributes];
   };
 
-  // ../staark-common/src/fctory.ts
+  // ../staark-common/src/fctory.js
   var fctory = new Proxy({}, {
+    /**
+     * @param {FctoryCache} target
+     * @param {string} type
+     * @returns {Fctory}
+     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
@@ -203,11 +215,11 @@
     }
   });
 
-  // ../staark-common/src/identifier.ts
+  // ../staark-common/src/identifier.js
   var identifierCount = 0;
   var identifier = (prefix) => prefix + "-" + identifierCount++;
 
-  // ../staark-common/src/match.ts
+  // ../staark-common/src/match.js
   var match = (key, lookup, fallback) => {
     let result;
     if (lookup && key in lookup && lookup[key]) {
@@ -221,14 +233,14 @@
     return arrayify(result);
   };
 
-  // ../staark-common/src/memo.ts
+  // ../staark-common/src/memo.js
   var memo = (render, memory) => ({
     _: marker,
     r: render,
     m: memory
   });
 
-  // ../staark-common/src/nde.ts
+  // ../staark-common/src/nde.js
   var nde = (selector, contents) => {
     const [type, attributes] = selectorToTokenizer(selector);
     return {
@@ -239,7 +251,7 @@
     };
   };
 
-  // ../staark-common/src/clone.ts
+  // ../staark-common/src/clone.js
   var cloneRecursive = (value) => {
     if (typeof value === "object") {
       const clone = Array.isArray(value) ? [] : {};
@@ -251,7 +263,7 @@
     return value;
   };
 
-  // ../staark-common/src/compare.ts
+  // ../staark-common/src/compare.js
   var equalRecursive = (valueA, valueB) => {
     if (valueA === valueB) {
       return true;
@@ -266,19 +278,17 @@
     return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
   };
 
-  // ../staark-common/src/element.ts
+  // ../staark-common/src/element.js
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
-        const elementChild = childNode;
         const attributes = {};
-        for (const attribute of elementChild.attributes) {
+        for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
@@ -293,9 +303,14 @@
     return abstractChildNodes;
   };
 
-  // src/library/proxy.ts
+  // src/library/proxy.js
   var proxify = (root, onChange) => {
     const handler = {
+      /**
+       * @param {Record<string, any>} target
+       * @param {string} key
+       * @returns {boolean}
+       */
       deleteProperty: (target, key) => {
         if (Reflect.has(target, key)) {
           const deleted = Reflect.deleteProperty(target, key);
@@ -306,6 +321,12 @@
         }
         return true;
       },
+      /**
+       * @param {Record<string, any>} target
+       * @param {string} key
+       * @param {any} value
+       * @returns {boolean}
+       */
       set: (target, key, value) => {
         const existingValue = target[key];
         if (existingValue !== value) {
@@ -329,7 +350,7 @@
     return add(root);
   };
 
-  // src/library/mount.ts
+  // src/library/mount.js
   var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     if (typeof initialState === "string") {
       initialState = JSON.parse(initialState);
@@ -355,8 +376,8 @@
           if (value) {
             const type = typeof value;
             if (type === "function") {
-              const oldValue = oldAttributes == null ? void 0 : oldAttributes[name];
-              if ((oldValue == null ? void 0 : oldValue.f) !== value) {
+              const oldValue = oldAttributes?.[name];
+              if (oldValue?.f !== value) {
                 if (oldValue) {
                   element.removeEventListener(
                     name,
@@ -604,7 +625,7 @@
     ];
   };
 
-  // src/index.iife.ts
+  // src/index.iife.js
   iife([
     "staark"
   ], {

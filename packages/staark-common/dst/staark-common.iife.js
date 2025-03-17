@@ -1,4 +1,3 @@
-"use strict";
 (() => {
   var __defProp = Object.defineProperty;
   var __export = (target, all) => {
@@ -6,8 +5,8 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // ../../.scripts/iife.ts
-  var iife = function(path, data) {
+  // ../../.scripts/iife.js
+  var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
@@ -18,19 +17,16 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // src/array.ts
+  // src/array.js
   var array_exports = {};
   __export(array_exports, {
     arrayify: () => arrayify,
     arrayifyOrUndefined: () => arrayifyOrUndefined
   });
-  var arrayify = (data) => {
-    var _a;
-    return (_a = arrayifyOrUndefined(data)) != null ? _a : [];
-  };
+  var arrayify = (data) => arrayifyOrUndefined(data) || [];
   var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
-  // src/attribute.ts
+  // src/attribute.js
   var attribute_exports = {};
   __export(attribute_exports, {
     suffixNameIfMultiple: () => suffixNameIfMultiple
@@ -42,7 +38,7 @@
     }
   };
 
-  // src/clone.ts
+  // src/clone.js
   var clone_exports = {};
   __export(clone_exports, {
     cloneRecursive: () => cloneRecursive
@@ -58,7 +54,7 @@
     return value;
   };
 
-  // src/compare.ts
+  // src/compare.js
   var compare_exports = {};
   __export(compare_exports, {
     equalRecursive: () => equalRecursive
@@ -77,7 +73,7 @@
     return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
   };
 
-  // src/conditional.ts
+  // src/conditional.js
   var conditional_exports = {};
   __export(conditional_exports, {
     conditional: () => conditional
@@ -90,26 +86,26 @@
     return arrayify(result);
   };
 
-  // src/element.ts
+  // src/element.js
   var element_exports = {};
   __export(element_exports, {
     childrenToNodes: () => childrenToNodes
   });
 
-  // src/node.ts
+  // src/node.js
   var node_exports = {};
   __export(node_exports, {
     node: () => node
   });
 
-  // src/marker.ts
+  // src/marker.js
   var marker_exports = {};
   __export(marker_exports, {
     marker: () => marker
   });
   var marker = "n";
 
-  // src/node.ts
+  // src/node.js
   var node = (type, attributesOrContents, contents) => {
     if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
       contents = attributesOrContents;
@@ -123,19 +119,17 @@
     };
   };
 
-  // src/element.ts
+  // src/element.js
   var childrenToNodes = (element) => {
-    var _a;
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
         abstractChildNodes.push(
-          (_a = childNode.textContent) != null ? _a : ""
+          childNode.textContent ?? ""
         );
       } else {
-        const elementChild = childNode;
         const attributes = {};
-        for (const attribute of elementChild.attributes) {
+        for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
@@ -150,12 +144,17 @@
     return abstractChildNodes;
   };
 
-  // src/factory.ts
+  // src/factory.js
   var factory_exports = {};
   __export(factory_exports, {
     factory: () => factory
   });
   var factory = new Proxy({}, {
+    /**
+     * @param {FactoryCache} target
+     * @param {string} type
+     * @returns {Factory}
+     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
@@ -172,13 +171,13 @@
     }
   });
 
-  // src/fctory.ts
+  // src/fctory.js
   var fctory_exports = {};
   __export(fctory_exports, {
     fctory: () => fctory
   });
 
-  // src/selector.ts
+  // src/selector.js
   var BRACKET_CLOSE = "]";
   var BRACKET_OPEN = "[";
   var DOT = ".";
@@ -186,6 +185,12 @@
   var HASH = "#";
   var QUOTE_SINGLE = "'";
   var QUOTE_DOUBLE = '"';
+  var TokenTypes = {
+    attribute: 0,
+    class: 1,
+    id: 2,
+    type: 3
+  };
   var selectorToTokenizer = (selector) => {
     const length = selector.length;
     let i = 0;
@@ -193,25 +198,25 @@
     const attributes = {};
     let tokenA = "";
     let tokenB = true;
-    let tokenType = 3 /* type */;
+    let tokenType = TokenTypes.type;
     const storeToken = () => {
       if (tokenA) {
         switch (tokenType) {
-          case 0 /* attribute */:
+          case TokenTypes.attribute:
             attributes[tokenA] = tokenB === true ? true : tokenB;
             tokenB = true;
             break;
-          case 1 /* class */:
+          case TokenTypes.class:
             if (!attributes.class) {
               attributes.class = tokenA;
               break;
             }
             attributes.class += " " + tokenA;
             break;
-          case 2 /* id */:
+          case TokenTypes.id:
             attributes.id = tokenA;
             break;
-          case 3 /* type */:
+          case TokenTypes.type:
             type = tokenA;
             break;
         }
@@ -276,15 +281,15 @@
       i++;
       if (character === HASH) {
         storeToken();
-        tokenType = 2 /* id */;
+        tokenType = TokenTypes.id;
         continue;
       } else if (character === DOT) {
         storeToken();
-        tokenType = 1 /* class */;
+        tokenType = TokenTypes.class;
         continue;
       } else if (character === BRACKET_OPEN) {
         storeToken();
-        tokenType = 0 /* attribute */;
+        tokenType = TokenTypes.attribute;
         parseAttribute();
         continue;
       }
@@ -293,8 +298,13 @@
     return [type, attributes];
   };
 
-  // src/fctory.ts
+  // src/fctory.js
   var fctory = new Proxy({}, {
+    /**
+     * @param {FctoryCache} target
+     * @param {string} type
+     * @returns {Fctory}
+     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
@@ -318,7 +328,7 @@
     }
   });
 
-  // src/identifier.ts
+  // src/identifier.js
   var identifier_exports = {};
   __export(identifier_exports, {
     identifier: () => identifier
@@ -326,7 +336,7 @@
   var identifierCount = 0;
   var identifier = (prefix) => prefix + "-" + identifierCount++;
 
-  // src/match.ts
+  // src/match.js
   var match_exports = {};
   __export(match_exports, {
     match: () => match
@@ -344,7 +354,7 @@
     return arrayify(result);
   };
 
-  // src/memo.ts
+  // src/memo.js
   var memo_exports = {};
   __export(memo_exports, {
     memo: () => memo
@@ -355,7 +365,7 @@
     m: memory
   });
 
-  // src/nde.ts
+  // src/nde.js
   var nde_exports = {};
   __export(nde_exports, {
     nde: () => nde
@@ -370,7 +380,7 @@
     };
   };
 
-  // src/index.iife.ts
+  // src/index.iife.js
   iife([
     "staark",
     "common"

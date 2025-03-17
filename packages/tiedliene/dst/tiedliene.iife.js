@@ -1,7 +1,6 @@
-"use strict";
 (() => {
-  // ../../.scripts/iife.ts
-  var iife = function(path, data) {
+  // ../../.scripts/iife.js
+  var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
@@ -12,7 +11,7 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // ../staark-common/src/clone.ts
+  // src/utilities/clone.js
   var cloneRecursive = (value) => {
     if (typeof value === "object") {
       const clone = Array.isArray(value) ? [] : {};
@@ -24,7 +23,7 @@
     return value;
   };
 
-  // src/library/diff.ts
+  // src/library/diff.js
   var setValueAtPath = (record, path, value) => {
     let current = record;
     for (let i = 0; i < path.length - 1; i++) {
@@ -109,7 +108,7 @@
     return state;
   };
 
-  // src/library/state.ts
+  // src/library/state.js
   var manageState = function(state, options) {
     state = cloneRecursive(state);
     options = Object.assign({
@@ -118,9 +117,16 @@
     const undoStack = [];
     const redoStack = [];
     return {
+      /**
+       * @returns {Record<string, any>}
+       */
       get: () => {
         return cloneRecursive(state);
       },
+      /**
+       * @param {Record<string, any>} newState
+       * @returns {Record<string, any>}
+       */
       set: (newState) => {
         newState = cloneRecursive(newState);
         const diffs = determineDiff(state, newState);
@@ -136,6 +142,9 @@
         state = newState;
         return cloneRecursive(state);
       },
+      /**
+       * @returns {Record<string, any>}
+       */
       undo: () => {
         if (undoStack.length > 0) {
           const lastDiffs = undoStack.pop();
@@ -151,6 +160,9 @@
         }
         return cloneRecursive(state);
       },
+      /**
+       * @returns {Record<string, any>}
+       */
       redo: () => {
         if (redoStack.length > 0) {
           const diffs = redoStack.pop();
@@ -169,7 +181,7 @@
     };
   };
 
-  // src/index.iife.ts
+  // src/index.iife.js
   iife([
     "tiedliene"
   ], {

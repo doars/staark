@@ -1,11 +1,8 @@
-// src/array.ts
-var arrayify = (data) => {
-  var _a;
-  return (_a = arrayifyOrUndefined(data)) != null ? _a : [];
-};
+// src/array.js
+var arrayify = (data) => arrayifyOrUndefined(data) || [];
 var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
-// src/attribute.ts
+// src/attribute.js
 var SUFFIX_MULTIPLE = "[]";
 var suffixNameIfMultiple = (attributes) => {
   if (attributes.multiple && attributes.name && !attributes.name.endsWith(SUFFIX_MULTIPLE)) {
@@ -13,7 +10,7 @@ var suffixNameIfMultiple = (attributes) => {
   }
 };
 
-// src/clone.ts
+// src/clone.js
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
@@ -25,7 +22,7 @@ var cloneRecursive = (value) => {
   return value;
 };
 
-// src/compare.ts
+// src/compare.js
 var equalRecursive = (valueA, valueB) => {
   if (valueA === valueB) {
     return true;
@@ -40,7 +37,7 @@ var equalRecursive = (valueA, valueB) => {
   return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
 };
 
-// src/conditional.ts
+// src/conditional.js
 var conditional = (condition, onTruth, onFalse) => {
   let result = condition ? onTruth : onFalse;
   if (typeof result === "function") {
@@ -49,10 +46,10 @@ var conditional = (condition, onTruth, onFalse) => {
   return arrayify(result);
 };
 
-// src/marker.ts
+// src/marker.js
 var marker = "n";
 
-// src/node.ts
+// src/node.js
 var node = (type, attributesOrContents, contents) => {
   if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
     contents = attributesOrContents;
@@ -66,19 +63,17 @@ var node = (type, attributesOrContents, contents) => {
   };
 };
 
-// src/element.ts
+// src/element.js
 var childrenToNodes = (element) => {
-  var _a;
   const abstractChildNodes = [];
   for (const childNode of element.childNodes) {
     if (childNode instanceof Text) {
       abstractChildNodes.push(
-        (_a = childNode.textContent) != null ? _a : ""
+        childNode.textContent ?? ""
       );
     } else {
-      const elementChild = childNode;
       const attributes = {};
-      for (const attribute of elementChild.attributes) {
+      for (const attribute of childNode.attributes) {
         attributes[attribute.name] = attribute.value;
       }
       abstractChildNodes.push(
@@ -93,8 +88,13 @@ var childrenToNodes = (element) => {
   return abstractChildNodes;
 };
 
-// src/factory.ts
+// src/factory.js
 var factory = new Proxy({}, {
+  /**
+   * @param {FactoryCache} target
+   * @param {string} type
+   * @returns {Factory}
+   */
   get: (target, type) => {
     if (target[type]) {
       return target[type];
@@ -111,7 +111,7 @@ var factory = new Proxy({}, {
   }
 });
 
-// src/selector.ts
+// src/selector.js
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
 var DOT = ".";
@@ -119,6 +119,12 @@ var EQUAL = "=";
 var HASH = "#";
 var QUOTE_SINGLE = "'";
 var QUOTE_DOUBLE = '"';
+var TokenTypes = {
+  attribute: 0,
+  class: 1,
+  id: 2,
+  type: 3
+};
 var selectorToTokenizer = (selector) => {
   const length = selector.length;
   let i = 0;
@@ -126,25 +132,25 @@ var selectorToTokenizer = (selector) => {
   const attributes = {};
   let tokenA = "";
   let tokenB = true;
-  let tokenType = 3 /* type */;
+  let tokenType = TokenTypes.type;
   const storeToken = () => {
     if (tokenA) {
       switch (tokenType) {
-        case 0 /* attribute */:
+        case TokenTypes.attribute:
           attributes[tokenA] = tokenB === true ? true : tokenB;
           tokenB = true;
           break;
-        case 1 /* class */:
+        case TokenTypes.class:
           if (!attributes.class) {
             attributes.class = tokenA;
             break;
           }
           attributes.class += " " + tokenA;
           break;
-        case 2 /* id */:
+        case TokenTypes.id:
           attributes.id = tokenA;
           break;
-        case 3 /* type */:
+        case TokenTypes.type:
           type = tokenA;
           break;
       }
@@ -209,15 +215,15 @@ var selectorToTokenizer = (selector) => {
     i++;
     if (character === HASH) {
       storeToken();
-      tokenType = 2 /* id */;
+      tokenType = TokenTypes.id;
       continue;
     } else if (character === DOT) {
       storeToken();
-      tokenType = 1 /* class */;
+      tokenType = TokenTypes.class;
       continue;
     } else if (character === BRACKET_OPEN) {
       storeToken();
-      tokenType = 0 /* attribute */;
+      tokenType = TokenTypes.attribute;
       parseAttribute();
       continue;
     }
@@ -226,8 +232,13 @@ var selectorToTokenizer = (selector) => {
   return [type, attributes];
 };
 
-// src/fctory.ts
+// src/fctory.js
 var fctory = new Proxy({}, {
+  /**
+   * @param {FctoryCache} target
+   * @param {string} type
+   * @returns {Fctory}
+   */
   get: (target, type) => {
     if (target[type]) {
       return target[type];
@@ -251,11 +262,11 @@ var fctory = new Proxy({}, {
   }
 });
 
-// src/identifier.ts
+// src/identifier.js
 var identifierCount = 0;
 var identifier = (prefix) => prefix + "-" + identifierCount++;
 
-// src/match.ts
+// src/match.js
 var match = (key, lookup, fallback) => {
   let result;
   if (lookup && key in lookup && lookup[key]) {
@@ -269,14 +280,14 @@ var match = (key, lookup, fallback) => {
   return arrayify(result);
 };
 
-// src/memo.ts
+// src/memo.js
 var memo = (render, memory) => ({
   _: marker,
   r: render,
   m: memory
 });
 
-// src/nde.ts
+// src/nde.js
 var nde = (selector, contents) => {
   const [type, attributes] = selectorToTokenizer(selector);
   return {

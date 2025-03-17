@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.4
+
+- Rewrite from TypeScript to JavaScript.
+
 ## 1.5.3
 
 - Allow fallback parameters of match function to be a function.

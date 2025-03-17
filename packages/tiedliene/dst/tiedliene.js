@@ -1,4 +1,4 @@
-// ../staark-common/src/clone.ts
+// src/utilities/clone.js
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
@@ -10,7 +10,7 @@ var cloneRecursive = (value) => {
   return value;
 };
 
-// src/library/diff.ts
+// src/library/diff.js
 var setValueAtPath = (record, path, value) => {
   let current = record;
   for (let i = 0; i < path.length - 1; i++) {
@@ -95,7 +95,7 @@ var revertDiff = (state, diff) => {
   return state;
 };
 
-// src/library/state.ts
+// src/library/state.js
 var manageState = function(state, options) {
   state = cloneRecursive(state);
   options = Object.assign({
@@ -104,9 +104,16 @@ var manageState = function(state, options) {
   const undoStack = [];
   const redoStack = [];
   return {
+    /**
+     * @returns {Record<string, any>}
+     */
     get: () => {
       return cloneRecursive(state);
     },
+    /**
+     * @param {Record<string, any>} newState
+     * @returns {Record<string, any>}
+     */
     set: (newState) => {
       newState = cloneRecursive(newState);
       const diffs = determineDiff(state, newState);
@@ -122,6 +129,9 @@ var manageState = function(state, options) {
       state = newState;
       return cloneRecursive(state);
     },
+    /**
+     * @returns {Record<string, any>}
+     */
     undo: () => {
       if (undoStack.length > 0) {
         const lastDiffs = undoStack.pop();
@@ -137,6 +147,9 @@ var manageState = function(state, options) {
       }
       return cloneRecursive(state);
     },
+    /**
+     * @returns {Record<string, any>}
+     */
     redo: () => {
       if (redoStack.length > 0) {
         const diffs = redoStack.pop();

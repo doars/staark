@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.6
+
+- Rewrite from TypeScript to JavaScript.
+
 ## 1.7.5
 
 - Update dependencies.

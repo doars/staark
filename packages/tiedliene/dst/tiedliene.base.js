@@ -1,4 +1,4 @@
-// ../staark-common/src/clone.ts
+// src/utilities/clone.js
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
@@ -10,7 +10,7 @@ var cloneRecursive = (value) => {
   return value;
 };
 
-// src/library/diff.ts
+// src/library/diff.js
 var setValueAtPath = (record, path, value) => {
   let current = record;
   for (let i = 0; i < path.length - 1; i++) {

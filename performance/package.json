@@ -12,7 +12,7 @@
   "type": "module",
   "scripts": {
     "benchmark": "node src/index.js",
-    "build": "NODE_ENV=production node config.esbuild.js",
+    "build": "NODE_ENV=production node config.bundle.js",
     "lint": "echo 'no lint setup'",
     "profile": "node src/index.js --profile --iterations=1",
     "sizes": "node src/index.js --minified --sizes --iterations=0",
@@ -20,7 +20,7 @@
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "devDependencies": {
-    "puppeteer": "^24.2.1"
+    "puppeteer": "^24.4.0"
   },
   "dependencies": {
     "@doars/staark-patch": "x",

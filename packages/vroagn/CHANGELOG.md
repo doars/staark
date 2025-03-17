@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2
+
+- Rewrite from TypeScript to JavaScript.
+
 ## 1.4.1
 
 - Using `cloneRecursive` due to performance impact of `structuredClone`.

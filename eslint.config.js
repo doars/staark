@@ -1,10 +1,4 @@
 export default {
-  root: true,
-  env: {
-    browser: true,
-  },
-  parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint'],
   rules: {
     'comma-dangle': [
       'warn',
