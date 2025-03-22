@@ -4,24 +4,25 @@
  */
 
 /**
- * @typedef {Object} YamlOptions
- * @property {string[]} [types]
- * @property {number} [indentSize]
+ * @typedef {Object} YamlOptions Options for the YAML parser.
+ * @property {string[]} [types] Content types to parse as YAML.
+ * @property {number} [indentSize] Number of spaces to use for indentation.
  */
 
 /**
- * @typedef {string | number | boolean | null | YamlObject | YamlValue[]} YamlValue
+ * @typedef {string | number | boolean | null | YamlObject | YamlValue[]} YamlValue YAML value.
  */
 
 /**
- * @typedef {Object.<string, YamlValue>} YamlObject
+ * @typedef {Object.<string, YamlValue>} YamlObject YAML object.
  */
 
 /**
  * Parses a YAML value.
- * @param {string} value
- * @param {Record<string, YamlValue>} anchors
- * @returns {YamlValue}
+ *
+ * @param {string} value Value to parse.
+ * @param {Record<string, YamlValue>} anchors Anchors.
+ * @returns {YamlValue} Parsed value.
  */
 const parseValue = (value, anchors) => {
   if (value === 'null' || value === '~') {
@@ -69,8 +70,9 @@ const parseValue = (value, anchors) => {
 
 /**
  * YAML parser.
- * @param {YamlOptions} [options={}]
- * @returns {ResponseParser}
+ *
+ * @param {YamlOptions} [options={}] Options for the YAML parser.
+ * @returns {ResponseParser} Response parser that parses YAML.
  */
 export const yamlParser = (
   options = {},
@@ -82,6 +84,14 @@ export const yamlParser = (
       'text/yaml',
     ],
 
+    /**
+     * Parse the response as a YAML object.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The request options.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<YamlObject>} The parsed YAML object.
+     */
     parser: async (
       response,
       requestOptions,

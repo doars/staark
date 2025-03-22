@@ -1,11 +1,14 @@
 /**
  * Recursively checks if two values are equal.
  *
- * @param {*} valueA - The first value to compare.
- * @param {*} valueB - The second value to compare.
- * @returns {boolean} - Returns true if the values are equal, otherwise false.
+ * @param {*} valueA The first value to compare.
+ * @param {*} valueB The second value to compare.
+ * @returns {boolean} Returns true if the values are equal, otherwise false.
  */
-export const equalRecursive = (valueA, valueB) => {
+export const equalRecursive = (
+  valueA,
+  valueB,
+) => {
   if (valueA === valueB) {
     return true
   }

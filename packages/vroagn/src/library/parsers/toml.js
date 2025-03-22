@@ -4,30 +4,43 @@
  */
 
 /**
- * @typedef {Object} TomlOptions
- * @property {string[]} [types]
+ * @typedef {Object} TomlOptions Options for the TOML parser.
+ * @property {string[]} [types] The types that should be parsed as TOML.
  */
 
 /**
- * @typedef {string | number | boolean | Date | TomlObject | TomlValue[]} TomlValue
+ * @typedef {string | number | boolean | Date | TomlObject | TomlValue[]} TomlValue The value of a TOML key.
  */
 
 /**
- * @typedef {Object.<string, TomlValue>} TomlObject
+ * @typedef {Object.<string, TomlValue>} TomlObject The parsed TOML object.
  */
 
 /**
- * @param {string} value
- * @returns {TomlValue}
+ * Parse a TOML value.
+ *
+ * @param {string} value The TOML value to parse.
+ * @returns {TomlValue} The parsed TOML value.
  */
-const parseTomlValue = (value) => {
-  if (value.startsWith('"') && value.endsWith('"')) {
+const parseTomlValue = (
+  value,
+) => {
+  if (
+    value.startsWith('"')
+    && value.endsWith('"')
+  ) {
     return value.slice(1, -1)
   }
-  if (value.startsWith("'") && value.endsWith("'")) {
+  if (
+    value.startsWith("'")
+    && value.endsWith("'")
+  ) {
     return value.slice(1, -1)
   }
-  if (value === 'true' || value === 'false') {
+  if (
+    value === 'true'
+    || value === 'false'
+  ) {
     return value === 'true'
   }
   if (!isNaN(Number(value))) {
@@ -40,10 +53,14 @@ const parseTomlValue = (value) => {
 }
 
 /**
- * @param {string} tableString
- * @returns {TomlObject}
+ * Parse an inline table.
+ *
+ * @param {string} tableString The inline table string.
+ * @returns {TomlObject} The parsed inline table.
  */
-const parseInlineTable = (tableString) => {
+const parseInlineTable = (
+  tableString,
+) => {
   const result = {}
   let key = ''
   let value = ''
@@ -53,14 +70,29 @@ const parseInlineTable = (tableString) => {
 
   for (let i = 1; i < tableString.length - 1; i++) {
     const character = tableString[i]
-    if (!inQuotes && (character === '"' || character === "'")) {
+    if (
+      !inQuotes
+      && (
+        character === '"'
+        || character === "'"
+      )
+    ) {
       inQuotes = true
       quoteChar = character
-    } else if (inQuotes && character === quoteChar) {
+    } else if (
+      inQuotes
+      && character === quoteChar
+    ) {
       inQuotes = false
-    } else if (!inQuotes && character === '=') {
+    } else if (
+      !inQuotes
+      && character === '='
+    ) {
       inValue = true
-    } else if (!inQuotes && character === ',') {
+    } else if (
+      !inQuotes
+      && character === ','
+    ) {
       result[key.trim()] = parseTomlValue(value.trim())
       key = ''
       value = ''
@@ -75,15 +107,19 @@ const parseInlineTable = (tableString) => {
   }
 
   if (key) {
-    result[key.trim()] = parseTomlValue(value.trim())
+    result[key.trim()] = parseTomlValue(
+      value.trim(),
+    )
   }
 
   return result
 }
 
 /**
- * @param {TomlOptions} [options={}]
- * @returns {ResponseParser}
+ * TOML parser.
+ *
+ * @param {TomlOptions} [options={}] Options for the TOML parser.
+ * @returns {ResponseParser} The TOML parser.
  */
 export const tomlParser = (
   options = {},
@@ -95,10 +131,12 @@ export const tomlParser = (
     ],
 
     /**
-     * @param {Response} response
-     * @param {RequestOptions} requestOptions
-     * @param {string} type
-     * @returns {Promise<TomlObject>}
+     * Parse the response as a TOML object.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The options for the request.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<TomlObject>} The parsed TOML object.
      */
     parser: async (
       response,

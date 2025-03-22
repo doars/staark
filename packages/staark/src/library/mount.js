@@ -25,17 +25,17 @@ import {
 
 /**
  * @typedef {Object} MemoData
- * @property {NodeContent[]} c
- * @property {any} m
- * @property {MemoFunction} r
+ * @property {NodeContent[]} c Remembered abstract tree after rendering.
+ * @property {any} m Remembered data to compare with.
+ * @property {MemoFunction} r Render function to generated abstract tree.
  */
 
 /**
- * @param {HTMLElement | Element | string} rootElement
- * @param {function(Object<string, any>): (NodeContent[] | NodeContent)} renderView
- * @param {Object<string, any> | string} [initialState]
- * @param {NodeContent[] | string | null} [oldAbstractTree]
- * @returns {undefined | [function(string[]): void, function(): unknown, Object<string, any>]}
+ * @param {HTMLElement | Element | string} rootElement Root element to mount the view on.
+ * @param {function(Object<string, any>): (NodeContent[] | NodeContent)} renderView Function to render the view using the state.
+ * @param {Object<string, any> | string} [initialState]  Initial state to use.
+ * @param {NodeContent[] | string | null} [oldAbstractTree] Old abstract tree to compare with.
+ * @returns {undefined | [function(string[]): void, function(): unknown, Object<string, any>]} Returns a trigger function to update the view, a function to unmount the view and the state object.
  */
 export const mount = (
   rootElement,
@@ -67,9 +67,9 @@ export const mount = (
   )
 
   /**
-   * @param {Element} element
-   * @param {NodeAttributes} newAttributes
-   * @param {NodeAttributes} [oldAttributes]
+   * @param {Element} element Element to update.
+   * @param {NodeAttributes} newAttributes New attributes to set.
+   * @param {NodeAttributes} [oldAttributes] Old attributes to compare with.
    */
   const updateAttributes = (
     element,
@@ -197,9 +197,9 @@ export const mount = (
   let newMemoMap = new WeakMap()
 
   /**
-   * @param {Element} element
-   * @param {NodeContent[]} [newChildAbstracts]
-   * @param {NodeContent[]} [oldChildAbstracts]
+   * @param {Element} element Element to update.
+   * @param {NodeContent[]} [newChildAbstracts] New children to set.
+   * @param {NodeContent[]} [oldChildAbstracts] Old children to compare with.
    */
   const updateChildren = (
     element,

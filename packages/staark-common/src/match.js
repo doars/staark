@@ -8,10 +8,10 @@ import { arrayify } from './array.js'
 /**
  * Matches a key to a value in a lookup table, with a fallback option.
  *
- * @param {any} key - The key to match.
- * @param {Record<any, NodeContent[] | NodeContent | ResolveFunction | null | undefined>} lookup - The lookup table.
- * @param {NodeContent[] | NodeContent | ResolveFunction | null} [fallback] - The fallback value.
- * @returns {NodeContent[]} - The matched or fallback value, arrayified.
+ * @param {any} key The key to match.
+ * @param {Record<any, NodeContent[] | NodeContent | ResolveFunction | null | undefined>} lookup The lookup table.
+ * @param {NodeContent[] | NodeContent | ResolveFunction | null} [fallback] The fallback value.
+ * @returns {NodeContent[]} The matched or fallback value, arrayified.
  */
 export const match = (
   key,

@@ -4,18 +4,20 @@
  */
 
 /**
- * @typedef {Object} IniOptions
- * @property {string[]} [types]
+ * @typedef {Object} IniOptions Options for the INI parser.
+ * @property {string[]} [types] The types that should be parsed as INI.
  */
 
 /**
- * @typedef {Object} IniObject
- * @property {Object.<string, Object.<string, string>>} IniObject
+ * @typedef {Object} IniObject The parsed INI object.
+ * @property {Object.<string, Object.<string, string>>} IniObject The parsed INI object.
  */
 
 /**
- * @param {IniOptions} [options={}]
- * @returns {ResponseParser}
+ * INI parser.
+ *
+ * @param {IniOptions} [options={}] Options for the INI parser.
+ * @returns {ResponseParser} The INI parser.
  */
 export const iniParser = (
   options = {},
@@ -24,9 +26,12 @@ export const iniParser = (
     types: options.types || ['ini'],
 
     /**
-     * @param {Response} response
-     * @param {RequestOptions} requestOptions
-     * @returns {Promise<IniObject>}
+     * Parse the response as an INI object.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The request options.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<IniObject>} The parsed INI object.
      */
     parser: async (
       response,

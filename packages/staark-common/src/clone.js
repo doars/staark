@@ -1,5 +1,6 @@
 /**
- * Creates a deep clone of a javascript value.
+ * Creates a deep clone of a JavaScript value.
+ *
  * @param {any} value Data to clone.
  * @returns {any} Clone of the data.
  */

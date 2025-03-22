@@ -8,11 +8,11 @@ import { selectorToTokenizer } from './selector.js'
  */
 
 /**
- * Creates a NodeAbstract object from a selector and optional contents.
+ * Creates a NodeAbstract object from a selector and contents.
  *
- * @param {string} selector - The selector string.
- * @param {NodeContent[] | NodeContent} [contents] - The optional contents.
- * @returns {NodeAbstract} The created NodeAbstract object.
+ * @param {string} selector The selector string.
+ * @param {NodeContent[] | NodeContent} [contents] Abstracts of children.
+ * @returns {NodeAbstract} Node abstract representing the given data.
  */
 export const nde = (
   selector,

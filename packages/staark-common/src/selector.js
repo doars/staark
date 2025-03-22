@@ -7,7 +7,7 @@ const QUOTE_SINGLE = '\''
 const QUOTE_DOUBLE = '"'
 
 /**
- * @enum {number}
+ * @enum {number} TokenTypes.
  */
 const TokenTypes = {
   attribute: 0,
@@ -17,12 +17,14 @@ const TokenTypes = {
 }
 
 /**
- * @typedef {Object.<string, any>} Attributes
+ * @typedef {Object.<string, any>} Attributes Attributes.
  */
 
 /**
- * @param {string} selector
- * @returns {[string, Attributes]}
+ * Tokenize a selector into a type and its attributes.
+ *
+ * @param {string} selector Selector to tokenize.
+ * @returns {[string, Attributes]} Node type and attributes.
  */
 export const selectorToTokenizer = (
   selector,

@@ -1,7 +1,9 @@
 /**
- * @param {Record<string, any>} root
- * @param {() => void} onChange
- * @returns {Record<string, any>}
+ * Creates a proxy for the given root object to track changes and invoke the onChange callback.
+ *
+ * @param {Record<string, any>} root - The root object to be proxified.
+ * @param {() => void} onChange - The callback function to be invoked on changes.
+ * @returns {Record<string, any>} - The proxified root object.
  */
 export const proxify = (
   root,
@@ -9,9 +11,11 @@ export const proxify = (
 ) => {
   const handler = {
     /**
-     * @param {Record<string, any>} target
-     * @param {string} key
-     * @returns {boolean}
+     * Deletes a property from the target object and invokes the onChange callback if the property existed.
+     *
+     * @param {Record<string, any>} target - The target object from which the property will be deleted.
+     * @param {string} key - The key of the property to be deleted.
+     * @returns {boolean} - True if the property was deleted, otherwise false.
      */
     deleteProperty: (
       target,
@@ -30,10 +34,12 @@ export const proxify = (
     },
 
     /**
-     * @param {Record<string, any>} target
-     * @param {string} key
-     * @param {any} value
-     * @returns {boolean}
+     * Sets a property on the target object and invokes the onChange callback if the value has changed.
+     *
+     * @param {Record<string, any>} target - The target object on which the property will be set.
+     * @param {string} key - The key of the property to be set.
+     * @param {any} value - The value to be set.
+     * @returns {boolean} - True if the property was set, otherwise false.
      */
     set: (
       target,
@@ -59,9 +65,10 @@ export const proxify = (
   }
 
   /**
-   * Add object to start keeping track of it.
-   * @param {Record<string, any>} target Object that is being kept track of.
-   * @returns {Record<string, any>} Object to access and mutate.
+   * Recursively creates proxies for each property of the target object to track changes.
+   *
+   * @param {Record<string, any>} target - The object to be proxified.
+   * @returns {Record<string, any>} - The proxified object.
    */
   const add = (
     target,

@@ -31,9 +31,9 @@ var node = (type, attributesOrContents, contents) => {
 // ../staark-common/src/factory.js
 var factory = new Proxy({}, {
   /**
-   * @param {FactoryCache} target
-   * @param {string} type
-   * @returns {Factory}
+   * @param {FactoryCache} target Factory cache.
+   * @param {string} type Type of the nodes to generate.
+   * @returns {Factory} Function that generates the a node with the given type.
    */
   get: (target, type) => {
     if (target[type]) {
@@ -175,9 +175,9 @@ var selectorToTokenizer = (selector) => {
 // ../staark-common/src/fctory.js
 var fctory = new Proxy({}, {
   /**
-   * @param {FctoryCache} target
-   * @param {string} type
-   * @returns {Fctory}
+   * @param {FctoryCache} target Factory cache.
+   * @param {string} type Type of the nodes to generate.
+   * @returns {Fctory} Function that generates the a node with the given type.
    */
   get: (target, type) => {
     if (target[type]) {
@@ -404,7 +404,10 @@ var stringifyFull = (renderView, initialState) => {
   if (!initialState) {
     initialState = {};
   }
-  const [rendered, abstractTree] = stringify(renderView, initialState);
+  const [
+    rendered,
+    abstractTree
+  ] = stringify(renderView, initialState);
   return [
     rendered,
     customStringify(abstractTree),

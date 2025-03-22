@@ -46,32 +46,32 @@ Build size for IIFE builds.
 
 ```
 hyperapp
-Minified           4.30KB
-Min+brotli         1.80KB
+Minified           4.26KB
+Min+brotli         1.81KB
 
 incremental-dom
-Minified           9.45KB
+Minified           9.40KB
 Min+brotli         3.46KB
 
 mithril
-Minified          25.82KB
-Min+brotli         8.67KB
+Minified          25.77KB
+Min+brotli         8.69KB
 
 snabbdom
-Minified          13.53KB
-Min+brotli         4.61KB
+Minified          13.48KB
+Min+brotli         4.60KB
 
 staark
-Minified           3.53KB
-Min+brotli         1.50KB
+Minified           3.48KB
+Min+brotli         1.49KB
 
 staark-patch
-Minified           2.32KB
-Min+brotli         0.98KB
+Minified           2.26KB
+Min+brotli         0.97KB
 
 superfine
-Minified           2.84KB
-Min+brotli         1.21KB
+Minified           2.80KB
+Min+brotli         1.22KB
 ```
 
 ### reorder

@@ -265,10 +265,12 @@ var csvParser = (options) => {
       ...tsvTypes
     ],
     /**
-     * @param {Response} response
-     * @param {RequestOptions} requestOptions
-     * @param {string} type
-     * @returns {Promise<any>}
+     * Parse the response as CSV.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The request options.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<any>} The parsed response.
      */
     parser: async (response, requestOptions, type) => {
       const optionsTemp = {
@@ -336,9 +338,12 @@ var iniParser = (options = {}) => {
   return {
     types: options.types || ["ini"],
     /**
-     * @param {Response} response
-     * @param {RequestOptions} requestOptions
-     * @returns {Promise<IniObject>}
+     * Parse the response as an INI object.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The request options.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<IniObject>} The parsed INI object.
      */
     parser: async (response, requestOptions, type) => {
       const text = await response.text();
@@ -421,7 +426,9 @@ var parseInlineTable = (tableString) => {
     }
   }
   if (key) {
-    result[key.trim()] = parseTomlValue(value.trim());
+    result[key.trim()] = parseTomlValue(
+      value.trim()
+    );
   }
   return result;
 };
@@ -432,10 +439,12 @@ var tomlParser = (options = {}) => {
       "application/toml"
     ],
     /**
-     * @param {Response} response
-     * @param {RequestOptions} requestOptions
-     * @param {string} type
-     * @returns {Promise<TomlObject>}
+     * Parse the response as a TOML object.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The options for the request.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<TomlObject>} The parsed TOML object.
      */
     parser: async (response, requestOptions, type) => {
       const text = await response.text();
@@ -571,6 +580,14 @@ var yamlParser = (options = {}) => {
       "application/yaml",
       "text/yaml"
     ],
+    /**
+     * Parse the response as a YAML object.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The request options.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<YamlObject>} The parsed YAML object.
+     */
     parser: async (response, requestOptions, type) => {
       const lines = (await response.text()).split("\n");
       const result = {};

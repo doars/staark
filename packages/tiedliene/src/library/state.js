@@ -11,13 +11,15 @@ import {
  */
 
 /**
- * @typedef {Object} ManageOptions
- * @property {number} [maximumHistory]
+ * @typedef {Object} ManageOptions Options for managing state.
+ * @property {number} [maximumHistory] The maximum number of changes to keep in the undo and redo stacks.
  */
 
 /**
- * @param {Record<string, any>} state
- * @param {ManageOptions} [options]
+ * Manages state and provides undo and redo functionality.
+ *
+ * @param {Record<string, any>} state The initial state.
+ * @param {ManageOptions} [options] Options for managing state.
  */
 export const manageState = function (
   state,
@@ -35,15 +37,19 @@ export const manageState = function (
 
   return {
     /**
-     * @returns {Record<string, any>}
+     * Returns the current state.
+     *
+     * @returns {Record<string, any>} The current state.
      */
     get: () => {
       return cloneRecursive(state)
     },
 
     /**
-     * @param {Record<string, any>} newState
-     * @returns {Record<string, any>}
+     * Sets the state and returns the new state.
+     *
+     * @param {Record<string, any>} newState The new state.
+     * @returns {Record<string, any>} The new state.
      */
     set: (
       newState,
@@ -73,7 +79,9 @@ export const manageState = function (
     },
 
     /**
-     * @returns {Record<string, any>}
+     * Undoes the last change and returns the new state.
+     *
+     * @returns {Record<string, any>} The new state.
      */
     undo: () => {
       if (undoStack.length > 0) {
@@ -99,7 +107,9 @@ export const manageState = function (
     },
 
     /**
-     * @returns {Record<string, any>}
+     * Redoes the last change and returns the new state.
+     *
+     * @returns {Record<string, any>} The new state.
      */
     redo: () => {
       if (redoStack.length > 0) {

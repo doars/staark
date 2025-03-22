@@ -3,41 +3,42 @@ import { delay } from '../utilities/delay.js'
 import { getType } from '../utilities/type.js'
 
 /**
- * @typedef {Object} ResponseParser
- * @property {string[]} types
- * @property {(response: Response, options: RequestOptions, type: string) => any} parser
- */
+ * @typedef {Object} ResponseParser Defines a response parser.
+ * @property {string[]} types The types of responses the parser can handle.
+ * @property {(response: Response, options: RequestOptions, type: string) => any} parser The function to parse the response.
+ **/
 
 /**
- * @typedef {Object} SendOptions
- * @property {any} [body]
- * @property {RequestCredentials} [credentials]
- * @property {string} [domain]
- * @property {Record<string, string>} [headers]
- * @property {'get' | 'post' | 'put' | 'delete' | 'patch' | 'head'} [method]
- * @property {RequestMode} [mode]
- * @property {string} [path]
- * @property {'high' | 'normal' | 'low'} [priority]
- * @property {Record<string, string>} [queryParams]
- * @property {RequestRedirect} [redirect]
- * @property {ResponseParser[]} [parsers]
- * @property {string} [type]
- * @property {AbortController} [abort]
- * @property {RequestCache} [cache]
- * @property {(request: Request | string, requestOptions?: RequestInit) => Promise<Response>} [fetch]
- * @property {number} [debounce]
- * @property {number} [delay]
- * @property {number} [throttle]
- * @property {number} [timeout]
- * @property {number} [retryAttempts]
- * @property {number[]} [retryCodes]
- * @property {number} [retryDelay]
- */
+ * @typedef {Object} SendOptions Defines the options for sending a request.
+ * @property {any} [body] The body of the request.
+ * @property {RequestCredentials} [credentials] The credentials for the request.
+ * @property {string} [domain] The domain for the request.
+ * @property {Record<string, string>} [headers] The headers for the request.
+ * @property {'get' | 'post' | 'put' | 'delete' | 'patch' | 'head'} [method] The HTTP method for the request.
+ * @property {RequestMode} [mode] The mode for the request.
+ * @property {string} [path] The path for the request.
+ * @property {'high' | 'normal' | 'low'} [priority] The priority of the request.
+ * @property {Record<string, string>} [queryParams] The query parameters for the request.
+ * @property {RequestRedirect} [redirect] The redirect mode for the request.
+ * @property {ResponseParser[]} [parsers] The parsers for the response.
+ * @property {string} [type] The expected response type.
+ * @property {AbortController} [abort] The abort controller for the request.
+ * @property {RequestCache} [cache] The cache mode for the request.
+ * @property {(request: Request | string, requestOptions?: RequestInit) => Promise<Response>} [fetch] The fetch function to use for the request.
+ * @property {number} [debounce] The debounce time for the request.
+ * @property {number} [delay] The delay time for the request.
+ * @property {number} [throttle] The throttle time for the request.
+ * @property {number} [timeout] The timeout for the request.
+ * @property {number} [retryAttempts] The number of retry attempts for the request.
+ * @property {number[]} [retryCodes] The HTTP status codes that should trigger a retry.
+ * @property {number} [retryDelay] The delay between retry attempts.
+ **/
 
 /**
- * @typedef {SendOptions & { maxConcurrency?: number, maxRequests?: number }} RequestOptions
+ * @typedef {SendOptions & { maxConcurrency?: number, maxRequests?: number }} RequestOptions Defines the options for creating a request handler.
  */
 
+// Default values for the request handler.
 const DEFAULT_VALUES = {
   method: 'get',
   retryCodes: [429, 503, 504],
@@ -45,7 +46,10 @@ const DEFAULT_VALUES = {
 }
 
 /**
- * @param {RequestOptions} initialOptions
+ * Creates a request handler.
+ *
+ * @param {RequestOptions} initialOptions The initial options for the request handler.
+ * @returns {(sendOptions: SendOptions) => Promise<[Error | null, Response | null, any]>} The request handler.
  */
 export const create = (
   initialOptions,
@@ -73,8 +77,10 @@ export const create = (
   }
 
   /**
-   * @param {number} debounceValue
-   * @returns {Promise<void>}
+   * Debounces the request handler.
+   *
+   * @param {number} debounceValue The debounce time in milliseconds.
+   * @returns {Promise<void>} A promise that resolves after the debounce time.
    */
   const debounce = (
     debounceValue,
@@ -88,8 +94,10 @@ export const create = (
   }
 
   /**
-   * @param {RequestOptions} options
-   * @returns {Promise<[Error | null, Response | null, any]>}
+   * Sends a request.
+   *
+   * @param {RequestOptions} options The options for the request.
+   * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
    */
   const sendRequest = async (
     options,
@@ -200,7 +208,9 @@ export const create = (
     }
 
     /**
-     * @returns {Promise<[Error | null, Response, any]>}
+     * Retries the request.
+     *
+     * @returns {Promise<[Error | null, Response, any]>} The error, response and result of the request.
      */
     const retryRequest = async () => {
       let attempt = 0
@@ -250,8 +260,10 @@ export const create = (
   }
 
   /**
-   * @param {SendOptions} sendOptions
-   * @returns {Promise<[Error | null, Response | null, any]>}
+   * Sends a request.
+   *
+   * @param {SendOptions} sendOptions The options for sending the request.
+   * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
    */
   return async (
     sendOptions,

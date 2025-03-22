@@ -118,14 +118,18 @@
     const redoStack = [];
     return {
       /**
-       * @returns {Record<string, any>}
+       * Returns the current state.
+       *
+       * @returns {Record<string, any>} The current state.
        */
       get: () => {
         return cloneRecursive(state);
       },
       /**
-       * @param {Record<string, any>} newState
-       * @returns {Record<string, any>}
+       * Sets the state and returns the new state.
+       *
+       * @param {Record<string, any>} newState The new state.
+       * @returns {Record<string, any>} The new state.
        */
       set: (newState) => {
         newState = cloneRecursive(newState);
@@ -143,7 +147,9 @@
         return cloneRecursive(state);
       },
       /**
-       * @returns {Record<string, any>}
+       * Undoes the last change and returns the new state.
+       *
+       * @returns {Record<string, any>} The new state.
        */
       undo: () => {
         if (undoStack.length > 0) {
@@ -161,7 +167,9 @@
         return cloneRecursive(state);
       },
       /**
-       * @returns {Record<string, any>}
+       * Redoes the last change and returns the new state.
+       *
+       * @returns {Record<string, any>} The new state.
        */
       redo: () => {
         if (redoStack.length > 0) {

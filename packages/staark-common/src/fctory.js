@@ -12,18 +12,18 @@ import {
  */
 
 /**
- * @typedef {function(string=, NodeContent[]|NodeContent=): NodeAbstract} Fctory
+ * @typedef {function(string=, NodeContent[]|NodeContent=): NodeAbstract} Fctory Function that generates the a node with the given type.
  */
 
 /**
- * @typedef {Object<string, Fctory>} FctoryCache
+ * @typedef {Object<string, Fctory>} FctoryCache Factory cache.
  */
 
 export const fctory = new Proxy({}, {
   /**
-   * @param {FctoryCache} target
-   * @param {string} type
-   * @returns {Fctory}
+   * @param {FctoryCache} target Factory cache.
+   * @param {string} type Type of the nodes to generate.
+   * @returns {Fctory} Function that generates the a node with the given type.
    */
   get: (target, type) => {
     if (target[type]) {

@@ -13,9 +13,11 @@ import {
  */
 
 /**
- * @param {Element} element
- * @param {NodeAttributes} newAttributes
- * @param {NodeAttributes} [oldAttributes]
+ * Update the attributes of an element.
+ *
+ * @param {Element} element The element to update.
+ * @param {NodeAttributes} newAttributes The new attributes to apply.
+ * @param {NodeAttributes} [oldAttributes] The old attributes to cleanup.
  */
 const updateAttributes = (
   element,
@@ -139,9 +141,11 @@ const updateAttributes = (
 }
 
 /**
- * @param {Element} element
- * @param {NodeContent[]} [newChildAbstracts]
- * @param {NodeContent[]} [oldChildAbstracts]
+ * Update the children of an element.
+ *
+ * @param {Element} element The element to update.
+ * @param {NodeContent[]} [newChildAbstracts] The new children to apply.
+ * @param {NodeContent[]} [oldChildAbstracts] The old children to cleanup.
  */
 const updateChildren = (
   element,
@@ -248,9 +252,11 @@ const updateChildren = (
 }
 
 /**
- * @param {HTMLElement | Element | string} rootElement
- * @param {NodeContent[] | string | null} [oldAbstractTree]
- * @returns {function(NodeContent[] | NodeContent): unknown}
+ * Create a patch function that can be used to update the root element.
+ *
+ * @param {HTMLElement | Element | string} rootElement The root element to update.
+ * @param {NodeContent[] | string | null} [oldAbstractTree] The old abstract tree to update.
+ * @returns {function(NodeContent[] | NodeContent): unknown} The patch function to call to apply a new abstract tree to the element.
  */
 export const prepare = (
   rootElement,

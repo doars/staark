@@ -20,17 +20,19 @@ const SELF_CLOSING = [
  */
 
 /**
- * @callback ViewFunction
- * @param {Record<string, any>} state
- * @returns {NodeContent[] | NodeContent}
+ * @callback ViewFunction Render view function.
+ * @param {Record<string, any>} state Current state.
+ * @returns {NodeContent[] | NodeContent} Abstract tree.
  */
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
 const HYPHENATE = (part, offset) => (offset ? '-' : '') + part
 
 /**
- * @param {NodeAttributes} [attributes]
- * @returns {string}
+ * Render attributes to string.
+ *
+ * @param {NodeAttributes} [attributes] Attributes to render.
+ * @returns {string} Rendered attributes.
  */
 const renderAttributes = (
   attributes,
@@ -96,8 +98,10 @@ const renderAttributes = (
 }
 
 /**
- * @param {NodeContent[]} [abstracts]
- * @returns {string}
+ * Render elements to string.
+ *
+ * @param {NodeContent[]} [abstracts] Abstract tree.
+ * @returns {string} Rendered elements.
  */
 const renderElements = (
   abstracts,
@@ -127,8 +131,10 @@ const renderElements = (
 }
 
 /**
- * @param {NodeContent[] | NodeContent} [abstractTree]
- * @returns {[string, NodeContent[] | undefined]}
+ * Stringify abstract tree.
+ *
+ * @param {NodeContent[] | NodeContent} [abstractTree] Abstract tree.
+ * @returns {[string, NodeContent[] | undefined]} Rendered elements and abstract tree.
  */
 export const stringifyPatch = (
   abstractTree,
@@ -141,9 +147,11 @@ export const stringifyPatch = (
 }
 
 /**
- * @param {ViewFunction} renderView
- * @param {Record<string, any>} [initialState]
- * @returns {[string, NodeContent[] | undefined]}
+ * Stringify view.
+ *
+ * @param {ViewFunction} renderView Render view function.
+ * @param {Record<string, any>} [initialState] Initial state.
+ * @returns {[string, NodeContent[] | undefined]} Rendered elements and abstract tree.
  */
 export const stringify = (
   renderView,
@@ -198,8 +206,10 @@ export const stringify = (
 }
 
 /**
- * @param {Record<string, any>} [data]
- * @returns {string}
+ * Custom stringify function.
+ *
+ * @param {Record<string, any>} [data] Data to stringify.
+ * @returns {string} Stringified data.
  */
 const customStringify = (
   data,
@@ -235,8 +245,10 @@ const customStringify = (
 }
 
 /**
- * @param {NodeContent[]} [abstracts]
- * @returns {[string, string]}
+ * Stringify patch with abstract tree.
+ *
+ * @param {NodeContent[]} [abstracts] Abstract tree.
+ * @returns {[string, string]} Rendered elements.
  */
 export const stringifyPatchFull = (abstracts) => {
   const [rendered, abstractTree] = stringifyPatch(abstracts)
@@ -248,9 +260,11 @@ export const stringifyPatchFull = (abstracts) => {
 }
 
 /**
- * @param {ViewFunction} renderView
- * @param {Record<string, any>} [initialState]
- * @returns {[string, string, string]}
+ * Stringify view with abstract tree.
+ *
+ * @param {ViewFunction} renderView Render view function.
+ * @param {Record<string, any>} [initialState] Initial state.
+ * @returns {[string, string, string]} Rendered elements, abstract tree and initial state.
  */
 export const stringifyFull = (
   renderView,
@@ -260,7 +274,10 @@ export const stringifyFull = (
     initialState = {}
   }
 
-  const [rendered, abstractTree] = stringify(renderView, initialState)
+  const [
+    rendered,
+    abstractTree,
+  ] = stringify(renderView, initialState)
 
   return [
     rendered,

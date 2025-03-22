@@ -1,14 +1,16 @@
 /**
  * Normalize the content type by removing any parameters and converting to lowercase.
- * @param {string} contentType - The content type to normalize.
- * @returns {string} - The normalized content type.
+ *
+ * @param {string} contentType The content type to normalize.
+ * @returns {string} The normalized content type.
  */
 const normalizeContentType = (contentType) => contentType.split(';')[0].trim().toLowerCase()
 
 /**
  * Extract the file extension from a URL.
- * @param {string} url - The URL to extract the file extension from.
- * @returns {string|null} - The file extension or null if not found.
+ *
+ * @param {string} url The URL to extract the file extension from.
+ * @returns {string|null} The file extension or null if not found.
  */
 const getFileExtension = (
   url,
@@ -19,10 +21,11 @@ const getFileExtension = (
 
 /**
  * Get the type of the resource based on the URL, response headers, and request headers.
- * @param {string} url - The URL of the resource.
- * @param {Headers} responseHeaders - The response headers.
- * @param {Record<string, string>} [requestHeaders] - The request headers.
- * @returns {string} - The type of the resource.
+ *
+ * @param {string} url The URL of the resource.
+ * @param {Headers} responseHeaders The response headers.
+ * @param {Record<string, string>} [requestHeaders] The request headers.
+ * @returns {string} The type of the resource.
  */
 export const getType = (
   url,

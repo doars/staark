@@ -4,12 +4,12 @@
  */
 
 /**
- * @typedef {Object} CsvOptions
- * @property {string[]} [types]
- * @property {boolean} [hasHeaders]
- * @property {string} [columnDelimiter]
- * @property {string} [rowDelimiter]
- * @property {string} [escapeCharacter]
+ * @typedef {Object} CsvOptions Options for the CSV parser.
+ * @property {string[]} [types] MIME types to parse as CSV.
+ * @property {boolean} [hasHeaders] Whether the CSV has headers.
+ * @property {string} [columnDelimiter] The column delimiter.
+ * @property {string} [rowDelimiter] The row delimiter.
+ * @property {string} [escapeCharacter] The escape character.
  */
 
 const tsvTypes = [
@@ -18,10 +18,14 @@ const tsvTypes = [
 ]
 
 /**
- * @param {CsvOptions} options
- * @returns {ResponseParser}
+ * CSV parser.
+ *
+ * @param {CsvOptions} options Options for the CSV parser.
+ * @returns {ResponseParser} A response parser.
  */
-export const csvParser = (options) => {
+export const csvParser = (
+  options,
+) => {
   return {
     types: options?.types || [
       'csv', 'text/csv',
@@ -29,10 +33,12 @@ export const csvParser = (options) => {
     ],
 
     /**
-     * @param {Response} response
-     * @param {RequestOptions} requestOptions
-     * @param {string} type
-     * @returns {Promise<any>}
+     * Parse the response as CSV.
+     *
+     * @param {Response} response The response to parse.
+     * @param {RequestOptions} requestOptions The request options.
+     * @param {string} type The MIME type of the response.
+     * @returns {Promise<any>} The parsed response.
      */
     parser: async (
       response,

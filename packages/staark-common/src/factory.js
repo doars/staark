@@ -9,21 +9,21 @@ import {
  */
 
 /**
- * @typedef {Function} Factory
- * @param {NodeAttributes | NodeContent[] | NodeContent} [attributesOrContents]
- * @param {NodeContent[] | NodeContent} [contents]
- * @returns {NodeAbstract}
+ * @typedef {Function} Factory Function that generates the a node with the given type.
+ * @param {NodeAttributes | NodeContent[] | NodeContent} [attributesOrContents] Attributes of node or contents.
+ * @param {NodeContent[] | NodeContent} [contents] Abstracts of children.
+ * @returns {NodeAbstract} Node abstract representing the given data.
  */
 
 /**
- * @typedef {Object} FactoryCache
+ * @typedef {Object} FactoryCache Factory cache
  */
 
 export const factory = new Proxy({}, {
   /**
-   * @param {FactoryCache} target
-   * @param {string} type
-   * @returns {Factory}
+   * @param {FactoryCache} target Factory cache.
+   * @param {string} type Type of the nodes to generate.
+   * @returns {Factory} Function that generates the a node with the given type.
    */
   get: (
     target,

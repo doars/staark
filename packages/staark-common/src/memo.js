@@ -1,28 +1,30 @@
 import { marker } from './marker.js'
 
 /**
- * @typedef {Object<string, any>} State
- */
-
-/**
  * @typedef {import('./node.js').NodeContent} NodeContent
  */
 
 /**
- * @typedef {function(State, any): NodeContent[] | NodeContent} MemoFunction
+ * @typedef {Object<string, any>} State State of the application.
+ */
+
+/**
+ * @typedef {function(State, any): NodeContent[] | NodeContent} MemoFunction Render function to generated abstract tree.
  */
 
 /**
  * @typedef {Object} MemoAbstract
- * @property {string} _ - Marker
- * @property {any} m - Memory
- * @property {MemoFunction} r - Render function
+ * @property {string} _ Discriminator to differentiate from other objects.
+ * @property {any} m Remembered data to compare with.
+ * @property {MemoFunction} r Render function to generated abstract tree.
  */
 
 /**
- * @param {MemoFunction} render
- * @param {any} memory
- * @returns {MemoAbstract}
+ * Creates a MemoAbstract object.
+ *
+ * @param {MemoFunction} render Render function to generated abstract tree.
+ * @param {any} memory Remembered data to compare with.
+ * @returns {MemoAbstract} Memo abstract object.
  */
 export const memo = (
   render,
