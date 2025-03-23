@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.8
+
+- Fix another bug when setting style property to null.
+
 ## 1.7.7
 
 - Fix bug when setting style property to null.

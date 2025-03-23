@@ -415,12 +415,12 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
                 for (let styleName in oldAttributes[name]) {
                   if (!value[styleName]) {
-                    if (styleName.includes("-")) {
+                    if (styleName.includes("-", 1)) {
                       element.style.removeProperty(
                         styleName
                       );
                     } else {
-                      delete element.style[styleName];
+                      element.style[styleName] = null;
                     }
                   }
                 }
