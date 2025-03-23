@@ -6,7 +6,7 @@
   "name": "@doars/staark-patch",
   "description": "A teeny-tiny stateless framework for building web apps.",
   "keywords": [],
-  "version": "1.4.4",
+  "version": "1.4.5",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",
@@ -35,6 +35,6 @@
     "README.md"
   ],
   "dependencies": {
-    "@doars/staark-common": "^1.5.4"
+    "@doars/staark-common": "^1.5.5"
   }
 }

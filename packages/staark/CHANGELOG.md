@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.7
+
+- Fix bug when setting style property to null.
+- Switch from TypeScript to JavaScript with JSDocs.
+
 ## 1.7.6
 
 - Rewrite from TypeScript to JavaScript.

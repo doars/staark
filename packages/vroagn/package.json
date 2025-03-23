@@ -6,7 +6,7 @@
   "name": "@doars/vroagn",
   "description": "A teensy-tiny library for managing network requests.",
   "keywords": [],
-  "version": "1.4.2",
+  "version": "1.4.3",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",

@@ -142,7 +142,7 @@ export const mount = (
                 && !Array.isArray(oldAttributes[name])
               ) {
                 for (let styleName in oldAttributes[name]) {
-                  if (!(styleName in value)) {
+                  if (!value[styleName]) {
                     if (styleName.includes('-')) {
                       element.style.removeProperty(
                         styleName,

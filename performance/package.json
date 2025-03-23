@@ -27,7 +27,7 @@
     "@doars/staark": "x",
     "hyperapp": "^2.0.22",
     "incremental-dom": "^0.7.0",
-    "mithril": "^2.2.14",
+    "mithril": "^2.2.15",
     "snabbdom": "^3.6.2",
     "superfine": "^8.2.0"
   }

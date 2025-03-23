@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.5
+
+- Fix bug when setting style property to null.
+- Switch from TypeScript to JavaScript with JSDocs.
+
 ## 1.4.4
 
 - Rewrite from TypeScript to JavaScript.

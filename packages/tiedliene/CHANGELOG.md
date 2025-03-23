@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+
+- Switch from TypeScript to JavaScript with JSDocs.
+
 ## 1.1.2
 
 - Rewrite from TypeScript to JavaScript.

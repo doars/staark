@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.5
+
+- Switch from TypeScript to JavaScript with JSDocs.
+
 ## 1.5.4
 
 - Rewrite from TypeScript to JavaScript.
