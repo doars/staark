@@ -1,4 +1,6 @@
-import { arrayifyOrUndefined } from '@doars/staark-common/src/array.js'
+import {
+  arrayifyOrUndefined,
+} from '@doars/staark-common/src/array.js'
 
 const SELF_CLOSING = [
   'base',

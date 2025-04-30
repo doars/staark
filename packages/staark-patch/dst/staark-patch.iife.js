@@ -42,7 +42,7 @@
   };
 
   // ../staark-common/src/factory.js
-  var factory = new Proxy({}, {
+  var factory = /* @__PURE__ */ new Proxy({}, {
     /**
      * @param {FactoryCache} target Factory cache.
      * @param {string} type Type of the nodes to generate.
@@ -186,7 +186,7 @@
   };
 
   // ../staark-common/src/fctory.js
-  var fctory = new Proxy({}, {
+  var fctory = /* @__PURE__ */ new Proxy({}, {
     /**
      * @param {FctoryCache} target Factory cache.
      * @param {string} type Type of the nodes to generate.

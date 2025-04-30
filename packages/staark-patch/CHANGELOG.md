@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.7
+
+- Marked factory methods as pure for improved tree shaking.
+
 ## 1.4.6
 
 - Fix another bug when setting style property to null.

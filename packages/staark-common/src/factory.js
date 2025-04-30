@@ -19,7 +19,7 @@ import {
  * @typedef {Object} FactoryCache Factory cache
  */
 
-export const factory = new Proxy({}, {
+export const factory = /*#__PURE__*/ new Proxy({}, {
   /**
    * @param {FactoryCache} target Factory cache.
    * @param {string} type Type of the nodes to generate.

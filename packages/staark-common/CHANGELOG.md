@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.6
+
+- Marked factory methods as pure for improved tree shaking.
+
 ## 1.5.5
 
 - Switch from TypeScript to JavaScript with JSDocs.

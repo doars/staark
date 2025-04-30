@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.10
+
+- Marked factory methods as pure for improved tree shaking.
+
 ## 1.7.9
 
 - Fix issue with duplicate listeners being applied.

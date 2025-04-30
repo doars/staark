@@ -4,7 +4,9 @@
  * @param {string} contentType The content type to normalize.
  * @returns {string} The normalized content type.
  */
-const normalizeContentType = (contentType) => contentType.split(';')[0].trim().toLowerCase()
+const normalizeContentType = (
+  contentType,
+) => contentType.split(';')[0].trim().toLowerCase()
 
 /**
  * Extract the file extension from a URL.

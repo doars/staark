@@ -6,7 +6,7 @@
   "name": "@doars/staark",
   "description": "A teeny-tiny framework for building web apps.",
   "keywords": [],
-  "version": "1.7.9",
+  "version": "1.7.10",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",
@@ -35,6 +35,6 @@
     "README.md"
   ],
   "dependencies": {
-    "@doars/staark-common": "^1.5.5"
+    "@doars/staark-common": "^1.5.6"
   }
 }
