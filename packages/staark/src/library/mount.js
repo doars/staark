@@ -83,7 +83,9 @@ export const mount = (
           const type = typeof (value)
           if (type === 'function') {
             const oldValue = oldAttributes?.[name]
-            if (oldValue?.f !== value) {
+            if (oldValue?.f === value) {
+              newAttributes[name] = oldAttributes[name]
+            } else {
               if (oldValue) {
                 element.removeEventListener(
                   name,
@@ -96,12 +98,11 @@ export const mount = (
                   value(event, state)
                 }
               )
-              listener.f = value
-
               element.addEventListener(
                 name,
                 listener,
               )
+              listener.f = value
             }
           } else {
             if (name === 'class') {

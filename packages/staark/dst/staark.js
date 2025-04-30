@@ -368,7 +368,9 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           const type = typeof value;
           if (type === "function") {
             const oldValue = oldAttributes?.[name];
-            if (oldValue?.f !== value) {
+            if (oldValue?.f === value) {
+              newAttributes[name] = oldAttributes[name];
+            } else {
               if (oldValue) {
                 element.removeEventListener(
                   name,
@@ -378,11 +380,11 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               const listener = newAttributes[name] = (event) => {
                 value(event, state);
               };
-              listener.f = value;
               element.addEventListener(
                 name,
                 listener
               );
+              listener.f = value;
             }
           } else {
             if (name === "class") {

@@ -6,7 +6,7 @@
   "name": "@doars/staark",
   "description": "A teeny-tiny framework for building web apps.",
   "keywords": [],
-  "version": "1.7.8",
+  "version": "1.7.9",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.9
+
+- Fix issue with duplicate listeners being applied.
+
 ## 1.7.8
 
 - Fix another bug when setting style property to null.
