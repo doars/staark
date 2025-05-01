@@ -84,7 +84,7 @@ export const mount = (
           if (type === 'function') {
             const oldValue = oldAttributes?.[name]
             if (oldValue?.f === value) {
-              newAttributes[name] = oldAttributes[name]
+              newAttributes[name] = oldValue
             } else {
               if (oldValue) {
                 element.removeEventListener(
@@ -93,11 +93,10 @@ export const mount = (
                 )
               }
 
-              const listener = newAttributes[name] = (
+              const listener = newAttributes[name] =
                 (event) => {
                   value(event, state)
                 }
-              )
               element.addEventListener(
                 name,
                 listener,

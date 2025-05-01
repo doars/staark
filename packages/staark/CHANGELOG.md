@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.11
+
+- Small optimisation.
+
 ## 1.7.10
 
 - Marked factory methods as pure for improved tree shaking.

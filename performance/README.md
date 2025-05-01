@@ -63,7 +63,7 @@ Min+brotli         4.60KB
 
 staark
 Minified           3.49KB
-Min+brotli         1.49KB
+Min+brotli         1.48KB
 
 staark-patch
 Minified           2.26KB
