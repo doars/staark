@@ -1,0 +1,44 @@
+{
+  "author": {
+    "name": "Ron Dekker",
+    "website": "https://rondekker.com"
+  },
+  "name": "@doars/roupn",
+  "description": "",
+  "keywords": [],
+  "version": "0.0.0-alpha.1",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.js",
+  "homepage": "https://github.com/doars/staark#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/doars/staark.git"
+  },
+  "bugs": {
+    "url": "https://github.com/doars/staark/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "develop": "NODE_ENV=development node config.bundle.js",
+    "build": "NODE_ENV=production node config.bundle.js",
+    "lint": "eslint src/**/*.js --cache --fix",
+    "start:example": "node ../../.scripts/mon.js ./exm/server.js",
+    "test:runtime": "echo 'no runtime tests'",
+    "upgrade": "npm-check-updates --upgrade --target minor"
+  },
+  "files": [
+    "dst",
+    "src",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "dependencies": {
+    "@doars/tiedliene": "^1.1.3"
+  },
+  "devDependencies": {
+    "@doars/staark": "x"
+  }
+}

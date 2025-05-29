@@ -26,5 +26,11 @@ node_modules/
 .env
 .env.test
 
+# Example build files
+packages/roupn/exm/client.iife.js
+packages/roupn/exm/client.iife.js.map
+packages/roupn/exm/client.iife.min.js
+
+# Performance builds and data
 performance/dst/
 performance/profiles/

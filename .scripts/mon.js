@@ -460,21 +460,18 @@ const main = async (
   const watchPath = process.cwd()
   try {
     logDebug(`Watching for relevant file changes within ${watchPath}. (Effective files: ${watchedFiles.size})`)
+
     watcher = watch(watchPath, {
       ignored: [
         /(^|[\/\\])\../, // Dotfiles/folders
         /(^|[\/\\])node_modules([\/\\]|$)/,
-        /(^|[\/\\])bower_components([\/\\]|$)/,
-        /(^|[\/\\])dist([\/\\]|$)/,
-        /(^|[\/\\])build([\/\\]|$)/,
+        /(^|[\/\\])dst([\/\\]|$)/,
         /(^|[\/\\])\.git([\/\\]|$)/,
       ],
       ignoreInitial: true,
       persistent: true,
       depth: 50,
-      usePolling: process.env.CHOKIDAR_USEPOLLING === 'true',
     })
-
     watcher.on('all', (
       eventType,
       changedPathRelative
