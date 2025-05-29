@@ -27,6 +27,42 @@ import {
  * @typedef {import('../utilities/event.js').Event} Event
  */
 
+/**
+ * @typedef {Object} ConnectorOptions
+ *
+ * @property {string} [createRoomEndpoint='/create-room'] - HTTP endpoint for creating a room.
+ * @property {string} [joinRoomEndpoint='/join-room'] - WebSocket endpoint for joining a room.
+ *
+ * @property {string} [contentType='application/json'] - Content-Type for HTTP requests.
+ * @property {Function} [deserializeMessage=JSON.parse] - Function to deserialize incoming messages.
+ * @property {Function} [serializeMessage=JSON.stringify] - Function to serialize outgoing messages.
+ *
+ * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
+ * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
+ */
+
+/**
+ * @typedef {Object} ConnectorAPI
+ *
+ * @property {Object} onError - Event for error handling.
+ * @property {Object} onMessage - Event for receiving messages.
+ * @property {Object} onRoomJoin - Event for room join notifications.
+ * @property {Object} onRoomLeave - Event for room leave notifications.
+ * @property {Object} onUserJoin - Event for user join notifications.
+ * @property {Object} onUserLeave - Event for user leave notifications.
+ *
+ * @property {Function} createRoom - Creates a new room and joins it.
+ * @property {Function} joinRoom - Joins an existing room.
+ * @property {Function} leaveRoom - Leaves the current room.
+ * @property {Function} messageRoom - Sends a message to the current room.
+ */
+
+/**
+ * Creates a connector for managing room-based WebSocket communication.
+ *
+ * @param {ConnectorOptions} [options={}] - Configuration options for the connector.
+ * @returns {ConnectorAPI} Connector API with event handlers and room management methods.
+ */
 export const createConnector = (
   options = {},
 ) => {
@@ -44,7 +80,6 @@ export const createConnector = (
   let roomCode,
     socket,
     userId
-  const stateUpdates = []
 
   const onError = createEvent()
   const onMessage = createEvent()
@@ -53,6 +88,20 @@ export const createConnector = (
   const onUserJoin = createEvent()
   const onUserLeave = createEvent()
 
+  /**
+   * Joins a WebSocket room with the specified room code and optional credentials. Establishes a WebSocket connection to the server, appending the room code, password, and host secret (if provided) as query parameters. Sets up event listeners for 'close', 'error', and 'message' events to handle room leave, errors, and incoming messages respectively.
+   *
+   * @param {string} roomCode - The code of the room to join.
+   * @param {string|null} [password=null] - Optional password for the room.
+   * @param {string|null} [hostSecret=null] - Optional host secret for privileged access.
+   *
+   * @fires onRoomLeave - Dispatched when the socket connection is closed.
+   * @fires onError - Dispatched when an error occurs with the socket.
+   * @fires onRoomJoin - Dispatched when the room is successfully joined.
+   * @fires onUserLeave - Dispatched when a user leaves the room.
+   * @fires onUserJoin - Dispatched when a user joins the room.
+   * @fires onMessage - Dispatched for all other incoming messages.
+   */
   const joinRoom = (
     roomCode,
     password = null,
@@ -154,7 +203,11 @@ export const createConnector = (
     onUserJoin,
     onUserLeave,
 
-    stateUpdates,
+    /**
+     *
+     * @param {*} options
+     * @returns
+     */
     createRoom: async (
       options = {},
     ) => {
@@ -226,6 +279,53 @@ export const createConnector = (
   }
 }
 
+/**
+ * Options for creating a synchronizer.
+ * @typedef {Object} CreateSynchronizerOptions
+ *
+ * @property {string} [createRoomEndpoint='/create-room'] - HTTP endpoint for creating a room.
+ * @property {string} [joinRoomEndpoint='/join-room'] - WebSocket endpoint for joining a room.
+ *
+ * @property {string} [contentType='application/json'] - Content-Type for HTTP requests.
+ * @property {Function} [deserializeMessage=JSON.parse] - Function to deserialize incoming messages.
+ * @property {Function} [serializeMessage=JSON.stringify] - Function to serialize outgoing messages.
+ *
+ * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
+ * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
+ *
+ * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user.
+ * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for state synchronisation.
+ */
+
+/**
+ * The object returned by createSynchronizer.
+ * @typedef {Object} Synchronizer
+ *
+ * @property {Object} onError - Event for error handling.
+ * @property {Object} onMessage - Event for receiving messages.
+ * @property {Object} onRoomJoin - Event for room join notifications.
+ * @property {Object} onRoomLeave - Event for room leave notifications.
+ * @property {Object} onUserJoin - Event for user join notifications.
+ * @property {Object} onUserLeave - Event for user leave notifications.
+ *
+ * @property {Object} privateState - Internal state, including user and room information.
+ * @property {Object} publicState - Shared state object synchronized across users.
+ *
+ * @property {Function} sendUpdate - Sends the current state delta to other users.
+ * @property {Function} createRoom - Creates a new room and joins it.
+ * @property {Function} joinRoom - Joins an existing room.
+ * @property {Function} leaveRoom - Leaves the current room.
+ * @property {Function} messageRoom - Sends a message to the current room.
+ */
+
+/**
+ * Creates a synchronizer for collaborative state management across users in a room.
+ *
+ * @param {CreateSynchronizerOptions} [options={}] - Configuration options for the synchronizer.
+ * @param {Object} [privateState={}] - Internal state object for private data.
+ * @param {Object} [publicState={}] - Shared state object to be synchronized.
+ * @returns {Synchronizer} The synchronizer instance with state and synchronization methods.
+ */
 export const createSynchronizer = (
   options = {},
   privateState = {},
@@ -234,13 +334,13 @@ export const createSynchronizer = (
   const roomSync = createConnector(options)
   const {
     messageRoom,
-    stateUpdates,
   } = roomSync
 
   const {
     windowPerUser = 16,
     synchronisationInterval = 60 * 1e3,
   } = options
+  const stateUpdates = []
   let synchronisationIntervalId,
     messageDelay = 0,
     messageOffset = 0,
