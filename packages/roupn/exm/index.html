@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: inherit;
+      }
+
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p {
+        margin-bottom: 0px;
+        margin-top: 0px;
+        hyphens: auto;
+      }
+
+      h1:not(:first-child),
+      h2:not(:first-child),
+      h3:not(:first-child),
+      h4:not(:first-child),
+      h5:not(:first-child),
+      h6:not(:first-child),
+      p:not(:first-child) {
+        margin-top: 0.5rem;
+      }
+
+      hr {
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        height: 1px;
+        background-color: black;
+        border: none;
+      }
+
+      label {
+        display: block;
+        margin-top: 0.5rem;
+      }
+
+      input:not([type="checkbox"]):not([type="radio"]),
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.25rem;
+        margin-top: 0.5rem;
+      }
+
+      label+input:not([type="checkbox"]):not([type="radio"]),
+      label+textarea {
+        margin-top: 0;
+      }
+
+      button {
+        width: 100%;
+        padding: 0.25rem;
+        margin-top: 0.5rem;
+      }
+
+      #app {
+        max-width: 360px;
+        padding: 1.5rem 1rem;
+        margin-left: auto;
+        margin-right: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <script src="client.iife.js"></script>
+  </body>
+
+</html>
