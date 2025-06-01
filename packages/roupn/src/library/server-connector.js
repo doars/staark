@@ -2,23 +2,35 @@ import {
   randomUUID,
 } from 'crypto'
 import {
-  parse,
+  parse as parseUrl,
 } from 'url'
 
 import {
+  ERROR,
+  ROOM_JOINED,
+  ROOM_REMOVED,
+  MESSAGE,
+  USER_JOINED,
+  USER_LEFT,
+  USER_KICK,
+} from './types.js'
+
+import {
   generateCode,
+  IDENTIFIABLE_CHARACTERS,
 } from '../utilities/code.js'
 import {
   createEvent,
 } from '../utilities/event.js'
 import {
-  ERROR,
-  ROOM_JOINED,
-  ROOM_REMOVED,
-  SERVER_MESSAGE,
-  USER_JOINED,
-  USER_LEFT,
-} from './types.js'
+  prefixTime,
+} from '../utilities/time.js'
+import {
+  SERVER_PREFIX,
+  unwrap,
+} from '../utilities/wrap.js'
+
+const _EMPTY_OBJECT = Object.freeze({})
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -27,6 +39,7 @@ import {
 /**
  * @typedef {Object} RoomSyncOptions
  * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
+ * @property {Function} [deserializeMessage=JSON.parse] - Function to deserialize messages.
  * @property {Function} [serializeMessage=JSON.stringify] - Function to serialize messages.
  * @property {string} [contentType='application/json'] - Content type for messages.
  * @property {string} [createRoomEndpoint='/create-room'] - Endpoint for creating a room.
@@ -57,11 +70,12 @@ import {
  * @param {RoomSyncOptions} options
  * @returns {RoomSyncReturn} API to interact with RoomSync
  */
-export const createSynchronizer = (
+export const createServerConnector = (
   options = {},
 ) => {
   const {
     maxUsersPerRoom = 16,
+    deserializeMessage = JSON.parse,
     serializeMessage = JSON.stringify,
     contentType = 'application/json',
 
@@ -74,26 +88,31 @@ export const createSynchronizer = (
   const onUserJoin = createEvent()
   const onUserLeave = createEvent()
 
-  /** @type {Map<string, { hostId: string, hostSecret: string, password: string|null, userLimit: number, users: Map<string, WebSocket> }>} */
-  const rooms = new Map()
+  /** @type {Map<string, { creatorId: string, creatorSecret: string, userLimit: number, users: Map<string, WebSocket> }>} */
+  const _rooms = new Map()
 
   /**
    * Creates a new room with a unique code and initializes its properties.
    *
    * @param {Object} [options={}] - Optional settings for the room.
    * @param {number} [options.limit] - Maximum number of users allowed in the room.
-   * @param {string} [options.password] - Optional password for the room.
-   * @returns {Object} An object containing the hostSecret, roomCode, and userId.
-   * @returns {string} return.hostSecret - Secret key for the host to manage the room.
+   * @returns {Object} An object containing the creatorSecret, roomCode, and userId.
+   * @returns {string} return.creatorSecret - Secret key for the creator to manage the room.
    * @returns {string} return.roomCode - Unique code identifying the room.
-   * @returns {string} return.userId - Unique identifier for the host user.
+   * @returns {string} return.userId - Unique identifier for the creator user.
    */
   const createRoom = (
     options = {},
   ) => {
-    let roomCode = generateCode(6)
-    while (rooms.has(roomCode)) {
-      roomCode = generateCode(6)
+    let roomCode = generateCode(
+      6,
+      IDENTIFIABLE_CHARACTERS,
+    )
+    while (_rooms.has(roomCode)) {
+      roomCode = generateCode(
+        6,
+        IDENTIFIABLE_CHARACTERS,
+      )
     }
 
     let userLimit = options?.limit
@@ -109,18 +128,17 @@ export const createSynchronizer = (
     const userId = randomUUID()
     users.set(userId, null)
 
-    const hostSecret = randomUUID()
+    const creatorSecret = randomUUID()
 
-    rooms.set(roomCode, {
-      hostId: userId,
-      hostSecret,
-      password: options?.password || null,
+    _rooms.set(roomCode, {
+      creatorId: userId,
+      creatorSecret,
       userLimit,
       users: users,
     })
 
     return {
-      hostSecret,
+      creatorSecret,
       roomCode,
       userId,
     }
@@ -131,55 +149,45 @@ export const createSynchronizer = (
    *
    * @param {string} roomCode - The unique code identifying the room to join.
    * @param {WebSocket} connection - The WebSocket connection for the user.
-   * @param {string|null} [password=null] - Optional password required to join the room.
-   * @param {string|null} [hostSecret=null] - Optional secret to identify the host joining their own room.
+   * @param {string|null} [creatorSecret=null] - Optional secret to identify the creator joining their own room.
    * @returns {[boolean, Object]} An array where the first element is a boolean indicating success, and the second element is an object containing either error details or the userId.
    */
   const joinRoom = (
     roomCode,
     connection,
-    password = null,
-    hostSecret = null,
+    creatorSecret = null,
   ) => {
-    const room = rooms.get(roomCode)
-    if (!room) {
+    const _room = _rooms.get(roomCode)
+    if (!_room) {
       return [false, {
         type: ERROR,
         reason: 'room_not_found',
       }]
     }
 
-    if (
-      room.password
-      && room.password !== password
-    ) {
-      return [false, {
-        type: ERROR,
-        reason: 'wrong_password',
-      }]
-    }
-
-    if (room.users.size >= room.userLimit) {
+    if (_room.users.size >= _room.userLimit) {
       return [false, {
         type: ERROR,
         reason: 'room_full',
       }]
     }
 
-    let userId = null
-    if (
-      hostSecret
-      && hostSecret === room.hostSecret
-    ) {
+    const _isCreator = (
+      creatorSecret
+      && creatorSecret === _room.creatorSecret
+    )
+    let userId
+    if (_isCreator) {
+      _isCreator = true
       // Host joins own room update user data to add connection.
-      userId = room.hostId
+      userId = _room.creatorId
     } else {
       userId = randomUUID()
-      while (room.users.has(userId)) {
+      while (_room.users.has(userId)) {
         userId = randomUUID()
       }
     }
-    room.users.set(userId, {
+    _room.users.set(userId, {
       connection,
     })
 
@@ -188,7 +196,7 @@ export const createSynchronizer = (
       userId,
       serializeMessage({
         type: USER_JOINED,
-        sender: userId,
+        userId,
       }),
     )
     onUserJoin.dispatch({
@@ -206,7 +214,7 @@ export const createSynchronizer = (
     connection.addEventListener('message', (
       event,
     ) => {
-      const room = rooms.get(roomCode)
+      const room = _rooms.get(roomCode)
       if (!room) {
         connection.close(1008, 'room_not_found')
         return
@@ -220,6 +228,47 @@ export const createSynchronizer = (
         return
       }
 
+      // Check if message is meant for server.
+      if (_isCreator) {
+        const data = unwrap(
+          event.data,
+          SERVER_PREFIX,
+        )
+        if (data) {
+          let parsedData
+          try {
+            parsedData = deserializeMessage(
+              data,
+            )
+          } catch {
+            // Is server message, but not able to parse?
+            return false
+          }
+
+          switch (parsedData?.type) {
+            case ROOM_CLOSE:
+              removeRoom(
+                roomCode,
+              )
+              break
+
+            case USER_KICK:
+              if (
+                parsedData.userId
+                // Prevent the host from kicking themselves. Should use ROOM_CLOSE instead.
+                && parsedData.userId !== userId
+              ) {
+                leaveRoom(
+                  roomCode,
+                  parsedData.userId,
+                )
+              }
+              break
+          }
+          return
+        }
+      }
+
       messageRoom(
         roomCode,
         userId,
@@ -228,10 +277,10 @@ export const createSynchronizer = (
     })
 
     return [true, {
-      hostId: room.hostId,
+      creatorId: _room.creatorId,
       userId,
       users: Array.from(
-        room.users.keys(),
+        _room.users.keys(),
       ),
     }]
   }
@@ -242,7 +291,7 @@ export const createSynchronizer = (
    * - If the user is not found in the room, returns an 'user_not_found' error.
    * - Broadcasts a 'user_left' event and dispatches onUserLeave.
    * - Closes the user's connection.
-   * - If the user is the host, removes all users from the room, broadcasts their departure, and closes their connections.
+   * - If the user is the creator, removes all users from the room, broadcasts their departure, and closes their connections.
    * - If the room becomes empty, deletes the room and dispatches onRoomRemove.
    *
    * @param {string} roomCode - The unique code identifying the room.
@@ -253,15 +302,15 @@ export const createSynchronizer = (
     roomCode,
     userId,
   ) {
-    const room = rooms.get(roomCode)
-    if (!room) {
+    const _room = _rooms.get(roomCode)
+    if (!_room) {
       return [false, {
         type: ERROR,
         reason: 'room_not_found',
       }]
     }
 
-    if (!room.users.has(userId)) {
+    if (!_room.users.has(userId)) {
       return [false, {
         type: ERROR,
         reason: 'user_not_found',
@@ -269,8 +318,8 @@ export const createSynchronizer = (
     }
     const {
       connection,
-    } = room.users.get(userId)
-    room.users.delete(userId)
+    } = _room.users.get(userId)
+    _room.users.delete(userId)
     _broadcast(
       roomCode,
       userId,
@@ -285,10 +334,10 @@ export const createSynchronizer = (
     })
     connection.close()
 
-    // If the host leaves, we need to remove the entire room.
-    if (room.hostId === userId) {
-      for (const [userId, { connection }] of room.users) {
-        room.users.delete(userId)
+    // If the creator leaves, we need to remove the entire room.
+    if (_room.creatorId === userId) {
+      for (const [userId, { connection }] of _room.users) {
+        _room.users.delete(userId)
         _broadcast(
           roomCode,
           userId,
@@ -305,8 +354,8 @@ export const createSynchronizer = (
       }
     }
 
-    if (room.users.size === 0) {
-      rooms.delete(roomCode)
+    if (_room.users.size === 0) {
+      _rooms.delete(roomCode)
       onRoomRemove.dispatch({
         roomCode,
       })
@@ -316,7 +365,7 @@ export const createSynchronizer = (
   const removeRoom = function (
     roomCode,
   ) {
-    const room = rooms.get(roomCode)
+    const room = _rooms.get(roomCode)
     if (!room) {
       return [false, {
         type: ERROR,
@@ -325,16 +374,16 @@ export const createSynchronizer = (
     }
 
     for (const userId of room.users.keys()) {
-      if (userId !== room.hostId) {
+      if (userId !== room.creatorId) {
         leaveRoom(roomCode, userId)
       }
     }
-    // Remove host last.
-    leaveRoom(roomCode, room.hostId)
+    // Remove creator last.
+    leaveRoom(roomCode, room.creatorId)
 
-    if (rooms.get(roomCode)) {
+    if (_rooms.get(roomCode)) {
       // If the room still exists, remove it.
-      rooms.delete(roomCode)
+      _rooms.delete(roomCode)
       onRoomRemove.dispatch({
         roomCode,
       })
@@ -358,16 +407,16 @@ export const createSynchronizer = (
     sender,
     payload,
   ) => {
-    const room = rooms.get(roomCode)
-    if (!room) {
+    const _room = _rooms.get(roomCode)
+    if (!_room) {
       return [false, {
         type: ERROR,
         reason: 'room_not_found',
       }]
     }
 
-    payload = Date.now() + payload
-    for (const [userId, { connection }] of room.users) {
+    payload = prefixTime(payload)
+    for (const [userId, { connection }] of _room.users) {
       // Don't send the payload to the sender.
       if (
         sender
@@ -380,7 +429,7 @@ export const createSynchronizer = (
         connection.send(payload)
       }
     }
-    return [true, {}]
+    return [true, _EMPTY_OBJECT]
   }
 
   /**
@@ -396,19 +445,19 @@ export const createSynchronizer = (
     sender,
     payload,
   ) => {
-    const [success, result] = _broadcast(
+    const [_success, _result] = _broadcast(
       roomCode,
       sender,
       payload,
     )
-    if (success) {
+    if (_success) {
       onRoomMessage.dispatch({
         payload,
         roomCode,
         sender,
       })
     }
-    return [success, result]
+    return [_success, _result]
   }
 
   /**
@@ -426,7 +475,7 @@ export const createSynchronizer = (
     receiver,
     data,
   ) => {
-    const room = rooms.get(roomCode)
+    const room = _rooms.get(roomCode)
     if (!room) {
       return [false, {
         type: ERROR,
@@ -458,14 +507,16 @@ export const createSynchronizer = (
     }
 
     connection.send(
-      Date.now() + serializeMessage({
-        type: SERVER_MESSAGE,
-        ...data,
-        receiver,
-        sender,
-      })
+      prefixTime(
+        serializeMessage({
+          type: MESSAGE,
+          ...data,
+          receiver,
+          sender,
+        }),
+      ),
     )
-    return [true, {}]
+    return [true, _EMPTY_OBJECT]
   }
 
   return {
@@ -490,7 +541,7 @@ export const createSynchronizer = (
     getRoom: (
       roomCode,
     ) => {
-      return rooms.get(roomCode)
+      return _rooms.get(roomCode)
     },
     /**
      * Returns an array of all room codes currently active in the synchronizer.
@@ -500,7 +551,7 @@ export const createSynchronizer = (
     getRoomCodes: (
     ) => {
       return Array.from(
-        rooms.keys(),
+        _rooms.keys(),
       )
     },
     /**
@@ -510,7 +561,7 @@ export const createSynchronizer = (
      */
     getRoomCount: (
     ) => {
-      return rooms.size
+      return _rooms.size
     },
 
     /**
@@ -524,22 +575,20 @@ export const createSynchronizer = (
       request,
       response,
     ) => {
-      const parsed = parse(request.url, true)
+      const _parsed = parseUrl(request.url, true)
       const {
         pathname,
         query,
-      } = parsed
+      } = _parsed
 
       if (pathname === createRoomEndpoint) {
         const limit = parseInt(query.limit, 10) || undefined
-        const password = query.password || undefined
         const {
-          hostSecret,
+          creatorSecret,
           roomCode,
           userId,
         } = createRoom({
           limit,
-          password,
         })
 
         response.writeHead(200, {
@@ -547,10 +596,10 @@ export const createSynchronizer = (
         })
         response.end(
           serializeMessage({
-            hostSecret,
+            creatorSecret,
             roomCode,
             userId,
-          })
+          }),
         )
         return true
       }
@@ -572,11 +621,11 @@ export const createSynchronizer = (
       head,
       socketServer,
     ) => {
-      const parsed = parse(request.url, true)
+      const _parsed = parseUrl(request.url, true)
       const {
         pathname,
         query,
-      } = parsed
+      } = _parsed
 
       if (pathname === joinRoomEndpoint) {
         socketServer.handleUpgrade(
@@ -586,32 +635,30 @@ export const createSynchronizer = (
           (connection) => {
             const {
               code: roomCode,
-              host: hostSecret,
-              password,
+              creator: creatorSecret,
             } = query
             if (!roomCode) {
               connection.close(1008, 'missing_room_code')
               return
             }
 
-            const [success, data] = joinRoom(
+            const [_success, _data] = joinRoom(
               roomCode,
               connection,
-              password || null,
-              hostSecret || null,
+              creatorSecret || null,
             )
-            if (!success) {
-              connection.close(1008, data.reason)
+            if (!_success) {
+              connection.close(1008, _data.reason)
               return
             }
 
             connection.send(
-              Date.now() + serializeMessage({
+              serializeMessage({
                 type: ROOM_JOINED,
-                hostId: data.hostId,
-                userId: data.userId,
-                users: data.users,
-              })
+                creatorId: _data.creatorId,
+                userId: _data.userId,
+                users: _data.users,
+              }),
             )
           },
         )

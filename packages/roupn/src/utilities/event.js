@@ -34,7 +34,7 @@ export const createEvent = () => {
      */
     addListener: (
       callback,
-      options
+      options,
     ) => {
       if (!listeners.has(callback)) {
         listeners.set(callback, options)

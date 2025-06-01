@@ -2,6 +2,4 @@
  * @module roupn
  */
 
-export {
-  createConnector,
-} from './library/client.js'
+export * from './library/client-connector.js'

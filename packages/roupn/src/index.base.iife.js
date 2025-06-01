@@ -1,11 +1,11 @@
 import { iife } from '../../../.scripts/iife.js'
 
 import {
-  createConnector,
-} from './library/client.js'
+  createClientConnector,
+} from './library/client-connector.js'
 
 iife([
   'roupn',
 ], {
-  createConnector,
+  createClientConnector,
 })

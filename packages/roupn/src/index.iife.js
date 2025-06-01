@@ -1,13 +1,15 @@
 import { iife } from '../../../.scripts/iife.js'
 
 import {
-  createConnector,
-  createSynchronizer,
-} from './library/client.js'
+  createClientConnector,
+} from './library/client-connector.js'
+import {
+  createClientSynchronizer,
+} from './library/client-synchronizer.js'
 
 iife([
   'roupn',
 ], {
-  createConnector,
-  createSynchronizer,
+  createClientConnector,
+  createClientSynchronizer,
 })

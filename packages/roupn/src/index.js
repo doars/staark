@@ -2,7 +2,5 @@
  * @module roupn
  */
 
-export {
-  createConnector,
-  createSynchronizer,
-} from './library/client.js'
+export * from './library/client-connector.js'
+export * from './library/client-synchronizer.js'
