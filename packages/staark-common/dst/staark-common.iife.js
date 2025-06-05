@@ -5,7 +5,7 @@
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // ../../.scripts/iife.js
+  // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
@@ -107,7 +107,7 @@
 
   // src/node.js
   var node = (type, attributesOrContents, contents) => {
-    if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
+    if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
       attributesOrContents = void 0;
     }

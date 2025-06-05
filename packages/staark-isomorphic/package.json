@@ -6,7 +6,7 @@
   "name": "@doars/staark-isomorphic",
   "description": "A server side rendering library for staark.",
   "keywords": [],
-  "version": "1.6.6",
+  "version": "1.6.7",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",
@@ -24,7 +24,6 @@
   "scripts": {
     "develop": "NODE_ENV=development node config.bundle.js",
     "build": "NODE_ENV=production node config.bundle.js",
-    "lint": "eslint src/**/*.js --cache --fix",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
@@ -35,6 +34,6 @@
     "README.md"
   ],
   "dependencies": {
-    "@doars/staark-common": "^1.5.6"
+    "@doars/staark-common": "^1.5.7"
   }
 }

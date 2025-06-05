@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.8
+
+- Add additional check in case both attributes and contents are empty.
+
 ## 1.4.7
 
 - Marked factory methods as pure for improved tree shaking.

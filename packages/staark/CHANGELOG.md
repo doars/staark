@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.12
+
+- Add additional check in case both attributes and contents are empty.
+
 ## 1.7.11
 
 - Small optimisation.

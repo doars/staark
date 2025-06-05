@@ -1,9 +1,11 @@
+import brotliSize from 'brotli-size'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
 import path from 'path'
 import puppeteer from 'puppeteer'
-import { fileURLToPath } from 'url'
-import brotliSize from 'brotli-size'
+import {
+  fileURLToPath,
+} from 'url'
 
 const ARGUMENT_BENCHMARK = '--benchmark='
 const ARGUMENT_LIBRARY = '--library='

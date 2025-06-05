@@ -1,4 +1,4 @@
-import { iife } from '../../../.scripts/iife.js'
+import { iife } from '../../../helpers/iife.js'
 
 import { memo } from '@doars/staark-common/src/memo.js'
 import { node } from '@doars/staark-common/src/node.js'

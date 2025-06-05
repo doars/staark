@@ -177,8 +177,8 @@ export const stringify = (
           if (abstract.m) {
             rendered += renderElements(
               arrayifyOrUndefined(
-                abstract.r(initialState, abstract.m)
-              )
+                abstract.r(initialState, abstract.m),
+              ),
             )
           } else if (abstract.t) {
             rendered += '<' + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a)
@@ -230,7 +230,7 @@ const customStringify = (
 
   if (Array.isArray(data)) {
     return '[' + data.map(
-      item => customStringify(item)
+      item => customStringify(item),
     ).join(',') + ']'
   }
 
@@ -284,6 +284,6 @@ export const stringifyFull = (
   return [
     rendered,
     customStringify(abstractTree),
-    JSON.stringify(initialState)
+    JSON.stringify(initialState),
   ]
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Added `cloneRecursive` to library exports.
+
 ## 1.1.3
 
 - Switch from TypeScript to JavaScript with JSDocs.

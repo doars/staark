@@ -121,7 +121,7 @@ const updateAttributes = (
         if (typeof (oldAttributes[name]) === 'function') {
           element.removeEventListener(
             name,
-            oldAttributes[name]
+            oldAttributes[name],
           )
         } else if (name === 'class') {
           element.className = ''
@@ -265,7 +265,7 @@ export const prepare = (
       ? (
         document.querySelector(rootElement)
         || document.body.appendChild(
-          document.createElement('div')
+          document.createElement('div'),
         )
       )
       : rootElement
@@ -283,7 +283,7 @@ export const prepare = (
   }
 
   return (
-    newAbstractTree
+    newAbstractTree,
   ) => {
     newAbstractTree = arrayifyOrUndefined(newAbstractTree)
     updateChildren(

@@ -1,5 +1,6 @@
-import { cloneRecursive } from '../utilities/clone.js'
-
+import {
+  cloneRecursive,
+} from '../utilities/clone.js'
 import {
   determineDiff,
   applyDiff,
@@ -41,7 +42,8 @@ export const manageState = function (
      *
      * @returns {Record<string, any>} The current state.
      */
-    get: () => {
+    get: (
+    ) => {
       return cloneRecursive(state)
     },
 
@@ -83,7 +85,8 @@ export const manageState = function (
      *
      * @returns {Record<string, any>} The new state.
      */
-    undo: () => {
+    undo: (
+    ) => {
       if (undoStack.length > 0) {
         const lastDiffs = undoStack.pop()
         if (lastDiffs) {
@@ -111,7 +114,8 @@ export const manageState = function (
      *
      * @returns {Record<string, any>} The new state.
      */
-    redo: () => {
+    redo: (
+    ) => {
       if (redoStack.length > 0) {
         const diffs = redoStack.pop()
         if (diffs) {

@@ -1,4 +1,4 @@
-import { iife } from '../../../.scripts/iife.js'
+import { iife } from '../../../helpers/iife.js'
 
 import { conditional } from '@doars/staark-common/src/conditional.js'
 import { factory } from '@doars/staark-common/src/factory.js'

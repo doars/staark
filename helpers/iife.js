@@ -1,6 +1,7 @@
 /**
- * @param {Array<string>} path
- * @param {any} data
+ * Assigns data to window at the given path. If an object at the path already exists it will merge them instead of replacing it.
+ * @param {Array<string>} path Path to assign the values to.
+ * @param {any} data Data to assign to the window.
  */
 export const iife = (
   path,

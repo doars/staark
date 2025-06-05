@@ -177,6 +177,7 @@ var manageState = function(state, options) {
 };
 export {
   applyDiff,
+  cloneRecursive,
   determineDiff,
   manageState,
   revertDiff

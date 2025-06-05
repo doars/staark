@@ -1,4 +1,4 @@
-import bundle from '../.scripts/bundle.js'
+import bundle from '../helpers/bundle.js'
 
 bundle([{
   entryPoints: 'src/libraries/hyperapp.js',

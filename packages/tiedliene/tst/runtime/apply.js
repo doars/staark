@@ -1,9 +1,14 @@
-import { assert } from 'chai'
-import { describe, it } from 'mocha'
+import {
+  assert,
+  describe,
+  it,
+} from '../../../../helpers/test.js'
 
-import { applyDiff } from '../../dst/tiedliene.js'
+import {
+  applyDiff,
+} from '../../dst/tiedliene.js'
 
-describe('Apply diff', () => {
+describe('Apply diff', () => [
   it('shallow object none', () => {
     const actual = applyDiff({
       hello: 'there',
@@ -14,7 +19,7 @@ describe('Apply diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow object delete', () => {
     const actual = applyDiff({
@@ -29,7 +34,7 @@ describe('Apply diff', () => {
       hello: 'there',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow object add', () => {
     const actual = applyDiff({
@@ -44,7 +49,7 @@ describe('Apply diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow object set', () => {
     const actual = applyDiff({
@@ -66,7 +71,7 @@ describe('Apply diff', () => {
       general: 'there',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array none', () => {
     const actual = applyDiff([
@@ -82,7 +87,7 @@ describe('Apply diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array delete', () => {
     const actual = applyDiff([
@@ -106,7 +111,7 @@ describe('Apply diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array delete multiple', () => {
     const actual = applyDiff([
@@ -138,7 +143,7 @@ describe('Apply diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array add', () => {
     const actual = applyDiff([
@@ -162,7 +167,7 @@ describe('Apply diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object none', () => {
     const actual = applyDiff({
@@ -178,7 +183,7 @@ describe('Apply diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object delete', () => {
     const actual = applyDiff({
@@ -197,7 +202,7 @@ describe('Apply diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object add', () => {
     const actual = applyDiff({
@@ -216,7 +221,7 @@ describe('Apply diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object set', () => {
     const actual = applyDiff({
@@ -242,7 +247,7 @@ describe('Apply diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object and array none', () => {
     const actual = applyDiff({
@@ -264,7 +269,7 @@ describe('Apply diff', () => {
       ],
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy none', () => {
     const actual = applyDiff(new Proxy({
@@ -276,7 +281,7 @@ describe('Apply diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy delete', () => {
     const actual = applyDiff(new Proxy({
@@ -291,7 +296,7 @@ describe('Apply diff', () => {
       hello: 'there',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy add', () => {
     const actual = applyDiff(new Proxy({
@@ -306,7 +311,7 @@ describe('Apply diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy set', () => {
     const actual = applyDiff(new Proxy({
@@ -328,5 +333,5 @@ describe('Apply diff', () => {
       general: 'there',
     }
     assert.deepEqual(actual, expected)
-  })
-})
+  }),
+])

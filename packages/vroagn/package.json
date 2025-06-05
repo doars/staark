@@ -24,7 +24,6 @@
   "scripts": {
     "develop": "NODE_ENV=development node config.bundle.js",
     "build": "NODE_ENV=production node config.bundle.js",
-    "lint": "eslint src/**/*.js --cache --fix",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },

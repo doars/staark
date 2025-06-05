@@ -1,19 +1,13 @@
+#!/usr/bin/env node
+
 import {
   spawn,
 } from 'child_process'
-import {
-  existsSync,
-  readFileSync,
-  statSync,
-} from 'fs'
+import fs from 'fs'
 import {
   watch,
 } from 'chokidar'
-import {
-  basename,
-  resolve,
-  dirname,
-} from 'path'
+import path from 'path'
 import detective from 'detective-es6'
 
 const DEBOUNCE_TIMEOUT = 200
@@ -42,7 +36,6 @@ const logError = (...args) => {
 }
 
 const targetScriptFullPath = process.argv[2]
-
 if (!targetScriptFullPath) {
   console.log('Error: No script specified.')
   console.log('Usage: node mon.js <script-to-run.js>')
@@ -50,9 +43,8 @@ if (!targetScriptFullPath) {
   process.exit(1)
 }
 
-const targetScript = resolve(targetScriptFullPath)
-
-if (!existsSync(targetScript)) {
+const targetScript = path.resolve(targetScriptFullPath)
+if (!fs.existsSync(targetScript)) {
   logError(`Script "${targetScript}" not found.`)
   process.exit(1)
 }
@@ -67,7 +59,7 @@ const resolveLocalDependency = (
   dependencyRequest,
   parentFilePath
 ) => {
-  const parentDirectory = dirname(parentFilePath)
+  const parentDirectory = path.dirname(parentFilePath)
 
   let resolvedPath = null
 
@@ -79,9 +71,9 @@ const resolveLocalDependency = (
     })
     if (
       !potentialPath.includes('node_modules')
-      && existsSync(potentialPath)
+      && fs.existsSync(potentialPath)
     ) {
-      const stats = statSync(potentialPath)
+      const stats = fs.statSync(potentialPath)
       if (
         stats.isFile()
       ) {
@@ -91,10 +83,10 @@ const resolveLocalDependency = (
       ) {
         const indexExtensions = ['.js', '.mjs']
         for (const extension of indexExtensions) {
-          const indexFile = resolve(potentialPath, 'index' + extension)
+          const indexFile = path.resolve(potentialPath, 'index' + extension)
           if (
-            existsSync(indexFile)
-            && statSync(indexFile).isFile()
+            fs.existsSync(indexFile)
+            && fs.statSync(indexFile).isFile()
           ) {
             resolvedPath = indexFile
             break
@@ -113,15 +105,15 @@ const resolveLocalDependency = (
       || dependencyRequest.startsWith('../')
     )
   ) {
-    const baseAttemptPath = resolve(parentDirectory, dependencyRequest)
+    const baseAttemptPath = path.resolve(parentDirectory, dependencyRequest)
     // Prioritize .js, .mjs as per detective-es6 focus.  An explicit import like './config.json' will have baseAttemptPath ending in '.json'.  The ext === '' check will then verify its existence.
     const extensions = ['', '.js', '.mjs']
 
     for (const extension of extensions) {
       const testPath = baseAttemptPath + extension
       if (
-        existsSync(testPath)
-        && statSync(testPath).isFile()
+        fs.existsSync(testPath)
+        && fs.statSync(testPath).isFile()
         && !testPath.includes('node_modules')
       ) {
         resolvedPath = testPath
@@ -131,15 +123,15 @@ const resolveLocalDependency = (
 
     if (
       !resolvedPath
-      && existsSync(baseAttemptPath)
-      && statSync(baseAttemptPath).isDirectory()
+      && fs.existsSync(baseAttemptPath)
+      && fs.statSync(baseAttemptPath).isDirectory()
     ) {
       const indexExtensions = ['.js', '.mjs']
       for (const extension of indexExtensions) {
-        const indexFilePath = resolve(baseAttemptPath, 'index' + extension)
+        const indexFilePath = path.resolve(baseAttemptPath, 'index' + extension)
         if (
-          existsSync(indexFilePath)
-          && statSync(indexFilePath).isFile()
+          fs.existsSync(indexFilePath)
+          && fs.statSync(indexFilePath).isFile()
           && !indexFilePath.includes('node_modules')
         ) {
           resolvedPath = indexFilePath
@@ -158,7 +150,7 @@ const resolveLocalDependency = (
 
   return (
     resolvedPath
-      ? resolve(resolvedPath)
+      ? path.resolve(resolvedPath)
       : null
   )
 }
@@ -168,7 +160,7 @@ const collectDependencies = async (
   allDependenciesSet,
   visitedSet,
 ) => {
-  const absoluteFilePath = resolve(filePath)
+  const absoluteFilePath = path.resolve(filePath)
 
   if (
     visitedSet.has(absoluteFilePath)
@@ -179,10 +171,10 @@ const collectDependencies = async (
   visitedSet.add(absoluteFilePath)
 
   try {
-    if (!existsSync(absoluteFilePath)) {
+    if (!fs.existsSync(absoluteFilePath)) {
       return
     }
-    const stats = statSync(absoluteFilePath)
+    const stats = fs.statSync(absoluteFilePath)
     if (!stats.isFile()) {
       return
     }
@@ -190,7 +182,7 @@ const collectDependencies = async (
     allDependenciesSet.add(absoluteFilePath)
 
     const fileExtension = (
-      basename(absoluteFilePath).includes('.')
+      path.basename(absoluteFilePath).includes('.')
         ? absoluteFilePath.split('.').pop().toLowerCase()
         : ''
     )
@@ -200,7 +192,7 @@ const collectDependencies = async (
       return
     }
 
-    const content = readFileSync(absoluteFilePath, 'utf-8')
+    const content = fs.readFileSync(absoluteFilePath, 'utf-8')
     const dependencies = detective(content)
 
     for (const dep of dependencies) {
@@ -235,7 +227,7 @@ const updateWatchedFiles = async (
     new Set(),
   )
 
-  if (existsSync(targetScript)) {
+  if (fs.existsSync(targetScript)) {
     // Ensure target script itself is always watched.
     newWatchedFiles.add(targetScript)
   }
@@ -246,9 +238,9 @@ const updateWatchedFiles = async (
   if (
     JSON.stringify(oldFilesArray) !== JSON.stringify(newFilesArray)
   ) {
-    const newBaseNames = newFilesArray.map(filePath => basename(filePath))
+    const newBaseNames = newFilesArray.map(filePath => path.basename(filePath))
     if (newBaseNames.length > 10) {
-      logDebug(`Monitored files updated, now watching ${newBaseNames.length} files (including ${basename(targetScript)} and its ${newBaseNames.length > 0 ? newBaseNames.length - 1 : 0} unique local dependencies).`)
+      logDebug(`Monitored files updated, now watching ${newBaseNames.length} files (including ${path.basename(targetScript)} and its ${newBaseNames.length > 0 ? newBaseNames.length - 1 : 0} unique local dependencies).`)
     } else if (newBaseNames.length > 0) {
       logDebug('Monitored files updated. Now watching:', newBaseNames)
     } else {
@@ -259,10 +251,10 @@ const updateWatchedFiles = async (
 
   if (
     watchedFiles.size === 0
-    && existsSync(targetScript) // Check if target script exists before warning specifically about it
+    && fs.existsSync(targetScript) // Check if target script exists before warning specifically about it
   ) {
-    logWarn(`Warning: Dependency scan for ${basename(targetScript)} resulted in an empty set (excluding target itself if it exists). Will only watch the target script if present.`)
-    if (existsSync(targetScript)) {
+    logWarn(`Warning: Dependency scan for ${path.basename(targetScript)} resulted in an empty set (excluding target itself if it exists). Will only watch the target script if present.`)
+    if (fs.existsSync(targetScript)) {
       watchedFiles.add(targetScript)
     }
   } else if (watchedFiles.size === 0) {
@@ -278,7 +270,7 @@ const spawnProcess = (
   }
   isRestarting = false
 
-  logInfo(`Running \`node ${basename(targetScript)}\`...`)
+  logInfo(`Running \`node ${path.basename(targetScript)}\`...`)
   childProcess = spawn('node', [targetScript,], {
     stdio: 'inherit',
   })
@@ -295,7 +287,7 @@ const spawnProcess = (
     if (
       !wasKilledByUs
     ) {
-      logWarn(`Script \`${basename(targetScript)}\` exited with code ${code}, signal ${signal}.`)
+      logWarn(`Script \`${path.basename(targetScript)}\` exited with code ${code}, signal ${signal}.`)
     }
     // If it exited on its own, childProcess is effectively gone. Check if the childProcess instance that emitted 'close' is the current one.
     if (
@@ -312,7 +304,7 @@ const spawnProcess = (
   childProcess.on('error', (
     error
   ) => {
-    logError(`Failed to start or error in script \`${basename(targetScript)}\`: ${error.message}`)
+    logError(`Failed to start or error in script \`${path.basename(targetScript)}\`: ${error.message}`)
     if (
       childProcess
       && childProcess.pid === (
@@ -337,7 +329,7 @@ const startOrRestartScript = (
   if (childProcess) {
     isRestarting = true
     const previousPid = childProcess.pid
-    logDebug(`Attempting to stop current script (\`${basename(targetScript)}\` PID: ${previousPid})...`)
+    logDebug(`Attempting to stop current script (\`${path.basename(targetScript)}\` PID: ${previousPid})...`)
     childProcess.killedByMiniMon = true
 
     childProcess.removeAllListeners('close')
@@ -450,9 +442,9 @@ const shutdown = (
   }
 }
 
-const main = async (
+const run = async (
 ) => {
-  logDebug(`Initial dependency scan for ${basename(targetScript)}...`)
+  logDebug(`Initial dependency scan for ${path.basename(targetScript)}...`)
   await updateWatchedFiles()
 
   startOrRestartScript()
@@ -482,9 +474,9 @@ const main = async (
         return
       }
 
-      const absoluteChangedPath = resolve(watchPath, changedPathRelative)
+      const absoluteChangedPath = path.resolve(watchPath, changedPathRelative)
       if (watchedFiles.has(absoluteChangedPath)) {
-        logDebug(`Relevant event: ${eventType} on ${basename(absoluteChangedPath)}.`)
+        logDebug(`Relevant event: ${eventType} on ${path.basename(absoluteChangedPath)}.`)
 
         clearTimeout(debounceTimeout)
         debounceTimeout = setTimeout(async () => {
@@ -508,12 +500,13 @@ const main = async (
   process.on('SIGINT', () => shutdown('SIGINT'))
   process.on('SIGTERM', () => shutdown('SIGTERM'))
 
-  logInfo(`Monitoring ${basename(targetScript)}. Press Ctrl+C to exit.`)
+  logInfo(`Monitoring ${path.basename(targetScript)}. Press Ctrl+C to exit.`)
 }
 
-main().catch(
-  error => {
-    logError('Critical unhandled error in main execution:', error)
-    process.exit(1)
-  }
-)
+run()
+  .catch(
+    error => {
+      logError('Critical unhandled error in main execution:', error)
+      process.exit(1)
+    }
+  )

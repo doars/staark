@@ -6,7 +6,7 @@
   "name": "@doars/tiedliene",
   "description": "a teensy-tiny library for managing state diffs.",
   "keywords": [],
-  "version": "1.1.3",
+  "version": "1.2.0",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",
@@ -24,8 +24,7 @@
   "scripts": {
     "develop": "NODE_ENV=development node config.bundle.js",
     "build": "NODE_ENV=production node config.bundle.js",
-    "lint": "eslint src/**/*.js --cache --fix",
-    "test:runtime": "mocha tst/runtime/**/*.js",
+    "test:runtime": "node ../../scripts/tst.js tst/runtime/",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "files": [

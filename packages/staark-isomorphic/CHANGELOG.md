@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.7
+
+- Add additional check in case both attributes and contents are empty.
+
 ## 1.6.6
 
 - Marked factory methods as pure for improved tree shaking.

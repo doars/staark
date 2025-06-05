@@ -2,7 +2,7 @@ import {
   arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
-  cloneRecursive
+  cloneRecursive,
 } from '@doars/staark-common/src/clone.js'
 import {
   equalRecursive,
@@ -225,7 +225,7 @@ export const mount = (
                 newAbstract.r(
                   state,
                   newAbstract.m,
-                )
+                ),
               ),
               m: newAbstract.m,
               r: newAbstract.r,
@@ -275,7 +275,7 @@ export const mount = (
                   oldChildAbstracts.splice(
                     oldIndex,
                     1,
-                  )[0]
+                  )[0],
                 )
               }
 
@@ -342,7 +342,7 @@ export const mount = (
       ? (
         document.querySelector(rootElement)
         || document.body.appendChild(
-          document.createElement('div')
+          document.createElement('div'),
         )
       )
       : rootElement

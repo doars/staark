@@ -18,7 +18,6 @@ node_modules/
 # Cache directories
 .cache
 .npm
-.eslintcache
 # Yarn Integrity file
 .yarn-integrity
 

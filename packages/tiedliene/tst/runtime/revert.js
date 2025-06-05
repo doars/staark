@@ -1,9 +1,14 @@
-import { assert } from 'chai'
-import { describe, it } from 'mocha'
+import {
+  assert,
+  describe,
+  it,
+} from '../../../../helpers/test.js'
 
-import { revertDiff } from '../../dst/tiedliene.js'
+import {
+  revertDiff,
+} from '../../dst/tiedliene.js'
 
-describe('Revert diff', () => {
+describe('Revert diff', () => [
   it('shallow object none', () => {
     const actual = revertDiff({
       hello: 'there',
@@ -14,7 +19,7 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow object delete', () => {
     const actual = revertDiff({
@@ -29,7 +34,7 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow object add', () => {
     const actual = revertDiff({
@@ -44,7 +49,7 @@ describe('Revert diff', () => {
       hello: 'there',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow object set', () => {
     const actual = revertDiff({
@@ -66,7 +71,7 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array none', () => {
     const actual = revertDiff([
@@ -82,7 +87,7 @@ describe('Revert diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array delete', () => {
     const actual = revertDiff([
@@ -106,7 +111,7 @@ describe('Revert diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array delete multiple', () => {
     const actual = revertDiff([
@@ -138,7 +143,7 @@ describe('Revert diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow array add', () => {
     const actual = revertDiff([
@@ -162,7 +167,7 @@ describe('Revert diff', () => {
       'kenobi',
     ]
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object none', () => {
     const actual = revertDiff({
@@ -178,7 +183,7 @@ describe('Revert diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object delete', () => {
     const actual = revertDiff({
@@ -197,7 +202,7 @@ describe('Revert diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object add', () => {
     const actual = revertDiff({
@@ -216,7 +221,7 @@ describe('Revert diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object set', () => {
     const actual = revertDiff({
@@ -242,7 +247,7 @@ describe('Revert diff', () => {
       },
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('nested object and array none', () => {
     const actual = revertDiff({
@@ -264,7 +269,7 @@ describe('Revert diff', () => {
       ],
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy none', () => {
     const actual = revertDiff(new Proxy({
@@ -276,7 +281,7 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy delete', () => {
     const actual = revertDiff(new Proxy({
@@ -291,7 +296,7 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy add', () => {
     const actual = revertDiff(new Proxy({
@@ -306,7 +311,7 @@ describe('Revert diff', () => {
       hello: 'there',
     }
     assert.deepEqual(actual, expected)
-  })
+  }),
 
   it('shallow proxy set', () => {
     const actual = revertDiff(new Proxy({
@@ -328,5 +333,5 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepEqual(actual, expected)
-  })
-})
+  }),
+])

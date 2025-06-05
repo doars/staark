@@ -1,4 +1,6 @@
-import { cloneRecursive } from '../utilities/clone.js'
+import {
+  cloneRecursive,
+} from '../utilities/clone.js'
 
 /**
  * @typedef {Object} Change A change to a state object.
@@ -87,7 +89,7 @@ export const determineDiff = (
     ) {
       // If both are objects, recurse deeper.
       changes.unshift(
-        ...determineDiff(before[key], after[key], currentPath)
+        ...determineDiff(before[key], after[key], currentPath),
       )
     } else if (before[key] !== after[key]) {
       // If the value has changed, record the new and old value.

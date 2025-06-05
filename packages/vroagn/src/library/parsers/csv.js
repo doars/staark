@@ -28,7 +28,8 @@ export const csvParser = (
 ) => {
   return {
     types: options?.types || [
-      'csv', 'text/csv',
+      'csv',
+      'text/csv',
       ...tsvTypes,
     ],
 
@@ -48,7 +49,7 @@ export const csvParser = (
       const optionsTemp = {
         columnDelimiter: (
           tsvTypes.includes(type)
-            ? '	'
+            ? '\t'
             : ','
         ),
         rowDelimiter: '\n',

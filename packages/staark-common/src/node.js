@@ -40,9 +40,12 @@ export const node = (
   contents,
 ) => {
   if (
-    typeof (attributesOrContents) !== 'object'
-    || attributesOrContents._ === marker
-    || Array.isArray(attributesOrContents)
+    attributesOrContents
+    && (
+      typeof (attributesOrContents) !== 'object'
+      || attributesOrContents._ === marker
+      || Array.isArray(attributesOrContents)
+    )
   ) {
     contents = attributesOrContents
     attributesOrContents = undefined

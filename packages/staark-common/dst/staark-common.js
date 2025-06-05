@@ -51,7 +51,7 @@ var marker = "n";
 
 // src/node.js
 var node = (type, attributesOrContents, contents) => {
-  if (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents)) {
+  if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
     contents = attributesOrContents;
     attributesOrContents = void 0;
   }

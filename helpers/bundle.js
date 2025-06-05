@@ -1,10 +1,26 @@
+import brotliSize from 'brotli-size'
 import {
   build,
   context,
 } from 'esbuild'
-import { size } from './size.js'
+import path from 'path'
 
 const isProduction = process.env.NODE_ENV === 'production'
+
+const size = async (
+  filePath,
+) => {
+  let size
+  try {
+    size = await brotliSize.file(filePath)
+  } catch (error) {
+    console.log('Unable to determine file size of ' + path.basename(filePath))
+    return
+  }
+
+  size = (size / 1024).toFixed(2) + 'KB'
+  console.log(size + ' is ' + path.basename(filePath) + ' when brotli compressed.')
+}
 
 const bundle = (
   ...builds

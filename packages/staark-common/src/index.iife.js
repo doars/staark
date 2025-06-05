@@ -1,4 +1,4 @@
-import { iife } from '../../../.scripts/iife.js'
+import { iife } from '../../../helpers/iife.js'
 
 import * as array from './array.js'
 import * as attribute from './attribute.js'

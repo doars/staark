@@ -1,5 +1,8 @@
-import { iife } from '../../../.scripts/iife.js'
+import { iife } from '../../../helpers/iife.js'
 
+import {
+  cloneRecursive,
+} from './utilities/clone.js'
 import {
   determineDiff,
   applyDiff,
@@ -12,6 +15,8 @@ import {
 iife([
   'tiedliene',
 ], {
+  cloneRecursive,
+
   determineDiff,
   applyDiff,
   revertDiff,
