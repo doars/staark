@@ -1,9 +1,10 @@
 import {
-  ROOM_CLOSE,
+  ROOM_CLOSED,
   ROOM_JOINED,
   USER_JOINED,
   USER_KICK,
   USER_LEFT,
+  USER_VALIDATED,
 } from './types.js'
 
 import {
@@ -14,9 +15,24 @@ import {
   splitTime,
 } from '../utilities/time.js'
 import {
+  ROOM_PREFIX,
   SERVER_PREFIX,
-  wrap,
-} from '../utilities/wrap.js'
+  SHARED_ENCRYPTION_PREFIX,
+  USER_ENCRYPTION_PREFIX,
+  USER_PAYLOAD,
+
+  getPrefix,
+  prefix,
+  wrapPayload,
+} from '../utilities/prefix.js'
+
+const USER_ENCRYPTION_ALGORITHM = 'RSA-OAEP'
+const SHARED_ENCRYPTION_ALGORITHM = 'AES-GCM'
+const DEFAULT_HOST = 'http://localhost:3000'
+
+const encrypt = crypto.subtle.encrypt
+const decrypt = crypto.subtle.decrypt
+const generateKey = window.crypto.subtle.generateKey
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -45,6 +61,7 @@ import {
  * @property {Event} onRoomLeave - Event for room leave notifications.
  * @property {Event} onUserJoin - Event for user join notifications.
  * @property {Event} onUserLeave - Event for user leave notifications.
+ * @property {Event} onUserValidated - Event for user validated notifications.
  *
  * @property {Function} createRoom - Creates a new room and joins it.
  * @property {Function} closeRoom - Closes the room for all. Only allowed by the creator.
@@ -72,14 +89,25 @@ export const createClientConnector = (
     createRoomEndpoint = '/create-room',
     joinRoomEndpoint = '/join-room',
 
-    httpUrl = 'http://localhost:3000',
-    wsUrl = 'http://localhost:3000',
+    httpUrl = DEFAULT_HOST,
+    wsUrl = DEFAULT_HOST,
   } = options
 
   let _creatorId,
+    _sharedKey,
     _password,
     _socket,
-    _userId
+    _userId,
+    _userKeys = generateKey({
+      name: USER_ENCRYPTION_ALGORITHM,
+      modulusLength: 4096,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: 'SHA-256',
+    }, true, ['encrypt', 'decrypt'])
+  /**
+   * TODO:
+   * 1. Make public key exportable. crypto.subtle.exportKey('jwt', _userKeys.privateKey)
+   */
 
   const onError = createEvent()
   const onMessage = createEvent()
@@ -87,6 +115,7 @@ export const createClientConnector = (
   const onRoomLeave = createEvent()
   const onUserJoin = createEvent()
   const onUserLeave = createEvent()
+  const onUserValidated = createEvent()
 
   /**
    * Closes the current socket connection and resets the socket reference. This function should be called when leaving a room to ensure that the socket connection is properly closed and cleaned up.
@@ -105,13 +134,6 @@ export const createClientConnector = (
    * @param {string} roomCode - The code of the room to join.
    * @param {string|null} [password=null] - Optional password for the room.
    * @param {string|null} [creatorSecret=null] - Optional creator secret for verifying this user is the creator of the room.
-   *
-   * @fires onRoomLeave - Dispatched when the socket connection is closed.
-   * @fires onError - Dispatched when an error occurs with the socket.
-   * @fires onRoomJoin - Dispatched when the room is successfully joined.
-   * @fires onUserLeave - Dispatched when a user leaves the room.
-   * @fires onUserJoin - Dispatched when a user joins the room.
-   * @fires onMessage - Dispatched for all other incoming messages.
    */
   const _joinRoom = (
     roomCode,
@@ -123,9 +145,15 @@ export const createClientConnector = (
     const url = new URL(
       wsUrl + joinRoomEndpoint,
     )
-    url.searchParams.append('code', roomCode)
+    url.searchParams.append(
+      'code',
+      roomCode,
+    )
     if (creatorSecret) {
-      url.searchParams.append('creator', creatorSecret)
+      url.searchParams.append(
+        'creator',
+        creatorSecret,
+      )
     }
 
     _socket = new WebSocket(
@@ -149,16 +177,43 @@ export const createClientConnector = (
       leaveRoom()
     })
 
-    _socket.addEventListener('message', (
+    _socket.addEventListener('message', async (
       event,
     ) => {
-      let data,
-        [dataString, serverTime] = splitTime(event.data)
+      let data = event.data,
+        iv,
+        prefix,
+        serverTime
+
+      [serverTime, data] = splitTime(data)
+
+      // Check if an initialization vector is present.
+      [iv, data] = splitInitializationVector(data)
+      [prefix, data] = getPrefix(data)
+      if (prefix === SHARED_ENCRYPTION_PREFIX) {
+        if (!_sharedKey) {
+          // Can't decrypt without the key.
+          return
+        }
+        await _sharedKey
+
+        data = await decrypt({
+          name: SHARED_ENCRYPTION_ALGORITHM,
+          iv: iv,
+        }, _sharedKey, data)
+        data = new TextDecoder().decode(data)
+      } else if (prefix === USER_ENCRYPTION_PREFIX) {
+        await _userKeys
+
+        data = await decrypt({
+          name: USER_ENCRYPTION_ALGORITHM,
+          iv: iv,
+        }, _userKeys.privateKey, data)
+        data = new TextDecoder().decode(data)
+      }
+
       try {
-        // TODO: Decrypt?
-        data = deserializeMessage(
-          dataString
-        )
+        data = deserializeMessage(data)
       } catch (error) {
         onError.dispatch({
           error: new Error('Failed to parse message: ' + event.data),
@@ -179,16 +234,30 @@ export const createClientConnector = (
           userId: data.userId,
         })
       } else if (data.type === USER_JOINED) {
-        if (
-          password
-          && creatorId === userId
-        ) {
-          // TODO: Share encryption key if password is required.
-        } else {
-          onUserJoin.dispatch({
-            userId: data.userId,
-          })
+        onUserJoin.dispatch({
+          userId: data.userId,
+        })
+
+        if (creatorId === userId) {
+          await _userKeys
+
+          /**
+           * TODO:
+           * 1. Share public key with new user and received public key of new user.
+           * 2. Validate password if required.
+           * 3. Share shared encryption key.
+           * 4. Inform server of user validation.
+           */
         }
+      } else if (data.type === USER_VALIDATED) {
+        onUserValidated.dispatch({
+          userId: data.userId,
+        })
+
+        /**
+         * TODO:
+         * 1. Exchange public key's for direct messages. This can't be done using the shared key as this could have been send by anyone in the room with the shared key.
+         */
       } else {
         onMessage.dispatch({
           data,
@@ -201,7 +270,7 @@ export const createClientConnector = (
     })
   }
 
-  const _message = (
+  const _message = async (
     data,
     options = {},
   ) => {
@@ -221,10 +290,37 @@ export const createClientConnector = (
       sender: _userId,
       senderTime: Date.now(),
     })
-    if (options.message) {
-      message = wrap(
+    if (options.receiver) {
+      /**
+       * TODO:
+       * 1. Encrypt data using receivers public key.
+       * 1.a. If this key is no known return out of this function with false and dispatch an error.
+       * 1.b. Or hold onto this message and send it as soon as the public key of the receiver is known.
+       */
+
+      message = wrapPayload(
+        options.receiver,
+        USER_PAYLOAD,
+      ) + message
+    } else if (options.server) {
+      message = prefix(
         message,
         SERVER_PREFIX,
+      )
+    } else {
+      // Encrypt data using shared key.
+      const iv = crypto.getRandomValues(new Uint8Array(12))
+      message = await encrypt({
+        name: SHARED_ENCRYPTION_ALGORITHM,
+        iv: iv,
+      }, key, new TextEncoder().encode(message))
+      message = wrapPayload(
+        iv
+      ) + message
+
+      message = prefix(
+        message,
+        ROOM_PREFIX,
       )
     }
     _socket.send(message)
@@ -235,23 +331,42 @@ export const createClientConnector = (
     data,
   ) => (
     userId
+    // Only allow creator to send messages to the server.
     && userId === creatorId
     && _message(data, {
       server: true,
+    })
+  )
+  const messageUser = (
+    data,
+    userId,
+  ) => (
+    userId
+    && _message(data, {
+      receiver: userId,
     })
   )
 
   return {
     onError,
     onMessage,
+
     onRoomJoin,
     onRoomLeave,
+
     onUserJoin,
     onUserLeave,
+    onUserValidated,
+
+    messageRoom: (
+      data,
+    ) => _message(data),
+    messageServer,
+    messageUser,
 
     closeRoom: (
     ) => messageServer({
-      type: ROOM_CLOSE,
+      type: ROOM_CLOSED,
     }),
     createRoom: async (
       password,
@@ -259,11 +374,19 @@ export const createClientConnector = (
     ) => {
       _password = password
 
+      _sharedKey = generateKey({
+        name: SHARED_ENCRYPTION_ALGORITHM,
+        length: 256,
+      }, true, ['encrypt', 'decrypt'])
+
       const url = new URL(
         httpUrl + createRoomEndpoint,
       )
       if (options.limit) {
-        url.searchParams.append('limit', options.limit)
+        url.searchParams.append(
+          'limit',
+          options.limit,
+        )
       }
 
       const response = await fetch(url.toString(), {
@@ -298,10 +421,6 @@ export const createClientConnector = (
       password,
     ),
     leaveRoom,
-    messageRoom: (
-      data,
-    ) => _message(data),
-    messageServer,
 
     kickUser: (
       userId,

@@ -1,8 +1,7 @@
 import {
-  INFIX,
-  SUFFIX,
-  TIME_PREFIX,
-} from './wrap.js'
+  splitPayload,
+  TIME_PAYLOAD,
+} from './prefix.js'
 
 /**
  * Prefixes the given payload with the current timestamp in milliseconds.
@@ -14,7 +13,7 @@ export const prefixTime = (
   payload,
 ) => wrap(
   Date.now(),
-  TIME_PREFIX,
+  TIME_PAYLOAD,
 ) + payload
 
 /**
@@ -25,37 +24,13 @@ export const prefixTime = (
  */
 export const splitTime = (
   payload,
-) => {
-  if (
-    payload
-    && payload.startsWith(PREFIX + TIME_PREFIX + INFIX)
-  ) {
-    // Start after TIME_PREFIX.
-    let index = TIME_PREFIX.length + 2
-    let timeString = ''
-    const length = payload.length
-    // Loop until we find SUFFIX or reach a reasonable limit.
-    for (; index < length && timeString.length < 14; index++) {
-      const character = payload[index]
-      if (character === SUFFIX) {
-        // Found end of time prefix
-        return [
-          Number(timeString),
-          payload.slice(index + 1),
-        ]
-      }
-      // Stop in case a non-numeric character is found.
-      if (isNaN(character)) {
-        break
-      }
-      timeString += character
-    }
-  }
-  return [
-    null,
-    payload,
-  ]
-}
+) => splitPayload(
+  payload,
+  TIME_PAYLOAD,
+  14,
+  isNaN,
+  Number,
+)
 
 /**
  * Calculates time synchronization values based on provided server and sender times.

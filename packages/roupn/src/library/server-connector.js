@@ -13,11 +13,13 @@ import {
   USER_JOINED,
   USER_LEFT,
   USER_KICK,
+  USER_VALIDATED,
 } from './types.js'
 
 import {
-  generateCode,
   IDENTIFIABLE_CHARACTERS,
+
+  generateCode,
 } from '../utilities/code.js'
 import {
   createEvent,
@@ -26,22 +28,31 @@ import {
   prefixTime,
 } from '../utilities/time.js'
 import {
+  ROOM_PREFIX,
   SERVER_PREFIX,
-  unwrap,
-} from '../utilities/wrap.js'
 
-const _EMPTY_OBJECT = Object.freeze({})
+  getPrefix,
+  splitUserId,
+} from '../utilities/prefix.js'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
  */
 
 /**
+ * @typedef {Object} UserData
+ * @property {WebSocket} connection - Websocket of user
+ * @property {boolean} validated - Whether the host has validated the user.
+ */
+
+/**
  * @typedef {Object} RoomSyncOptions
  * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
+ *
  * @property {Function} [deserializeMessage=JSON.parse] - Function to deserialize messages.
  * @property {Function} [serializeMessage=JSON.stringify] - Function to serialize messages.
  * @property {string} [contentType='application/json'] - Content type for messages.
+ *
  * @property {string} [createRoomEndpoint='/create-room'] - Endpoint for creating a room.
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
  */
@@ -54,10 +65,12 @@ const _EMPTY_OBJECT = Object.freeze({})
  * @property {Function} leaveRoom - Removes a user from a room.
  * @property {Function} messageRoom - Broadcasts a message to all users in a room.
  * @property {Function} messageUser - Sends a direct message to a user in a room.
+ *
  * @property {Event} onRoomMessage - Event dispatched when a message is sent to a room.
  * @property {Event} onRoomRemove - Event dispatched when a room is removed.
  * @property {Event} onUserLeave - Event dispatched when a user leaves a room.
  * @property {Event} onUserJoin - Event dispatched when a user joins a room.
+ *
  * @property {Function} getRoom - Retrieves room details by code.
  * @property {Function} getRoomCodes - Returns an array of all room codes.
  * @property {Function} getRoomCount - Returns the number of active rooms.
@@ -88,7 +101,7 @@ export const createServerConnector = (
   const onUserJoin = createEvent()
   const onUserLeave = createEvent()
 
-  /** @type {Map<string, { creatorId: string, creatorSecret: string, userLimit: number, users: Map<string, WebSocket> }>} */
+  /** @type {Map<string, { creatorId: string, creatorSecret: string, userLimit: number, users: Map<string, UserData> }>} */
   const _rooms = new Map()
 
   /**
@@ -126,7 +139,10 @@ export const createServerConnector = (
     const users = new Map()
 
     const userId = randomUUID()
-    users.set(userId, null)
+    users.set(userId, {
+      connection: null,
+      validated: false,
+    })
 
     const creatorSecret = randomUUID()
 
@@ -176,6 +192,17 @@ export const createServerConnector = (
       creatorSecret
       && creatorSecret === _room.creatorSecret
     )
+    // Prevent re-use of the creator secret.
+    if (
+      _isCreator
+      && _room.users.get(_room.creatorId).validated
+    ) {
+      return [false, {
+        type: ERROR,
+        reason: 'creator_already_joined',
+      }]
+    }
+
     let userId
     if (_isCreator) {
       _isCreator = true
@@ -187,9 +214,12 @@ export const createServerConnector = (
         userId = randomUUID()
       }
     }
-    _room.users.set(userId, {
+
+    const userData = {
       connection,
-    })
+      validated: _isCreator,
+    }
+    _room.users.set(userId, userData)
 
     _broadcast(
       roomCode,
@@ -228,52 +258,94 @@ export const createServerConnector = (
         return
       }
 
-      // Check if message is meant for server.
-      if (_isCreator) {
-        const data = unwrap(
-          event.data,
-          SERVER_PREFIX,
+      let payload = event.data,
+        receiver
+      [receiver, payload] = splitUserId(payload)
+      if (receiver) {
+        // Send message to specific user.
+        messageUser(
+          roomCode,
+          userId,
+          receiver,
+          payload,
         )
-        if (data) {
-          let parsedData
-          try {
-            parsedData = deserializeMessage(
-              data,
-            )
-          } catch {
-            // Is server message, but not able to parse?
-            return false
-          }
-
-          switch (parsedData?.type) {
-            case ROOM_CLOSE:
-              removeRoom(
-                roomCode,
-              )
-              break
-
-            case USER_KICK:
-              if (
-                parsedData.userId
-                // Prevent the host from kicking themselves. Should use ROOM_CLOSE instead.
-                && parsedData.userId !== userId
-              ) {
-                leaveRoom(
-                  roomCode,
-                  parsedData.userId,
-                )
-              }
-              break
-          }
-          return
-        }
+        return
       }
 
-      messageRoom(
-        roomCode,
-        userId,
-        event.data,
-      )
+      let prefix
+      [prefix, payload] = getPrefix(payload)
+      if (!prefix) {
+        // No prefix given.
+        return
+      }
+
+      // Check if message is meant for server.
+      if (
+        prefix === SERVER_PREFIX
+        // Only the room's creator can send server messages.
+        && _isCreator
+      ) {
+        let parsedData
+        try {
+          parsedData = deserializeMessage(
+            data,
+          )
+        } catch {
+          // Is server message, but not able to parse?
+          return
+        }
+
+        switch (parsedData?.type) {
+          // Close the room.
+          case ROOM_CLOSED:
+            removeRoom(
+              roomCode,
+            )
+            break
+
+          // Remove a user from the room.
+          case USER_KICK:
+            if (
+              parsedData.userId
+              // Prevent the host from performing this on themself. Use ROOM_CLOSED instead.
+              && parsedData.userId !== userId
+            ) {
+              leaveRoom(
+                roomCode,
+                parsedData.userId,
+              )
+            }
+            break
+
+          // Mark user as being validated so they start receiving broadcasted messages.
+          case USER_VALIDATED:
+            if (
+              parsedData.userId
+              && room.users.has(parsedData.userId)
+            ) {
+              _broadcast(roomCode, userId, serializeMessage({
+                type: USER_VALIDATED,
+                userId: parsedData.userId,
+              }))
+              room.users.get(parsedData.userId).validated = true
+            }
+            break
+        }
+        return
+      }
+
+      if (
+        prefix === ROOM_PREFIX
+        // Only validated users can send messages to the room.
+        && userData.validated
+      ) {
+        messageRoom(
+          roomCode,
+          userId,
+          event.data,
+        )
+        return
+      }
     })
 
     return [true, {
@@ -416,11 +488,14 @@ export const createServerConnector = (
     }
 
     payload = prefixTime(payload)
-    for (const [userId, { connection }] of _room.users) {
+    for (const [userId, { connection, validated }] of _room.users) {
       // Don't send the payload to the sender.
       if (
-        sender
-        && sender === userId
+        !validated
+        || (
+          sender
+          && sender === userId
+        )
       ) {
         continue
       }
@@ -429,7 +504,7 @@ export const createServerConnector = (
         connection.send(payload)
       }
     }
-    return [true, _EMPTY_OBJECT]
+    return [true, {}]
   }
 
   /**
@@ -508,15 +583,17 @@ export const createServerConnector = (
 
     connection.send(
       prefixTime(
-        serializeMessage({
-          type: MESSAGE,
-          ...data,
-          receiver,
-          sender,
-        }),
+        typeof (data) === 'string'
+          ? data
+          : serializeMessage({
+            type: MESSAGE,
+            ...data,
+            receiver,
+            sender,
+          }),
       ),
     )
-    return [true, _EMPTY_OBJECT]
+    return [true, {}]
   }
 
   return {

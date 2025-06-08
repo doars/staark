@@ -6,8 +6,8 @@ import {
 } from '@doars/staark'
 
 import {
-  createSynchronizer,
-} from '../src/library/client.js'
+  createClientSynchronizer,
+} from '../src/index.js'
 
 (function () {
   let synchronizer = null
@@ -192,7 +192,7 @@ import {
       },
     }
   )
-  synchronizer = createSynchronizer(
+  synchronizer = createClientSynchronizer(
     {},
     state.privateState,
     state.publicState,
@@ -203,6 +203,11 @@ import {
     event
   ) => {
     console.warn('Error:', event)
+  })
+  synchronizer.onMessage.addListener((
+    event
+  ) => {
+    console.log('Message received:', event)
   })
   synchronizer.onRoomJoin.addListener((
     event
@@ -219,14 +224,14 @@ import {
   ) => {
     console.log('User joined:', event)
   })
+  synchronizer.onUserValidated.addListener((
+    event
+  ) => {
+    console.log('User validated:', event)
+  })
   synchronizer.onUserLeave.addListener((
     event
   ) => {
     console.log('User left:', event)
-  })
-  synchronizer.onMessage.addListener((
-    event
-  ) => {
-    console.log('Message received:', event)
   })
 }())

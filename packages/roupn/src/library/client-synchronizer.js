@@ -49,6 +49,7 @@ import {
  * @property {Event} onRoomLeave - Event for room leave notifications.
  * @property {Event} onUserJoin - Event for user join notifications.
  * @property {Event} onUserLeave - Event for user leave notifications.
+ * @property {Event} onUserValidated - Event for user validated notifications.
  *
  * @property {Object} privateState - Internal state, including user and room information.
  * @property {Object} publicState - Shared state object synchronized across users.
@@ -306,7 +307,7 @@ export const createClientSynchronizer = (
     }
   })
 
-  roomSync.onUserJoin.addListener(({
+  roomSync.onUserValidated.addListener(({
     userId,
   }) => {
     privateState.users.push(

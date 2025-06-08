@@ -16,7 +16,7 @@ import {
 } from 'ws'
 
 import {
-  createSynchronizer,
+  createServerConnector,
 } from '../src/library/server.js'
 
 const PORT = 3000
@@ -31,7 +31,7 @@ const {
 
   handleHttpRequest,
   handleSocketUpgrade,
-} = createSynchronizer({
+} = createServerConnector({
   maxUsersPerRoom: 4,
 })
 

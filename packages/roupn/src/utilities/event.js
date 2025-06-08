@@ -22,7 +22,8 @@
  *
  * @returns {Event} An event object with methods to manage listeners.
  */
-export const createEvent = () => {
+export const createEvent = (
+) => {
   /** @type {Map<EventListenerCallback, EventListenerOptions | undefined>} */
   const listeners = new Map()
 
