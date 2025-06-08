@@ -6,6 +6,14 @@ import puppeteer from 'puppeteer'
 import {
   fileURLToPath,
 } from 'url'
+import {
+  promisify,
+} from 'util'
+import {
+  gzip,
+} from 'zlib'
+
+const gzipAsync = promisify(gzip)
 
 const ARGUMENT_BENCHMARK = '--benchmark='
 const ARGUMENT_LIBRARY = '--library='
@@ -262,9 +270,10 @@ async function runBenchmarks () {
       DIRECTORY_LIBRARY,
       libraryName + (options.minified ? '.min' : '') + '.js',
     )
-    let libraryCode
-    let librarySize = 0
-    let libraryCompressedSize = 0
+    let libraryCode,
+      librarySize = 0,
+      libraryBrotliSize = 0,
+      libraryGzipSize = 0
     if (fs.existsSync(libraryPath)) {
       const libraryStat = await fsPromises.stat(libraryPath)
       librarySize = libraryStat.size
@@ -280,7 +289,8 @@ async function runBenchmarks () {
       libraryCode = lines.join('\n')
 
       if (options.minified) {
-        libraryCompressedSize = await brotliSize.sync(libraryCode)
+        libraryBrotliSize = await brotliSize.sync(libraryCode)
+        libraryGzipSize = (await gzipAsync(libraryCode)).length
       }
 
       // Append inline sourcemap.
@@ -303,8 +313,15 @@ async function runBenchmarks () {
         fmtLabel('Minified')
         + fmtKB(librarySize)
         + '\n'
+        + fmtLabel('Min+gzip')
+        + fmtKB(libraryGzipSize)
+        + ' '
+        + fmtPercent((libraryGzipSize / librarySize) * 100)
+        + '\n'
         + fmtLabel('Min+brotli')
-        + fmtKB(libraryCompressedSize)
+        + fmtKB(libraryBrotliSize)
+        + ' '
+        + fmtPercent((libraryBrotliSize / librarySize) * 100)
       )
     }
 
