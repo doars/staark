@@ -9,6 +9,7 @@ export const SHARED_ENCRYPTION_PREFIX = 'E'
 
 export const TIME_PAYLOAD = 'T'
 export const USER_PAYLOAD = 'U'
+export const SIGNATURE_PAYLOAD = 'H'
 export const INITIALIZATION_VECTOR_PAYLOAD = 'V'
 
 const PREFIXES = [
@@ -95,6 +96,13 @@ export const splitInitializationVector = (
 ) => splitPayload(
   payload,
   INITIALIZATION_VECTOR_PAYLOAD,
+)
+
+export const splitSignature = (
+  payload,
+) => splitPayload(
+  payload,
+  SIGNATURE_PAYLOAD,
 )
 
 export const splitUserId = (

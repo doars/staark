@@ -23,6 +23,8 @@ import {
 
   getPrefix,
   prefix,
+  splitInitializationVector,
+  splitSignature,
   wrapPayload,
 } from '../utilities/prefix.js'
 
@@ -180,16 +182,18 @@ export const createClientConnector = (
     _socket.addEventListener('message', async (
       event,
     ) => {
-      let data = event.data,
+      let data,
+        rawData = event.data,
         iv,
         prefix,
         serverTime
 
-      [serverTime, data] = splitTime(data)
+      [serverTime, rawData] = splitTime(rawData)
 
       // Check if an initialization vector is present.
-      [iv, data] = splitInitializationVector(data)
-      [prefix, data] = getPrefix(data)
+      [iv, rawData] = splitInitializationVector(rawData)
+      [signature, rawData] = splitSignature(rawData)
+      [prefix, rawData] = getPrefix(rawData)
       if (prefix === SHARED_ENCRYPTION_PREFIX) {
         if (!_sharedKey) {
           // Can't decrypt without the key.
@@ -200,7 +204,7 @@ export const createClientConnector = (
         data = await decrypt({
           name: SHARED_ENCRYPTION_ALGORITHM,
           iv: iv,
-        }, _sharedKey, data)
+        }, _sharedKey, rawData)
         data = new TextDecoder().decode(data)
       } else if (prefix === USER_ENCRYPTION_PREFIX) {
         await _userKeys
@@ -208,7 +212,8 @@ export const createClientConnector = (
         data = await decrypt({
           name: USER_ENCRYPTION_ALGORITHM,
           iv: iv,
-        }, _userKeys.privateKey, data)
+        }, _userKeys.privateKey, rawData)
+        // TODO: Validate signature.
         data = new TextDecoder().decode(data)
       }
 
@@ -296,6 +301,7 @@ export const createClientConnector = (
        * 1. Encrypt data using receivers public key.
        * 1.a. If this key is no known return out of this function with false and dispatch an error.
        * 1.b. Or hold onto this message and send it as soon as the public key of the receiver is known.
+       * 2. Prepend signature for validation.
        */
 
       message = wrapPayload(
