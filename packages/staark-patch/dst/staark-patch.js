@@ -325,6 +325,9 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
               value = value.toString();
             }
             element.setAttribute(name, value);
+            if (name === "value") {
+              element.value = value;
+            }
           }
         }
       }

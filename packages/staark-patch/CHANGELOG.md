@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.9
+
+- Fix setting value attribute.
+
 ## 1.4.8
 
 - Add additional check in case both attributes and contents are empty.

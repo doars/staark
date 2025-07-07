@@ -159,8 +159,10 @@ export const mount = (
               } else if (type !== 'string') {
                 value = value.toString()
               }
-
               element.setAttribute(name, value)
+              if (name === 'value') {
+                element.value = value
+              }
             }
           }
         }
