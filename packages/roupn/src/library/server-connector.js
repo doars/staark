@@ -811,9 +811,7 @@ export const createServerConnector = (
               }),
             ),
           )
-          socket.destroy(
-            new Error('Too many requests'),
-          )
+          socket.destroy()
           return true
         }
         if (
@@ -831,9 +829,7 @@ export const createServerConnector = (
               }),
             ),
           )
-          socket.destroy(
-            new Error('Unauthorized'),
-          )
+          socket.destroy()
           return true
         }
 

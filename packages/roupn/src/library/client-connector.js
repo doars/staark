@@ -11,9 +11,11 @@ import {
   createEvent,
 } from '../utilities/event.js'
 import {
+  INITIALIZATION_VECTOR_PAYLOAD,
   ROOM_PREFIX,
   SERVER_PREFIX,
   SHARED_ENCRYPTION_PREFIX,
+  SIGNATURE_PAYLOAD,
   USER_ENCRYPTION_PREFIX,
   USER_PAYLOAD,
 
@@ -37,7 +39,6 @@ const USER_SIGNATURE_ALGORITHM = 'RSASSA-PKCS1-v1_5'
 const KEY_EXCHANGE_ACCEPT = 'key_exchange-accept'
 const KEY_EXCHANGE_OFFER = 'key_exchange-offer'
 const PASSWORD_VALIDATION = 'password-validation'
-const PUBLIC_KEY_SHARE = 'public_key-share'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -219,24 +220,41 @@ export const createClientConnector = (
         deserializedData,
         rawData = event.data,
         ivString,
+        payload,
         prefix,
         serverTime,
         signature
 
       [serverTime, rawData] = splitTime(rawData)
+      let outerPrefix
+      [outerPrefix, payload] = getPrefix(rawData) // R: or S:
+      if (!outerPrefix) {
+        // Forwarded user message, no R: or S:
+        payload = rawData
+      }
 
-      [ivString, rawData] = splitInitializationVector(rawData)
-      [signature, rawData] = splitSignature(rawData)
-      [prefix, rawData] = getPrefix(rawData)
+      if (payload[1] === ':') {
+        const innerPrefix = payload[0]
+        if (innerPrefix === SHARED_ENCRYPTION_PREFIX) {
+          prefix = SHARED_ENCRYPTION_PREFIX
+          payload = payload.substring(2) // strip E:
+        } else if (innerPrefix === USER_ENCRYPTION_PREFIX) {
+          prefix = USER_ENCRYPTION_PREFIX
+          payload = payload.substring(2) // strip P:
+        }
+      }
+
       if (prefix === SHARED_ENCRYPTION_PREFIX) {
         if (!_sharedKey) {
           // Can't decrypt without the key. Fail silently since it might not have been shared with.
           return
         }
 
+        [ivString, payload] = splitInitializationVector(payload)
+
         const dataBuffer = new Uint8Array(
-          rawData.length,
-        ).map((_, i) => rawData.charCodeAt(i))
+          payload.length,
+        ).map((_, i) => payload.charCodeAt(i))
         const ivBuffer = new Uint8Array(
           ivString.length,
         ).map((_, i) => ivString.charCodeAt(i))
@@ -247,12 +265,12 @@ export const createClientConnector = (
         }, _sharedKey, dataBuffer)
         data = new TextDecoder().decode(data)
       } else if (prefix === USER_ENCRYPTION_PREFIX) {
-        await _generateMyKeys()
-
+        [signature, payload] = splitSignature(payload)
         const dataBuffer = new Uint8Array(
-          rawData.length,
-        ).map((_, i) => rawData.charCodeAt(i))
+          payload.length,
+        ).map((_, i) => payload.charCodeAt(i))
 
+        await _generateMyKeys()
         const decryptedPayload = await window.crypto.subtle.decrypt({
           name: USER_ENCRYPTION_ALGORITHM,
         }, _myEncryptKeys.privateKey, dataBuffer)
@@ -295,7 +313,7 @@ export const createClientConnector = (
 
         deserializedData = payloadData
       } else {
-        data = rawData
+        data = payload
       }
 
       if (!deserializedData) {
@@ -350,7 +368,7 @@ export const createClientConnector = (
                   new Uint8Array(_myPublicEncryptKey),
                 ),
                 publicSignKey: Array.from(
-                  new Uint8Array(_mySignEncryptKey),
+                  new Uint8Array(_myPublicSignKey),
                 ),
               })
             } else {
@@ -486,30 +504,6 @@ export const createClientConnector = (
           }
           break
 
-        case PUBLIC_KEY_SHARE:
-          const senderId = data.sender
-
-          const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
-          const publicEncryptKey = await window.crypto.subtle.importKey(
-            PUBLIC_KEY_EXPORT_FORMAT,
-            publicEncryptKeyData,
-            { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM },
-            true,
-            ['encrypt',],
-          )
-          _userEncryptKeys.set(senderId, publicEncryptKey)
-
-          const publicSignKeyData = new Uint8Array(data.publicSignKey)
-          const publicSignKey = await window.crypto.subtle.importKey(
-            PUBLIC_KEY_EXPORT_FORMAT,
-            publicSignKeyData,
-            { name: USER_SIGNATURE_ALGORITHM, hash: HASH_ALGORITHM },
-            true,
-            ['verify',],
-          )
-          _userEncryptKeys.set(senderId, publicSignKey)
-          break
-
         case ROOM_JOINED:
           _creatorId = data.creatorId
           _myId = data.userId
@@ -541,6 +535,8 @@ export const createClientConnector = (
           onUserLeave.dispatch({
             userId: data.userId,
           })
+          _userEncryptKeys.delete(data.userId)
+          _userSignKeys.delete(data.userId)
           break
 
         case USER_JOINED:
@@ -553,45 +549,6 @@ export const createClientConnector = (
           onUserValidated.dispatch({
             userId: data.userId,
           })
-
-          if (data.publicEncryptKey) {
-            const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
-            const publicEncryptKey = await window.crypto.subtle.importKey(
-              PUBLIC_KEY_EXPORT_FORMAT,
-              publicEncryptKeyData,
-              { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM },
-              true,
-              ['encrypt',],
-            )
-            _userEncryptKeys.set(data.userId, publicEncryptKey)
-          }
-
-          if (data.publicSignKey) {
-            const publicSignKeyData = new Uint8Array(data.publicSignKey)
-            const publicSignKey = await window.crypto.subtle.importKey(
-              PUBLIC_KEY_EXPORT_FORMAT,
-              publicSignKeyData,
-              { name: USER_SIGNATURE_ALGORITHM, hash: HASH_ALGORITHM },
-              true,
-              ['verify',],
-            )
-            _userEncryptKeys.set(data.userId, publicSignKey)
-          }
-
-          if (data.userId !== _myId) {
-            await _generateMyKeys()
-
-            _message({
-              type: PUBLIC_KEY_SHARE,
-              receiver: data.userId,
-              publicEncryptKey: Array.from(
-                new Uint8Array(_myPublicEncryptKey),
-              ),
-              publicSignKey: Array.from(
-                new Uint8Array(_myPublicSignKey),
-              ),
-            })
-          }
           break
 
         default:
@@ -658,12 +615,17 @@ export const createClientConnector = (
         new Uint8Array(signature),
       )
 
-      const payload = signatureString + encryptedString
+      const payload = prefix(
+        wrapPayload(
+          signatureString,
+          SIGNATURE_PAYLOAD,
+        ) + encryptedString,
+        USER_ENCRYPTION_PREFIX,
+      )
       message = wrapPayload(
         options.receiver,
         USER_PAYLOAD,
-        payload,
-      )
+      ) + payload
     } else if (options.server) {
       message = prefix(
         message,
@@ -685,10 +647,11 @@ export const createClientConnector = (
       )
       const ivString = String.fromCharCode.apply(null, ivBuffer)
 
-      message = wrapPayload(
-        ivString,
-      ) + encryptedString
-
+      message = prefix(
+        wrapPayload(ivString, INITIALIZATION_VECTOR_PAYLOAD)
+        + encryptedString,
+        SHARED_ENCRYPTION_PREFIX,
+      )
       message = prefix(
         message,
         ROOM_PREFIX,
@@ -750,7 +713,7 @@ export const createClientConnector = (
     ) => {
       _password = password
 
-      _sharedKey = window.crypto.subtle.generateKey({
+      _sharedKey = await window.crypto.subtle.generateKey({
         name: SHARED_ENCRYPTION_ALGORITHM,
         length: 256,
       }, true, ['encrypt', 'decrypt'])

@@ -29,7 +29,7 @@ export const splitTime = (
   payload,
   TIME_PAYLOAD,
   14,
-  isNaN,
+  (character) => !isNaN(character),
   Number,
 )
 
