@@ -344,8 +344,8 @@ export const createClientConnector = (
       switch (data.type) {
         case KEY_EXCHANGE_OFFER:
           if (
-            _myId !== data.receiver
-            || _myId !== _creatorId
+            _myId === data.receiver
+            && _myId === _creatorId
           ) {
             const newUserId = data.sender
 

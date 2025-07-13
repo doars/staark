@@ -29,6 +29,7 @@ import {
   prefixTime,
 } from '../utilities/time.js'
 import {
+  CREATOR_PREFIX,
   ROOM_PREFIX,
   SERVER_PREFIX,
 
@@ -339,6 +340,7 @@ export const createServerConnector = (
 
       let prefix
       [prefix, payload] = getPrefix(payload)
+      console.log('receiver', prefix, payload)
       if (!prefix) {
         // No prefix given.
         return
