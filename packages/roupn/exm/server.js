@@ -17,7 +17,7 @@ import {
 
 import {
   createServerConnector,
-} from '../src/library/server.js'
+} from '../src/library/server-connector.js'
 
 const PORT = 3000
 const FILE_NAME = fileURLToPath(import.meta.url)
@@ -114,7 +114,6 @@ httpServer.on('upgrade', (
 ) => {
   const success = handleSocketUpgrade(
     request,
-    response,
     socket,
     head,
     socketServer,

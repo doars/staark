@@ -11,10 +11,6 @@ import {
   createEvent,
 } from '../utilities/event.js'
 import {
-  calculateTime,
-  splitTime,
-} from '../utilities/time.js'
-import {
   ROOM_PREFIX,
   SERVER_PREFIX,
   SHARED_ENCRYPTION_PREFIX,
@@ -27,14 +23,21 @@ import {
   splitSignature,
   wrapPayload,
 } from '../utilities/prefix.js'
+import {
+  calculateTime,
+  splitTime,
+} from '../utilities/time.js'
 
-const USER_ENCRYPTION_ALGORITHM = 'RSA-OAEP'
+const HASH_ALGORITHM = 'SHA-256'
+const PUBLIC_KEY_EXPORT_FORMAT = 'spki'
 const SHARED_ENCRYPTION_ALGORITHM = 'AES-GCM'
-const DEFAULT_HOST = 'http://localhost:3000'
+const USER_ENCRYPTION_ALGORITHM = 'RSA-OAEP'
+const USER_SIGNATURE_ALGORITHM = 'RSASSA-PKCS1-v1_5'
 
-const encrypt = crypto.subtle.encrypt
-const decrypt = crypto.subtle.decrypt
-const generateKey = window.crypto.subtle.generateKey
+const KEY_EXCHANGE_ACCEPT = 'key_exchange-accept'
+const KEY_EXCHANGE_OFFER = 'key_exchange-offer'
+const PASSWORD_VALIDATION = 'password-validation'
+const PUBLIC_KEY_SHARE = 'public_key-share'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -71,7 +74,7 @@ const generateKey = window.crypto.subtle.generateKey
  * @property {Function} leaveRoom - Leaves the current room.
  * @property {Function} messageRoom - Sends a message to the current room.
  *
- * @property {Function} kickUser - Remove's a player's connection. Only allowed by the creator.
+ * @property {Function} kickUser - Removes a player's connection. Only allowed by the creator.
  */
 
 /**
@@ -91,25 +94,53 @@ export const createClientConnector = (
     createRoomEndpoint = '/create-room',
     joinRoomEndpoint = '/join-room',
 
-    httpUrl = DEFAULT_HOST,
-    wsUrl = DEFAULT_HOST,
+    httpUrl = 'http://localhost:3000',
+    wsUrl = 'http://localhost:3000',
   } = options
 
   let _creatorId,
-    _sharedKey,
+    _myId,
+    _myEncryptKeys,
+    _myPublicEncryptKey,
+    _myPublicSignKey,
+    _mySignKeys,
     _password,
+    _sharedKey,
     _socket,
-    _userId,
-    _userKeys = generateKey({
-      name: USER_ENCRYPTION_ALGORITHM,
-      modulusLength: 4096,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: 'SHA-256',
-    }, true, ['encrypt', 'decrypt'])
-  /**
-   * TODO:
-   * 1. Make public key exportable. crypto.subtle.exportKey('jwt', _userKeys.privateKey)
-   */
+    _userEncryptKeys = new Map(),
+    _userSignKeys = new Map()
+
+  const _generateMyKeys = async (
+  ) => {
+    if (!_myEncryptKeys) {
+      _myEncryptKeys = await window.crypto.subtle.generateKey({
+        name: USER_ENCRYPTION_ALGORITHM,
+        modulusLength: 4096,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: { name: HASH_ALGORITHM, },
+      }, true, ['encrypt', 'decrypt',])
+    }
+    if (!_myPublicEncryptKey) {
+      _myPublicEncryptKey = await window.crypto.subtle.exportKey(
+        PUBLIC_KEY_EXPORT_FORMAT,
+        _myEncryptKeys.publicKey,
+      )
+    }
+    if (!_mySignKeys) {
+      _mySignKeys = await window.crypto.subtle.generateKey({
+        name: USER_SIGNATURE_ALGORITHM,
+        modulusLength: 4096,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: { name: HASH_ALGORITHM, },
+      }, true, ['sign', 'verify',])
+    }
+    if (!_myPublicSignKey) {
+      _myPublicSignKey = await window.crypto.subtle.exportKey(
+        PUBLIC_KEY_EXPORT_FORMAT,
+        _mySignKeys.publicKey,
+      )
+    }
+  }
 
   const onError = createEvent()
   const onMessage = createEvent()
@@ -120,18 +151,20 @@ export const createClientConnector = (
   const onUserValidated = createEvent()
 
   /**
-   * Closes the current socket connection and resets the socket reference. This function should be called when leaving a room to ensure that the socket connection is properly closed and cleaned up.
+   * Closes the current socket connection and resets the socket reference. This function should be called when leaving a room to ensure that the socket connection is properly closed and the state is cleaned up.
    */
   const leaveRoom = (
   ) => {
     if (_socket) {
       _socket.close()
-      _creatorId = _password = _socket = _userId = null
+      _creatorId = _myId = _myEncryptKeys = _myPublicEncryptKey = _myPublicSignKey = _mySignKeys = _password = _sharedKey = _socket = null
+      _userEncryptKeys.clear()
+      _userSignKeys.clear()
     }
   }
 
   /**
-   * Joins a WebSocket room with the specified room code and optional credentials. Establishes a WebSocket connection to the server, appending the room code, password, and creator secret (if provided) as query parameters. Sets up event listeners for 'close', 'error', and 'message' events to handle room leave, errors, and incoming messages respectively.
+   * Joins a WebSocket room with the specified room code and optional credentials. Establishes a WebSocket connection to the server, appending the room code, password, and creator secret (if provided) as query parameters. Sets up event listeners for 'close', 'error', and 'message' events to handle room leave, errors, and incoming messages.
    *
    * @param {string} roomCode - The code of the room to join.
    * @param {string|null} [password=null] - Optional password for the room.
@@ -183,94 +216,393 @@ export const createClientConnector = (
       event,
     ) => {
       let data,
+        deserializedData,
         rawData = event.data,
-        iv,
+        ivString,
         prefix,
-        serverTime
+        serverTime,
+        signature
 
       [serverTime, rawData] = splitTime(rawData)
 
-      // Check if an initialization vector is present.
-      [iv, rawData] = splitInitializationVector(rawData)
+      [ivString, rawData] = splitInitializationVector(rawData)
       [signature, rawData] = splitSignature(rawData)
       [prefix, rawData] = getPrefix(rawData)
       if (prefix === SHARED_ENCRYPTION_PREFIX) {
         if (!_sharedKey) {
-          // Can't decrypt without the key.
+          // Can't decrypt without the key. Fail silently since it might not have been shared with.
           return
         }
-        await _sharedKey
 
-        data = await decrypt({
+        const dataBuffer = new Uint8Array(
+          rawData.length,
+        ).map((_, i) => rawData.charCodeAt(i))
+        const ivBuffer = new Uint8Array(
+          ivString.length,
+        ).map((_, i) => ivString.charCodeAt(i))
+
+        data = await window.crypto.subtle.decrypt({
+          iv: ivBuffer,
           name: SHARED_ENCRYPTION_ALGORITHM,
-          iv: iv,
-        }, _sharedKey, rawData)
+        }, _sharedKey, dataBuffer)
         data = new TextDecoder().decode(data)
       } else if (prefix === USER_ENCRYPTION_PREFIX) {
-        await _userKeys
+        await _generateMyKeys()
 
-        data = await decrypt({
+        const dataBuffer = new Uint8Array(
+          rawData.length,
+        ).map((_, i) => rawData.charCodeAt(i))
+
+        const decryptedPayload = await window.crypto.subtle.decrypt({
           name: USER_ENCRYPTION_ALGORITHM,
-          iv: iv,
-        }, _userKeys.privateKey, rawData)
-        // TODO: Validate signature.
-        data = new TextDecoder().decode(data)
-      }
+        }, _myEncryptKeys.privateKey, dataBuffer)
+        const jsonPayload = new TextDecoder().decode(decryptedPayload)
+        const payloadData = deserializeMessage(jsonPayload)
+        const senderId = payloadData.sender
 
-      try {
-        data = deserializeMessage(data)
-      } catch (error) {
-        onError.dispatch({
-          error: new Error('Failed to parse message: ' + event.data),
-        })
-        return
-      }
-
-      if (data.type === ROOM_JOINED) {
-        _creatorId = data.creatorId
-
-        onRoomJoin.dispatch({
-          creatorId: data.creatorId,
-          userId: data.userId,
-          users: data.users,
-        })
-      } else if (data.type === USER_LEFT) {
-        onUserLeave.dispatch({
-          userId: data.userId,
-        })
-      } else if (data.type === USER_JOINED) {
-        onUserJoin.dispatch({
-          userId: data.userId,
-        })
-
-        if (creatorId === userId) {
-          await _userKeys
-
-          /**
-           * TODO:
-           * 1. Share public key with new user and received public key of new user.
-           * 2. Validate password if required.
-           * 3. Share shared encryption key.
-           * 4. Inform server of user validation.
-           */
+        if (!senderId) {
+          onError.dispatch({
+            error: new Error('Message from unknown sender'),
+          })
+          return
         }
-      } else if (data.type === USER_VALIDATED) {
-        onUserValidated.dispatch({
-          userId: data.userId,
-        })
 
-        /**
-         * TODO:
-         * 1. Exchange public key's for direct messages. This can't be done using the shared key as this could have been send by anyone in the room with the shared key.
-         */
+        const senderPublicKey = _userSignKeys.get(senderId)
+        if (!senderPublicKey) {
+          onError.dispatch({
+            error: new Error('No public key for user: ' + senderId),
+          })
+          return
+        }
+
+        // Verify signature against the encrypted data buffer
+        const signatureBuf = new Uint8Array(
+          signature.length,
+        ).map((_, i) => signature.charCodeAt(i))
+        const isValid = await window.crypto.subtle.verify(
+          USER_SIGNATURE_ALGORITHM,
+          senderPublicKey,
+          signatureBuf,
+          dataBuffer, // Verifying against the encrypted buffer
+        )
+
+        if (!isValid) {
+          onError.dispatch({
+            error: new Error('Invalid signature for message from ' + senderId),
+          })
+          return
+        }
+
+        deserializedData = payloadData
       } else {
-        onMessage.dispatch({
-          data,
-          time: calculateTime(
-            serverTime,
-            data?.senderTime,
-          ),
-        })
+        data = rawData
+      }
+
+      if (!deserializedData) {
+        try {
+          deserializedData = deserializeMessage(data)
+        } catch (error) {
+          onError.dispatch({
+            error: new Error('Failed to parse message: ' + event.data),
+          })
+          return
+        }
+      }
+      data = deserializedData
+
+      console.warn('message: ', data) // FIXME:
+      switch (data.type) {
+        case KEY_EXCHANGE_OFFER:
+          if (
+            _myId !== data.receiver
+            || _myId !== _creatorId
+          ) {
+            const newUserId = data.sender
+
+            const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+            const publicEncryptKey = await window.crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              publicEncryptKeyData,
+              { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM, },
+              true,
+              ['encrypt',],
+            )
+            _userEncryptKeys.set(newUserId, publicEncryptKey)
+
+            const publicSignKeyData = new Uint8Array(data.publicSignKey)
+            const publicSignKey = await window.crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              publicSignKeyData,
+              { name: USER_SIGNATURE_ALGORITHM, hash: HASH_ALGORITHM, },
+              true,
+              ['verify',],
+            )
+            _userSignKeys.set(newUserId, publicSignKey)
+
+            await _generateMyKeys()
+
+            if (_password) {
+              _message({
+                type: KEY_EXCHANGE_ACCEPT,
+                receiver: newUserId,
+                password: true,
+                publicEncryptKey: Array.from(
+                  new Uint8Array(_myPublicEncryptKey),
+                ),
+                publicSignKey: Array.from(
+                  new Uint8Array(_mySignEncryptKey),
+                ),
+              })
+            } else {
+              const exportedSharedKey = await window.crypto.subtle.exportKey(
+                'raw',
+                _sharedKey,
+              )
+              const encryptedSharedKey = await window.crypto.subtle.encrypt({
+                name: USER_ENCRYPTION_ALGORITHM,
+              }, publicEncryptKey, exportedSharedKey)
+
+              _message({
+                type: KEY_EXCHANGE_ACCEPT,
+                receiver: newUserId,
+                publicEncryptKey: Array.from(
+                  new Uint8Array(_myPublicEncryptKey),
+                ),
+                publicSignKey: Array.from(
+                  new Uint8Array(_myPublicSignKey),
+                ),
+                sharedKey: Array.from(
+                  new Uint8Array(encryptedSharedKey),
+                ),
+              })
+
+              messageServer({
+                type: USER_VALIDATED,
+                userId: newUserId,
+              })
+            }
+          }
+          break
+
+        case KEY_EXCHANGE_ACCEPT:
+          if (_myId === data.receiver) {
+            const hostId = data.sender
+            if (data.publicEncryptKey) {
+              const hostPublicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+              const hostPublicEncryptKey = await window.crypto.subtle.importKey(
+                PUBLIC_KEY_EXPORT_FORMAT,
+                hostPublicEncryptKeyData,
+                { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM, },
+                true,
+                ['encrypt',],
+              )
+              _userEncryptKeys.set(hostId, hostPublicEncryptKey)
+            }
+
+            if (data.publicSignKey) {
+              const hostPublicSignKeyData = new Uint8Array(data.publicSignKey)
+              const hostPublicSignKey = await window.crypto.subtle.importKey(
+                PUBLIC_KEY_EXPORT_FORMAT,
+                hostPublicSignKeyData,
+                { name: USER_SIGNATURE_ALGORITHM, hash: HASH_ALGORITHM, },
+                true,
+                ['verify',],
+              )
+              _userSignKeys.set(hostId, hostPublicSignKey)
+            }
+
+            if (data.password) {
+              if (!_password) {
+                onError.dispatch({
+                  error: new Error('Room requires a password, but none was provided.'),
+                })
+                leaveRoom()
+                return
+              }
+              messageUser({
+                type: PASSWORD_VALIDATION,
+                password: _password,
+              }, hostId)
+            } else if (data.sharedKey) {
+              await _generateMyKeys()
+
+              const encryptedSharedKey = new Uint8Array(data.sharedKey)
+              const decryptedSharedKeyData = await window.crypto.subtle.decrypt({
+                name: USER_ENCRYPTION_ALGORITHM,
+              }, _myEncryptKeys.privateKey, encryptedSharedKey)
+              _sharedKey = await window.crypto.subtle.importKey(
+                'raw',
+                decryptedSharedKeyData,
+                { name: SHARED_ENCRYPTION_ALGORITHM, },
+                true,
+                ['encrypt', 'decrypt',],
+              )
+            }
+          }
+          break
+
+        case PASSWORD_VALIDATION:
+          if (
+            _myId === data.receiver
+            && _myId === _creatorId
+          ) {
+            const newUserId = data.sender
+            if (data.password !== _password) {
+              messageServer({
+                type: USER_KICK,
+                userId: newUserId,
+              })
+              return
+            }
+
+            const newUsersPublicKey = _userEncryptKeys.get(newUserId)
+            if (!newUsersPublicKey) {
+              onError.dispatch({
+                error: new Error('No public key for user: ' + newUserId),
+              })
+              return
+            }
+
+            const exportedSharedKey = await window.crypto.subtle.exportKey(
+              'raw',
+              _sharedKey,
+            )
+            const encryptedSharedKey = await window.crypto.subtle.encrypt({
+              name: USER_ENCRYPTION_ALGORITHM,
+            }, newUsersPublicKey, exportedSharedKey)
+
+            _message({
+              type: KEY_EXCHANGE_ACCEPT,
+              receiver: newUserId,
+              sharedKey: Array.from(
+                new Uint8Array(encryptedSharedKey),
+              ),
+            })
+
+            messageServer({
+              type: USER_VALIDATED,
+              userId: newUserId,
+            })
+          }
+          break
+
+        case PUBLIC_KEY_SHARE:
+          const senderId = data.sender
+
+          const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+          const publicEncryptKey = await window.crypto.subtle.importKey(
+            PUBLIC_KEY_EXPORT_FORMAT,
+            publicEncryptKeyData,
+            { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM },
+            true,
+            ['encrypt',],
+          )
+          _userEncryptKeys.set(senderId, publicEncryptKey)
+
+          const publicSignKeyData = new Uint8Array(data.publicSignKey)
+          const publicSignKey = await window.crypto.subtle.importKey(
+            PUBLIC_KEY_EXPORT_FORMAT,
+            publicSignKeyData,
+            { name: USER_SIGNATURE_ALGORITHM, hash: HASH_ALGORITHM },
+            true,
+            ['verify',],
+          )
+          _userEncryptKeys.set(senderId, publicSignKey)
+          break
+
+        case ROOM_JOINED:
+          _creatorId = data.creatorId
+          _myId = data.userId
+
+          onRoomJoin.dispatch({
+            creatorId: data.creatorId,
+            roomCode: roomCode,
+            userId: data.userId,
+            users: data.users,
+          })
+
+          if (_myId !== _creatorId) {
+            await _generateMyKeys()
+
+            _message({
+              type: KEY_EXCHANGE_OFFER,
+              receiver: _creatorId,
+              publicEncryptKey: Array.from(
+                new Uint8Array(_myPublicEncryptKey),
+              ),
+              publicSignKey: Array.from(
+                new Uint8Array(_myPublicSignKey),
+              ),
+            })
+          }
+          break
+
+        case USER_LEFT:
+          onUserLeave.dispatch({
+            userId: data.userId,
+          })
+          break
+
+        case USER_JOINED:
+          onUserJoin.dispatch({
+            userId: data.userId,
+          })
+          break
+
+        case USER_VALIDATED:
+          onUserValidated.dispatch({
+            userId: data.userId,
+          })
+
+          if (data.publicEncryptKey) {
+            const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+            const publicEncryptKey = await window.crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              publicEncryptKeyData,
+              { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM },
+              true,
+              ['encrypt',],
+            )
+            _userEncryptKeys.set(data.userId, publicEncryptKey)
+          }
+
+          if (data.publicSignKey) {
+            const publicSignKeyData = new Uint8Array(data.publicSignKey)
+            const publicSignKey = await window.crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              publicSignKeyData,
+              { name: USER_SIGNATURE_ALGORITHM, hash: HASH_ALGORITHM },
+              true,
+              ['verify',],
+            )
+            _userEncryptKeys.set(data.userId, publicSignKey)
+          }
+
+          if (data.userId !== _myId) {
+            await _generateMyKeys()
+
+            _message({
+              type: PUBLIC_KEY_SHARE,
+              receiver: data.userId,
+              publicEncryptKey: Array.from(
+                new Uint8Array(_myPublicEncryptKey),
+              ),
+              publicSignKey: Array.from(
+                new Uint8Array(_myPublicSignKey),
+              ),
+            })
+          }
+          break
+
+        default:
+          onMessage.dispatch({
+            data,
+            time: calculateTime(
+              serverTime,
+              data?.senderTime,
+            ),
+          })
+          break
       }
     })
   }
@@ -290,40 +622,78 @@ export const createClientConnector = (
     }
 
     let message = serializeMessage({
-      type: 'message',
       ...data,
-      sender: _userId,
+      sender: _myId,
       senderTime: Date.now(),
     })
     if (options.receiver) {
-      /**
-       * TODO:
-       * 1. Encrypt data using receivers public key.
-       * 1.a. If this key is no known return out of this function with false and dispatch an error.
-       * 1.b. Or hold onto this message and send it as soon as the public key of the receiver is known.
-       * 2. Prepend signature for validation.
-       */
+      const receiverPublicKey = _userEncryptKeys.get(
+        options.receiver,
+      )
+      if (!receiverPublicKey) {
+        onError.dispatch({
+          error: new Error('No public key for user: ' + options.receiver),
+        })
+        return false
+      }
 
+      const encodedMessage = new TextEncoder().encode(message)
+      const encryptedMessage = await window.crypto.subtle.encrypt({
+        name: USER_ENCRYPTION_ALGORITHM,
+      }, receiverPublicKey, encodedMessage)
+
+      await _generateMyKeys()
+      const signature = await window.crypto.subtle.sign(
+        USER_SIGNATURE_ALGORITHM,
+        _mySignKeys.privateKey,
+        encryptedMessage,
+      )
+
+      const encryptedString = String.fromCharCode.apply(
+        null,
+        new Uint8Array(encryptedMessage),
+      )
+      const signatureString = String.fromCharCode.apply(
+        null,
+        new Uint8Array(signature),
+      )
+
+      const payload = signatureString + encryptedString
       message = wrapPayload(
         options.receiver,
         USER_PAYLOAD,
-      ) + message
+        payload,
+      )
     } else if (options.server) {
       message = prefix(
         message,
         SERVER_PREFIX,
       )
-    } else {
+    } else if (_sharedKey) {
       // Encrypt data using shared key.
-      const iv = crypto.getRandomValues(new Uint8Array(12))
-      message = await encrypt({
+      const ivBuffer = crypto.getRandomValues(
+        new Uint8Array(12),
+      )
+      const encrypted = await window.crypto.subtle.encrypt({
+        iv: ivBuffer,
         name: SHARED_ENCRYPTION_ALGORITHM,
-        iv: iv,
-      }, key, new TextEncoder().encode(message))
-      message = wrapPayload(
-        iv
-      ) + message
+      }, _sharedKey, new TextEncoder().encode(message))
 
+      const encryptedString = String.fromCharCode.apply(
+        null,
+        new Uint8Array(encrypted),
+      )
+      const ivString = String.fromCharCode.apply(null, ivBuffer)
+
+      message = wrapPayload(
+        ivString,
+      ) + encryptedString
+
+      message = prefix(
+        message,
+        ROOM_PREFIX,
+      )
+    } else {
       message = prefix(
         message,
         ROOM_PREFIX,
@@ -336,9 +706,9 @@ export const createClientConnector = (
   const messageServer = (
     data,
   ) => (
-    userId
+    _myId
     // Only allow creator to send messages to the server.
-    && userId === creatorId
+    && _myId === _creatorId
     && _message(data, {
       server: true,
     })
@@ -380,7 +750,7 @@ export const createClientConnector = (
     ) => {
       _password = password
 
-      _sharedKey = generateKey({
+      _sharedKey = window.crypto.subtle.generateKey({
         name: SHARED_ENCRYPTION_ALGORITHM,
         length: 256,
       }, true, ['encrypt', 'decrypt'])
@@ -398,7 +768,7 @@ export const createClientConnector = (
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
-          'Accept': contentType,
+          Accept: contentType,
         },
       })
 
@@ -409,10 +779,10 @@ export const createClientConnector = (
       let data = await response.text()
       data = deserializeMessage(data)
 
-      _userId = data.userId
+      _myId = data.userId
 
       _joinRoom(
-        roomCode,
+        data.roomCode,
         password,
         data.creatorSecret,
       )

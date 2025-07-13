@@ -148,12 +148,14 @@ export const createClientSynchronizer = (
 
   const _synchroniseState = (
   ) => {
-    messageRoom({
-      type: STATE_SYNCH,
-      state: cloneRecursive(
-        publicState,
-      ),
-    })
+    if (privateState.users.length > 1) {
+      messageRoom({
+        type: STATE_SYNCH,
+        state: cloneRecursive(
+          publicState,
+        ),
+      })
+    }
   }
 
   const _updatePreviousState = (
@@ -278,11 +280,13 @@ export const createClientSynchronizer = (
 
   roomSync.onRoomJoin.addListener(({
     creatorId,
+    roomCode,
     userId,
     users,
   }) => {
     // Set new room data.
     privateState.creatorId = creatorId
+    privateState.roomCode = roomCode
     privateState.userId = userId
     privateState.users = users
     privateState.previousState = cloneRecursive(

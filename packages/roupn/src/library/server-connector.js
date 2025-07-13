@@ -2,9 +2,6 @@ import {
   createHash,
   randomUUID,
 } from 'crypto'
-import {
-  parse as parseUrl,
-} from 'url'
 
 import {
   ERROR,
@@ -51,9 +48,9 @@ import {
 
 /**
  * @typedef {Object} RoomSyncOptions
+ * @property {string} [contentType='application/json'] - Content type for messages.
  * @property {Function} [deserializeMessage=JSON.parse] - Function to deserialize messages.
  * @property {Function} [serializeMessage=JSON.stringify] - Function to serialize messages.
- * @property {string} [contentType='application/json'] - Content type for messages.
  *
  * @property {string} [createRoomEndpoint='/create-room'] - Endpoint for creating a room.
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
@@ -97,16 +94,17 @@ export const createServerConnector = (
   options = {},
 ) => {
   const {
+    contentType = 'application/json',
     deserializeMessage = JSON.parse,
     serializeMessage = JSON.stringify,
-    contentType = 'application/json',
 
     createRoomEndpoint = '/create-room',
     joinRoomEndpoint = '/join-room',
+    serverOrigin = 'http://localhost:3000',
 
     maxUsersPerRoom = 16,
 
-    rateLimitAttempts = 5,
+    rateLimitAttempts = 6,
     rateLimitDuration = 60 * 1e3,
 
     validateCreateRequest = null,
@@ -271,7 +269,6 @@ export const createServerConnector = (
 
     let userId
     if (_isCreator) {
-      _isCreator = true
       // Host joins own room update user data to add connection.
       userId = _room.creatorId
     } else {
@@ -323,6 +320,8 @@ export const createServerConnector = (
         connection.close(1008, 'user_no_active_connection')
         return
       }
+
+      console.log('message', event.data) // FIXME:
 
       let payload = event.data,
         receiver
@@ -718,11 +717,10 @@ export const createServerConnector = (
       request,
       response,
     ) => {
-      const _parsed = parseUrl(request.url, true)
       const {
-        pathname,
-        query,
-      } = _parsed
+        pathname = '',
+        searchParams = {},
+      } = new URL(request.url, serverOrigin)
 
       if (pathname === createRoomEndpoint) {
         if (isRateLimited(request)) {
@@ -754,7 +752,7 @@ export const createServerConnector = (
         }
 
         const limit = parseInt(
-          query.limit,
+          searchParams.get('limit'),
           10,
         ) || undefined
         const {
@@ -795,11 +793,10 @@ export const createServerConnector = (
       head,
       socketServer,
     ) => {
-      const _parsed = parseUrl(request.url, true)
       const {
-        pathname,
-        query,
-      } = _parsed
+        pathname = '',
+        searchParams = {},
+      } = new URL(request.url, serverOrigin)
 
       if (pathname === joinRoomEndpoint) {
         if (isRateLimited(request)) {
@@ -845,10 +842,7 @@ export const createServerConnector = (
           socket,
           head,
           (connection) => {
-            const {
-              code: roomCode,
-              creator: creatorSecret,
-            } = query
+            const roomCode = searchParams.get('code')
             if (!roomCode) {
               connection.close(1008, 'missing_room_code')
               return
@@ -857,7 +851,7 @@ export const createServerConnector = (
             const [_success, _data] = joinRoom(
               roomCode,
               connection,
-              creatorSecret || null,
+              searchParams.get('creator') || null,
             )
             if (!_success) {
               connection.close(1008, _data.reason)

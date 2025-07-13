@@ -1,6 +1,7 @@
 import {
   splitPayload,
   TIME_PAYLOAD,
+  wrapPayload,
 } from './prefix.js'
 
 /**
@@ -11,7 +12,7 @@ import {
  */
 export const prefixTime = (
   payload,
-) => wrap(
+) => wrapPayload(
   Date.now(),
   TIME_PAYLOAD,
 ) + payload

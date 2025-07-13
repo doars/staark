@@ -29,7 +29,6 @@ import {
         ...c(
           state.privateState.roomCode,
           () => [
-
             n('p', [
               'You are user ',
               n('code', state.privateState.userId),
@@ -185,12 +184,13 @@ import {
     {
       message: '',
       roomCode: '',
+      roomJoinPassword: '',
 
       privateState: {},
       publicState: {
         messages: [],
       },
-    }
+    },
   )
   synchronizer = createClientSynchronizer(
     {},
@@ -198,7 +198,6 @@ import {
     state.publicState,
   )
 
-  // Log events to the console.
   synchronizer.onError.addListener((
     event
   ) => {
