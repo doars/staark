@@ -1,4 +1,5 @@
 import {
+  createHash,
   randomUUID,
 } from 'crypto'
 import {
@@ -25,6 +26,9 @@ import {
   createEvent,
 } from '../utilities/event.js'
 import {
+  closeMessage,
+} from '../utilities/socket.js'
+import {
   prefixTime,
 } from '../utilities/time.js'
 import {
@@ -47,14 +51,20 @@ import {
 
 /**
  * @typedef {Object} RoomSyncOptions
- * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
- *
  * @property {Function} [deserializeMessage=JSON.parse] - Function to deserialize messages.
  * @property {Function} [serializeMessage=JSON.stringify] - Function to serialize messages.
  * @property {string} [contentType='application/json'] - Content type for messages.
  *
  * @property {string} [createRoomEndpoint='/create-room'] - Endpoint for creating a room.
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
+ *
+ * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
+ *
+ * @property {number} [rateLimitAttempts=5] - Maximum number of requests for creating or joining a room.
+ * @property {number} [rateLimitDuration=60000] - Time frame for rate limit in milliseconds.
+ *
+ * @property {Function} [validateCreateRequest=null] - Allow create requests to be filtered an only allow authorized users to create rooms.
+ * @property {Function} [validateJoinRequest=null] - Allow join requests to be filtered an only allow authorized users to join rooms.
  */
 
 /**
@@ -87,19 +97,75 @@ export const createServerConnector = (
   options = {},
 ) => {
   const {
-    maxUsersPerRoom = 16,
     deserializeMessage = JSON.parse,
     serializeMessage = JSON.stringify,
     contentType = 'application/json',
 
     createRoomEndpoint = '/create-room',
     joinRoomEndpoint = '/join-room',
+
+    maxUsersPerRoom = 16,
+
+    rateLimitAttempts = 5,
+    rateLimitDuration = 60 * 1e3,
+
+    validateCreateRequest = null,
+    validateJoinRequest = null,
   } = options
 
   const onRoomMessage = createEvent()
   const onRoomRemove = createEvent()
   const onUserJoin = createEvent()
   const onUserLeave = createEvent()
+
+  /** @type {Map<string, number[]>} */
+  const _rateLimits = new Map()
+
+  /**
+   * Checks if a user is rate-limited based on their fingerprint.
+   *
+   * @param {Object} request - The request to check whether it should be limited.
+   * @returns {boolean} - True if the user is rate-limited, false otherwise.
+   */
+  const isRateLimited = (
+    request,
+  ) => {
+    if (
+      rateLimitAttempts <= 0
+      || rateLimitDuration <= 0
+    ) {
+      return false
+    }
+    const fingerprint = createHash('sha256')
+      .update([
+        // Fingerprint consists of IP address, user agent and preferred language.
+        request.socket.remoteAddress,
+        request.headers['user-agent'] || '',
+        request.headers['accept-language'] || ''
+      ].join('|'),
+      ).digest('hex')
+    if (!fingerprint) {
+      return false
+    }
+
+    const now = Date.now()
+    const windowStart = now - rateLimitDuration
+    const timestamps = (
+      _rateLimits.get(fingerprint)
+      || []
+    ).filter(
+      (timestamp) => timestamp > windowStart,
+    )
+
+    if (timestamps.length >= rateLimitAttempts) {
+      _rateLimits.set(fingerprint, timestamps)
+      return true
+    }
+
+    timestamps.push(now)
+    _rateLimits.set(fingerprint, timestamps)
+    return false
+  }
 
   /** @type {Map<string, { creatorId: string, creatorSecret: string, userLimit: number, users: Map<string, UserData> }>} */
   const _rooms = new Map()
@@ -659,7 +725,38 @@ export const createServerConnector = (
       } = _parsed
 
       if (pathname === createRoomEndpoint) {
-        const limit = parseInt(query.limit, 10) || undefined
+        if (isRateLimited(request)) {
+          response.writeHead(429, {
+            'Content-Type': contentType,
+          })
+          response.end(
+            serializeMessage({
+              type: ERROR,
+              reason: 'too_many_requests',
+            }),
+          )
+          return true
+        }
+        if (
+          validateCreateRequest
+          && !validateCreateRequest(request)
+        ) {
+          response.writeHead(401, {
+            'Content-Type': contentType,
+          })
+          response.end(
+            serializeMessage({
+              type: ERROR,
+              reason: 'unauthorized',
+            }),
+          )
+          return true
+        }
+
+        const limit = parseInt(
+          query.limit,
+          10,
+        ) || undefined
         const {
           creatorSecret,
           roomCode,
@@ -705,6 +802,44 @@ export const createServerConnector = (
       } = _parsed
 
       if (pathname === joinRoomEndpoint) {
+        if (isRateLimited(request)) {
+          socket.write(
+            closeMessage(
+              request,
+              '429 Too many requests',
+              contentType,
+              serializeMessage({
+                type: ERROR,
+                reason: 'too_many_requests',
+              }),
+            ),
+          )
+          socket.destroy(
+            new Error('Too many requests'),
+          )
+          return true
+        }
+        if (
+          validateJoinRequest
+          && !validateJoinRequest(request)
+        ) {
+          socket.write(
+            closeMessage(
+              request,
+              '401 Unauthorized',
+              contentType,
+              serializeMessage({
+                type: ERROR,
+                reason: 'unauthorized',
+              }),
+            ),
+          )
+          socket.destroy(
+            new Error('Unauthorized'),
+          )
+          return true
+        }
+
         socketServer.handleUpgrade(
           request,
           socket,

@@ -88,7 +88,9 @@ const httpServer = createHttpServer((
     response.writeHead(200, {
       'Content-Type': type,
     })
-    createReadStream(join(DIRECTORY_NAME, file)).pipe(response)
+    createReadStream(
+      join(DIRECTORY_NAME, file),
+    ).pipe(response)
     return
   }
 
@@ -112,6 +114,7 @@ httpServer.on('upgrade', (
 ) => {
   const success = handleSocketUpgrade(
     request,
+    response,
     socket,
     head,
     socketServer,
