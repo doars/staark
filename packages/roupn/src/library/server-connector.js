@@ -7,7 +7,6 @@ import {
   ERROR,
   ROOM_JOINED,
   ROOM_REMOVED,
-  MESSAGE,
   USER_JOINED,
   USER_LEFT,
   USER_KICK,
@@ -21,22 +20,19 @@ import {
   generateCode,
 } from '../utilities/code.js'
 import {
+  base64ToString,
+  stringToBase64,
+} from '../utilities/encoding-server.js'
+import {
   createEvent,
 } from '../utilities/event.js'
 import {
   closeMessage,
 } from '../utilities/socket.js'
 import {
-  prefixTime,
-} from '../utilities/time.js'
-import {
-  ROOM_PREFIX,
-  SERVER_PREFIX,
-  USER_PAYLOAD,
-
-  getPrefix,
-  splitPayload,
-} from '../utilities/prefix.js'
+  decode,
+  encode,
+} from '../utilities/protocol.js'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -289,15 +285,14 @@ export const createServerConnector = (
     _broadcast(
       roomCode,
       userId,
-      serializeMessage({
-        type: USER_JOINED,
-        userId,
-      }),
+      encode({
+        S: serializeMessage({
+          type: USER_JOINED,
+          userId,
+        })
+      }, stringToBase64),
     )
-    onUserJoin.dispatch({
-      roomCode,
-      userId,
-    })
+    onUserJoin.dispatch({ roomCode, userId })
 
     connection.addEventListener('close', () => {
       leaveRoom(roomCode, userId)
@@ -323,95 +318,63 @@ export const createServerConnector = (
         return
       }
 
-      let payload = event.data,
-        receiver
-      [receiver, payload] = splitPayload(
-        payload,
-        USER_PAYLOAD,
+      const parts = decode(
+        event.data,
+        base64ToString,
       )
-      if (receiver) {
-        // Send message to specific user.
-        messageUser(
-          roomCode,
-          userId,
-          receiver,
-          payload,
-        )
+      const {
+        R: roomPayload,
+        S: serverPayload,
+        U: userPayload,
+      } = parts
+
+      if (userPayload) {
+        messageUser(roomCode, userId, userPayload, event.data)
         return
       }
 
-      let prefix
-      [prefix, payload] = getPrefix(payload)
-      if (!prefix) {
-        // No prefix given.
-        return
-      }
-
-      // Check if message is meant for server.
-      if (
-        prefix === SERVER_PREFIX
-        // Only the room's creator can send server messages.
-        && _isCreator
-      ) {
-        let parsedData
-        try {
-          parsedData = deserializeMessage(
-            payload,
-          )
-        } catch {
-          // Is server message, but not able to parse?
-          return
-        }
-
-        switch (parsedData?.type) {
-          // Close the room.
-          case ROOM_CLOSED:
-            removeRoom(
-              roomCode,
-            )
-            break
-
-          // Remove a user from the room.
-          case USER_KICK:
-            if (
-              parsedData.userId
-              // Prevent the host from performing this on themself. Use ROOM_CLOSED instead.
-              && parsedData.userId !== userId
-            ) {
-              leaveRoom(
-                roomCode,
-                parsedData.userId,
-              )
-            }
-            break
-
-          // Mark user as being validated so they start receiving broadcasted messages.
-          case USER_VALIDATED:
-            if (
-              parsedData.userId
-              && room.users.has(parsedData.userId)
-            ) {
-              _broadcast(roomCode, userId, serializeMessage({
-                type: USER_VALIDATED,
-                userId: parsedData.userId,
-              }))
-              room.users.get(parsedData.userId).validated = true
-            }
-            break
+      if (roomPayload) {
+        if (userData.validated) {
+          messageRoom(roomCode, userId, event.data)
         }
         return
       }
 
-      if (
-        prefix === ROOM_PREFIX
-        // Only validated users can send messages to the room.
-        && userData.validated
-      ) {
-        messageRoom(
-          roomCode,
-          userId,
-          event.data,
-        )
+      if (serverPayload) {
+        if (_isCreator) {
+          let parsedData
+          try {
+            parsedData = deserializeMessage(serverPayload)
+          } catch {
+            return
+          }
+
+          switch (parsedData?.type) {
+            case ROOM_CLOSED:
+              removeRoom(roomCode)
+              break
+
+            case USER_KICK:
+              if (parsedData.userId && parsedData.userId !== userId) {
+                leaveRoom(roomCode, parsedData.userId)
+              }
+              break
+
+            case USER_VALIDATED:
+              if (parsedData.userId && room.users.has(parsedData.userId)) {
+                const payload = serializeMessage({ type: USER_VALIDATED, userId: parsedData.userId })
+                _broadcast(
+                  roomCode,
+                  userId,
+                  encode({
+                    S: payload,
+                  }, stringToBase64)
+                )
+                room.users.get(parsedData.userId).validated = true
+              }
+              break
+          }
+        }
         return
       }
     })
@@ -427,16 +390,6 @@ export const createServerConnector = (
 
   /**
    * Removes a user from a room and handles related cleanup.
-   * - If the room does not exist, returns a 'room_not_found' error.
-   * - If the user is not found in the room, returns an 'user_not_found' error.
-   * - Broadcasts a 'user_left' event and dispatches onUserLeave.
-   * - Closes the user's connection.
-   * - If the user is the creator, removes all users from the room, broadcasts their departure, and closes their connections.
-   * - If the room becomes empty, deletes the room and dispatches onRoomRemove.
-   *
-   * @param {string} roomCode - The unique code identifying the room.
-   * @param {string} userId - The unique identifier of the user to remove.
-   * @returns {[boolean, Object]} An array where the first element is a boolean indicating success, and the second is an object with error details if unsuccessful. Possible error reasons: 'room_not_found', 'user_not_found.
    */
   const leaveRoom = function (
     roomCode,
@@ -444,61 +397,48 @@ export const createServerConnector = (
   ) {
     const _room = _rooms.get(roomCode)
     if (!_room) {
-      return [false, {
-        type: ERROR,
-        reason: 'room_not_found',
-      }]
+      return [false, { type: ERROR, reason: 'room_not_found' }]
     }
 
     if (!_room.users.has(userId)) {
-      return [false, {
-        type: ERROR,
-        reason: 'user_not_found',
-      }]
+      return [false, { type: ERROR, reason: 'user_not_found' }]
     }
-    const {
-      connection,
-    } = _room.users.get(userId)
+    const { connection } = _room.users.get(userId)
     _room.users.delete(userId)
     _broadcast(
       roomCode,
       userId,
-      serializeMessage({
-        type: USER_LEFT,
-        userId,
-      }),
-    )
-    onUserLeave.dispatch({
-      roomCode,
-      userId,
-    })
-    connection.close()
-
-    // If the creator leaves, we need to remove the entire room.
-    if (_room.creatorId === userId) {
-      for (const [userId, { connection }] of _room.users) {
-        _room.users.delete(userId)
-        _broadcast(
-          roomCode,
-          userId,
-          serializeMessage({
-            type: USER_LEFT,
-            userId,
-          }),
-        )
-        onUserLeave.dispatch({
-          roomCode,
+      encode({
+        S: serializeMessage({
+          type: USER_LEFT,
           userId,
         })
-        connection.close()
+      }, stringToBase64),
+    )
+    onUserLeave.dispatch({ roomCode, userId })
+    connection.close()
+
+    if (_room.creatorId === userId) {
+      for (const [otherUserId, { connection: otherConnection }] of _room.users) {
+        _room.users.delete(otherUserId)
+        _broadcast(
+          roomCode,
+          otherUserId,
+          encode({
+            S: serializeMessage({
+              type: USER_LEFT,
+              userId: otherUserId,
+            }),
+          }, stringToBase64),
+        )
+        onUserLeave.dispatch({ roomCode, userId: otherUserId })
+        otherConnection.close()
       }
     }
 
     if (_room.users.size === 0) {
       _rooms.delete(roomCode)
-      onRoomRemove.dispatch({
-        roomCode,
-      })
+      onRoomRemove.dispatch({ roomCode })
     }
   }
 
@@ -507,10 +447,7 @@ export const createServerConnector = (
   ) {
     const room = _rooms.get(roomCode)
     if (!room) {
-      return [false, {
-        type: ERROR,
-        reason: 'room_not_found',
-      }]
+      return [false, { type: ERROR, reason: 'room_not_found' }]
     }
 
     for (const userId of room.users.keys()) {
@@ -518,29 +455,18 @@ export const createServerConnector = (
         leaveRoom(roomCode, userId)
       }
     }
-    // Remove creator last.
     leaveRoom(roomCode, room.creatorId)
 
     if (_rooms.get(roomCode)) {
-      // If the room still exists, remove it.
       _rooms.delete(roomCode)
-      onRoomRemove.dispatch({
-        roomCode,
-      })
+      onRoomRemove.dispatch({ roomCode })
     }
 
-    return [true, {
-      type: ROOM_REMOVED,
-      code: roomCode,
-    }]
+    return [true, { type: ROOM_REMOVED, code: roomCode }]
   }
 
   /**
    * Broadcasts a message to all users in a specified room, except the sender.
-   *
-   * @param {string} roomCode - The unique code identifying the room.
-   * @param {Object} message - The message object to broadcast. Should contain a `sender` property to identify the sender.
-   * @returns {[boolean, Object]} - Returns a tuple where the first element indicates success, and the second is an object with error details if unsuccessful.
    */
   const _broadcast = (
     roomCode,
@@ -549,68 +475,40 @@ export const createServerConnector = (
   ) => {
     const _room = _rooms.get(roomCode)
     if (!_room) {
-      return [false, {
-        type: ERROR,
-        reason: 'room_not_found',
-      }]
+      return [false, { type: ERROR, reason: 'room_not_found' }]
     }
 
-    payload = prefixTime(payload)
+    const message = `T:${stringToBase64(String(Date.now()))}|${payload}`
+
     for (const [userId, { connection, validated }] of _room.users) {
-      // Don't send the payload to the sender.
-      if (
-        !validated
-        || (
-          sender
-          && sender === userId
-        )
-      ) {
+      if (!validated || (sender && sender === userId)) {
         continue
       }
 
       if (connection.readyState === connection.OPEN) {
-        connection.send(payload)
+        connection.send(message)
       }
     }
     return [true, {}]
   }
 
   /**
-   * Sends a message to all clients in the specified room and dispatches a room message event if successful.
-   *
-   * @param {string} roomCode - The unique identifier for the room to which the message will be sent.
-   * @param {string} sender - The identifier of the sender of the message.
-   * @param {string} payload - The serialized message content to be broadcasted to the room.
-   * @returns {[boolean, Object]} An array where the first element indicates success, and the second contains the result or error.
+   * Sends a message to all clients in the specified room.
    */
   const messageRoom = (
     roomCode,
     sender,
     payload,
   ) => {
-    const [_success, _result] = _broadcast(
-      roomCode,
-      sender,
-      payload,
-    )
+    const [_success, _result] = _broadcast(roomCode, sender, payload)
     if (_success) {
-      onRoomMessage.dispatch({
-        payload,
-        roomCode,
-        sender,
-      })
+      onRoomMessage.dispatch({ payload, roomCode, sender })
     }
     return [_success, _result]
   }
 
   /**
-   * Sends a direct message from a sender to a receiver within a specified room.
-   *
-   * @param {string} roomCode - The unique code identifying the room.
-   * @param {string} sender - The identifier of the user sending the message.
-   * @param {string} receiver - The identifier of the user receiving the message.
-   * @param {any} data - The message content to be sent.
-   * @returns {[boolean, Object]} Returns a tuple [success, data] if an error occurs or on success, or an error object if the receiver's connection is not active. Possible error reasons: 'room_not_found', 'user_not_found', 'user_no_connection', 'user_no_active_connection'.
+   * Sends a direct message to a user.
    */
   const messageUser = (
     roomCode,
@@ -620,47 +518,22 @@ export const createServerConnector = (
   ) => {
     const room = _rooms.get(roomCode)
     if (!room) {
-      return [false, {
-        type: ERROR,
-        reason: 'room_not_found',
-      }]
+      return [false, { type: ERROR, reason: 'room_not_found' }]
     }
 
     if (!room.users.has(receiver)) {
-      return [false, {
-        type: ERROR,
-        reason: 'user_not_found',
-      }]
+      return [false, { type: ERROR, reason: 'user_not_found' }]
     }
-    const {
-      connection,
-    } = room.users.get(receiver)
+    const { connection } = room.users.get(receiver)
 
     if (!connection) {
-      return [false, {
-        type: ERROR,
-        reason: 'user_no_connection',
-      }]
+      return [false, { type: ERROR, reason: 'user_no_connection' }]
     }
     if (connection.readyState !== connection.OPEN) {
-      return [false, {
-        type: ERROR,
-        reason: 'user_no_active_connection',
-      }]
+      return [false, { type: ERROR, reason: 'user_no_active_connection' }]
     }
 
-    connection.send(
-      prefixTime(
-        typeof (data) === 'string'
-          ? data
-          : serializeMessage({
-            type: MESSAGE,
-            ...data,
-            receiver,
-            sender,
-          }),
-      ),
-    )
+    connection.send(`T:${stringToBase64(String(Date.now()))}|${data}`)
     return [true, {}]
   }
 
@@ -677,196 +550,83 @@ export const createServerConnector = (
     onUserLeave,
     onUserJoin,
 
-    /**
-     * Get room data by room code.
-     *
-     * @param {string} roomCode - The unique code identifying the room.
-     * @returns {Object|null} The room object if found, or null if not found.
-     */
-    getRoom: (
-      roomCode,
-    ) => {
-      return _rooms.get(roomCode)
-    },
-    /**
-     * Returns an array of all room codes currently active in the synchronizer.
-     *
-     * @returns {string[]} An array of all room codes.
-     */
-    getRoomCodes: (
-    ) => {
-      return Array.from(
-        _rooms.keys(),
-      )
-    },
-    /**
-     * Returns the number of active rooms in the synchronizer.
-     *
-     * @returns {number} The count of active rooms.
-     */
-    getRoomCount: (
-    ) => {
-      return _rooms.size
-    },
+    getRoom: (roomCode) => _rooms.get(roomCode),
+    getRoomCodes: () => Array.from(_rooms.keys()),
+    getRoomCount: () => _rooms.size,
 
-    /**
-     * Handles HTTP requests for room creation.
-     *
-     * @param {Object} request - The HTTP request object.
-     * @param {Object} response - The HTTP response object.
-     * @returns {boolean} Returns true if the request was handled, false otherwise.
-     */
     handleHttpRequest: (
       request,
       response,
     ) => {
-      const {
-        pathname = '',
-        searchParams = {},
-      } = new URL(request.url, serverOrigin)
+      const { pathname = '', searchParams = {} } = new URL(request.url, serverOrigin)
 
       if (pathname === createRoomEndpoint) {
         if (isRateLimited(request)) {
-          response.writeHead(429, {
-            'Content-Type': contentType,
-          })
-          response.end(
-            serializeMessage({
-              type: ERROR,
-              reason: 'too_many_requests',
-            }),
-          )
+          response.writeHead(429, { 'Content-Type': contentType })
+          response.end(serializeMessage({ type: ERROR, reason: 'too_many_requests' }))
           return true
         }
-        if (
-          validateCreateRequest
-          && !validateCreateRequest(request)
-        ) {
-          response.writeHead(401, {
-            'Content-Type': contentType,
-          })
-          response.end(
-            serializeMessage({
-              type: ERROR,
-              reason: 'unauthorized',
-            }),
-          )
+        if (validateCreateRequest && !validateCreateRequest(request)) {
+          response.writeHead(401, { 'Content-Type': contentType })
+          response.end(serializeMessage({ type: ERROR, reason: 'unauthorized' }))
           return true
         }
 
-        const limit = parseInt(
-          searchParams.get('limit'),
-          10,
-        ) || undefined
-        const {
-          creatorSecret,
-          roomCode,
-          userId,
-        } = createRoom({
-          limit,
-        })
+        const limit = parseInt(searchParams.get('limit'), 10) || undefined
+        const { creatorSecret, roomCode, userId } = createRoom({ limit })
 
-        response.writeHead(200, {
-          'Content-Type': contentType,
-        })
-        response.end(
-          serializeMessage({
-            creatorSecret,
-            roomCode,
-            userId,
-          }),
-        )
+        response.writeHead(200, { 'Content-Type': contentType })
+        response.end(serializeMessage({ creatorSecret, roomCode, userId }))
         return true
       }
 
       return false
     },
-    /**
-     * Handles WebSocket upgrade requests for joining rooms.
-     *
-     * @param {Object} request - The HTTP request object.
-     * @param {Object} socket - The WebSocket connection object.
-     * @param {Buffer} head - The head of the WebSocket request.
-     * @param {Object} socketServer - The WebSocket server instance.
-     * @returns {boolean} Returns true if the request was handled, false otherwise.
-     */
+
     handleSocketUpgrade: (
       request,
       socket,
       head,
       socketServer,
     ) => {
-      const {
-        pathname = '',
-        searchParams = {},
-      } = new URL(request.url, serverOrigin)
+      const { pathname = '', searchParams = {} } = new URL(request.url, serverOrigin)
 
       if (pathname === joinRoomEndpoint) {
         if (isRateLimited(request)) {
-          socket.write(
-            closeMessage(
-              request,
-              '429 Too many requests',
-              contentType,
-              serializeMessage({
-                type: ERROR,
-                reason: 'too_many_requests',
-              }),
-            ),
-          )
+          socket.write(closeMessage(request, '429 Too many requests', contentType, serializeMessage({ type: ERROR, reason: 'too_many_requests' })))
           socket.destroy()
           return true
         }
-        if (
-          validateJoinRequest
-          && !validateJoinRequest(request)
-        ) {
-          socket.write(
-            closeMessage(
-              request,
-              '401 Unauthorized',
-              contentType,
-              serializeMessage({
-                type: ERROR,
-                reason: 'unauthorized',
-              }),
-            ),
-          )
+        if (validateJoinRequest && !validateJoinRequest(request)) {
+          socket.write(closeMessage(request, '401 Unauthorized', contentType, serializeMessage({ type: ERROR, reason: 'unauthorized' })))
           socket.destroy()
           return true
         }
 
-        socketServer.handleUpgrade(
-          request,
-          socket,
-          head,
-          (connection) => {
-            const roomCode = searchParams.get('code')
-            if (!roomCode) {
-              connection.close(1008, 'missing_room_code')
-              return
-            }
+        socketServer.handleUpgrade(request, socket, head, (connection) => {
+          const roomCode = searchParams.get('code')
+          if (!roomCode) {
+            connection.close(1008, 'missing_room_code')
+            return
+          }
 
-            const [_success, _data] = joinRoom(
-              roomCode,
-              connection,
-              searchParams.get('creator') || null,
-            )
-            if (!_success) {
-              connection.close(1008, _data.reason)
-              return
-            }
+          const [_success, _data] = joinRoom(roomCode, connection, searchParams.get('creator') || null)
+          if (!_success) {
+            connection.close(1008, _data.reason)
+            return
+          }
 
-            connection.send(
-              serializeMessage({
+          connection.send(
+            encode({
+              S: serializeMessage({
                 type: ROOM_JOINED,
                 creatorId: _data.creatorId,
                 userId: _data.userId,
                 users: _data.users,
-              }),
-            )
-          },
-        )
+              })
+            }, stringToBase64)
+          )
+        })
 
         return true
       }
