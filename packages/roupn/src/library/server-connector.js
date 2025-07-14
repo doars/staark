@@ -30,7 +30,6 @@ import {
   prefixTime,
 } from '../utilities/time.js'
 import {
-  CREATOR_PREFIX,
   ROOM_PREFIX,
   SERVER_PREFIX,
 
@@ -341,17 +340,6 @@ export const createServerConnector = (
       [prefix, payload] = getPrefix(payload)
       if (!prefix) {
         // No prefix given.
-        return
-      }
-
-      if (prefix === CREATOR_PREFIX) {
-        // Send message to the room's creator.
-        messageUser(
-          roomCode,
-          userId,
-          room.creatorId,
-          payload,
-        )
         return
       }
 

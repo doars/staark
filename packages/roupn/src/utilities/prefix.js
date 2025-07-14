@@ -4,7 +4,6 @@ export const INFIX = ':'
 
 export const ROOM_PREFIX = 'R'
 export const SERVER_PREFIX = 'S'
-export const CREATOR_PREFIX = 'C'
 export const USER_ENCRYPTION_PREFIX = 'P'
 export const SHARED_ENCRYPTION_PREFIX = 'E'
 
@@ -14,7 +13,6 @@ export const SIGNATURE_PAYLOAD = 'H'
 export const INITIALIZATION_VECTOR_PAYLOAD = 'V'
 
 const PREFIXES = [
-  CREATOR_PREFIX,
   ROOM_PREFIX,
   SERVER_PREFIX,
 ]

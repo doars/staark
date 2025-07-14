@@ -89,7 +89,7 @@ import {
                   timestamp: Date.now(),
                   userId: state.privateState.userId,
                 })
-                state.message = ''
+                state.message = null
               },
             }, 'Send message'),
 
@@ -135,6 +135,7 @@ import {
                 synchronizer.createRoom({
                   password: state.roomCreatePassword,
                 })
+                state.roomCreatePassword = ''
               },
             }, 'Create room'),
 
@@ -176,6 +177,9 @@ import {
                   state.roomCode,
                   state.roomJoinPassword,
                 )
+
+                state.roomCode = ''
+                state.roomJoinPassword = ''
               },
             }, 'Join room'),
           ])
