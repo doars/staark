@@ -56,33 +56,19 @@ export const hasPayload = (
 export const splitPayload = (
   payload,
   prefix,
-  limit = 14,
-  characterFilter = null,
   convertResult = null,
 ) => {
   if (hasPayload(payload, prefix)) {
-    // Start after prefix.
-    let index = PREFIX.length + prefix.length + INFIX.length
-    let result = ''
-    const length = payload.length
-    // Loop until we find the suffix or reach a reasonable limit.
-    for (; index < length && result.length < limit; index++) {
-      const character = payload[index]
-      if (character === SUFFIX) {
-        // Found end of payload.
-        return [
-          convertResult ? convertResult(result) : result,
-          payload.slice(index + 1),
-        ]
-      }
-      // Stop in case an unmatched character is found.
-      if (
-        characterFilter
-        && !characterFilter(character)
-      ) {
-        break
-      }
-      result += character
+    const startIndex = PREFIX.length + prefix.length + INFIX.length
+    const endIndex = payload.indexOf(SUFFIX, startIndex)
+    if (endIndex !== -1) {
+      const result = payload.substring(startIndex, endIndex)
+      return [
+        convertResult
+          ? convertResult(result)
+          : result,
+        payload.slice(endIndex + 1),
+      ]
     }
   }
   return [
@@ -90,34 +76,6 @@ export const splitPayload = (
     payload,
   ]
 }
-
-export const splitInitializationVector = (
-  payload,
-) => splitPayload(
-  payload,
-  INITIALIZATION_VECTOR_PAYLOAD,
-)
-
-export const splitSignature = (
-  payload,
-) => splitPayload(
-  payload,
-  SIGNATURE_PAYLOAD,
-)
-
-export const splitUserId = (
-  payload,
-) => splitPayload(
-  payload,
-  USER_PAYLOAD,
-  37,
-  (character) => (
-    (character >= '0' && character <= '9')
-    || (character >= 'a' && character <= 'f')
-    || (character >= 'A' && character <= 'F')
-    || character === '-'
-  ),
-)
 
 export const wrapPayload = (
   payload,

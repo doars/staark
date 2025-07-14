@@ -32,9 +32,10 @@ import {
 import {
   ROOM_PREFIX,
   SERVER_PREFIX,
+  USER_PAYLOAD,
 
   getPrefix,
-  splitUserId,
+  splitPayload,
 } from '../utilities/prefix.js'
 
 /**
@@ -324,7 +325,10 @@ export const createServerConnector = (
 
       let payload = event.data,
         receiver
-      [receiver, payload] = splitUserId(payload)
+      [receiver, payload] = splitPayload(
+        payload,
+        USER_PAYLOAD,
+      )
       if (receiver) {
         // Send message to specific user.
         messageUser(

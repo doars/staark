@@ -21,14 +21,14 @@ import {
 
   getPrefix,
   prefix,
-  splitInitializationVector,
-  splitSignature,
+  splitPayload,
   wrapPayload,
 } from '../utilities/prefix.js'
 import {
   calculateTime,
   splitTime,
 } from '../utilities/time.js'
+import { bufferToBase64, base64ToBuffer } from '../utilities/binary.js'
 
 const DIFFIE_HELLMAN_ALGORITHM = 'ECDH'
 const DIFFIE_HELLMAN_CURVE = 'P-256'
@@ -286,14 +286,13 @@ export const createClientConnector = (
           return
         }
 
-        [ivString, payload] = splitInitializationVector(payload)
+        [ivString, payload] = splitPayload(
+          payload,
+          INITIALIZATION_VECTOR_PAYLOAD,
+        )
 
-        const dataBuffer = new Uint8Array(
-          payload.length,
-        ).map((_, i) => payload.charCodeAt(i))
-        const ivBuffer = new Uint8Array(
-          ivString.length,
-        ).map((_, i) => ivString.charCodeAt(i))
+        const dataBuffer = base64ToBuffer(payload)
+        const ivBuffer = base64ToBuffer(ivString)
 
         data = await window.crypto.subtle.decrypt({
           iv: ivBuffer,
@@ -301,10 +300,11 @@ export const createClientConnector = (
         }, _sharedKey, dataBuffer)
         data = new TextDecoder().decode(data)
       } else if (prefix === USER_ENCRYPTION_PREFIX) {
-        [signature, payload] = splitSignature(payload)
-        const dataBuffer = new Uint8Array(
-          payload.length,
-        ).map((_, i) => payload.charCodeAt(i))
+        [signature, payload] = splitPayload(
+          payload,
+          SIGNATURE_PAYLOAD,
+        )
+        const dataBuffer = base64ToBuffer(payload)
 
         if (!_generatedKeys) {
           await _generateMyKeys()
@@ -333,9 +333,7 @@ export const createClientConnector = (
         }
 
         // Verify signature against the encrypted data buffer
-        const signatureBuf = new Uint8Array(
-          signature.length,
-        ).map((_, i) => signature.charCodeAt(i))
+        const signatureBuf = base64ToBuffer(signature)
         const isValid = await window.crypto.subtle.verify(
           USER_SIGNATURE_ALGORITHM,
           senderPublicKey,
@@ -372,7 +370,7 @@ export const createClientConnector = (
           if (_myId === _creatorId) {
             const newUserId = data.sender
 
-            const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+            const publicEncryptKeyData = base64ToBuffer(data.publicEncryptKey)
             const publicEncryptKey = await window.crypto.subtle.importKey(
               PUBLIC_KEY_EXPORT_FORMAT,
               publicEncryptKeyData,
@@ -382,7 +380,7 @@ export const createClientConnector = (
             )
             _userEncryptKeys.set(newUserId, publicEncryptKey)
 
-            const publicSignKeyData = new Uint8Array(data.publicSignKey)
+            const publicSignKeyData = base64ToBuffer(data.publicSignKey)
             const publicSignKey = await window.crypto.subtle.importKey(
               PUBLIC_KEY_EXPORT_FORMAT,
               publicSignKeyData,
@@ -391,8 +389,8 @@ export const createClientConnector = (
               ['verify',],
             )
 
-            const publicExchangeKeyData = new Uint8Array(data.publicExchangeKey)
-            const signatureData = new Uint8Array(data.signature)
+            const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey)
+            const signatureData = base64ToBuffer(data.signature)
             const isVerified = await window.crypto.subtle.verify(
               USER_SIGNATURE_ALGORITHM,
               publicSignKey,
@@ -447,18 +445,10 @@ export const createClientConnector = (
                 receiver: newUserId,
                 sender: _myId,
 
-                publicEncryptKey: Array.from(
-                  new Uint8Array(_myPublicEncryptKey),
-                ),
-                publicExchangeKey: Array.from(
-                  new Uint8Array(myPublicExchangeKey),
-                ),
-                publicSignKey: Array.from(
-                  new Uint8Array(_myPublicSignKey),
-                ),
-                signature: Array.from(
-                  new Uint8Array(mySignature),
-                ),
+                publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
+                publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+                publicSignKey: bufferToBase64(_myPublicSignKey),
+                signature: bufferToBase64(mySignature),
               })
               _socket.send(
                 wrapPayload(newUserId, USER_PAYLOAD) + message,
@@ -481,20 +471,12 @@ export const createClientConnector = (
                 receiver: newUserId,
                 sender: _myId,
 
-                publicExchangeKey: Array.from(
-                  new Uint8Array(myPublicExchangeKey),
-                ),
-                publicSignKey: Array.from(
-                  new Uint8Array(_myPublicSignKey),
-                ),
-                signature: Array.from(
-                  new Uint8Array(mySignature),
-                ),
+                publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+                publicSignKey: bufferToBase64(_myPublicSignKey),
+                signature: bufferToBase64(mySignature),
 
-                sharedKey: Array.from(
-                  new Uint8Array(encryptedSharedKey),
-                ),
-                sharedKeyIv: Array.from(iv),
+                sharedKey: bufferToBase64(encryptedSharedKey),
+                sharedKeyIv: bufferToBase64(iv),
               })
               _socket.send(
                 wrapPayload(
@@ -520,7 +502,7 @@ export const createClientConnector = (
             && data.sender === _creatorId
           ) {
             if (data.publicSignKey) {
-              const hostPublicSignKeyData = new Uint8Array(data.publicSignKey)
+              const hostPublicSignKeyData = base64ToBuffer(data.publicSignKey)
               const hostPublicSignKey = await window.crypto.subtle.importKey(
                 PUBLIC_KEY_EXPORT_FORMAT,
                 hostPublicSignKeyData,
@@ -533,8 +515,8 @@ export const createClientConnector = (
                 data.publicExchangeKey
                 && data.signature
               ) {
-                const publicExchangeKeyData = new Uint8Array(data.publicExchangeKey)
-                const signatureData = new Uint8Array(data.signature)
+                const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey)
+                const signatureData = base64ToBuffer(data.signature)
                 const isVerified = await window.crypto.subtle.verify(
                   USER_SIGNATURE_ALGORITHM,
                   hostPublicSignKey,
@@ -553,7 +535,7 @@ export const createClientConnector = (
             }
 
             if (data.publicEncryptKey) {
-              const hostPublicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+              const hostPublicEncryptKeyData = base64ToBuffer(data.publicEncryptKey)
               const hostPublicEncryptKey = await window.crypto.subtle.importKey(
                 PUBLIC_KEY_EXPORT_FORMAT,
                 hostPublicEncryptKeyData,
@@ -565,7 +547,7 @@ export const createClientConnector = (
             }
 
             if (data.publicExchangeKey) {
-              const hostPublicExchangeKeyData = new Uint8Array(data.publicExchangeKey)
+              const hostPublicExchangeKeyData = base64ToBuffer(data.publicExchangeKey)
               const hostPublicExchangeKey = await window.crypto.subtle.importKey(
                 DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
                 hostPublicExchangeKeyData,
@@ -614,8 +596,8 @@ export const createClientConnector = (
                 return
               }
 
-              const encryptedSharedKey = new Uint8Array(data.sharedKey)
-              const iv = new Uint8Array(data.sharedKeyIv)
+              const encryptedSharedKey = base64ToBuffer(data.sharedKey)
+              const iv = base64ToBuffer(data.sharedKeyIv)
               const decryptedSharedKeyData = await window.crypto.subtle.decrypt({
                 name: SHARED_ENCRYPTION_ALGORITHM,
                 iv,
@@ -669,10 +651,8 @@ export const createClientConnector = (
               receiver: newUserId,
               sender: _myId,
 
-              sharedKey: Array.from(
-                new Uint8Array(encryptedSharedKey),
-              ),
-              sharedKeyIv: Array.from(iv),
+              sharedKey: bufferToBase64(encryptedSharedKey),
+              sharedKeyIv: bufferToBase64(iv),
             })
             _socket.send(
               wrapPayload(
@@ -719,18 +699,10 @@ export const createClientConnector = (
 
             _message({
               type: KEY_EXCHANGE_OFFER,
-              publicEncryptKey: Array.from(
-                new Uint8Array(_myPublicEncryptKey),
-              ),
-              publicExchangeKey: Array.from(
-                new Uint8Array(myPublicExchangeKey),
-              ),
-              publicSignKey: Array.from(
-                new Uint8Array(_myPublicSignKey),
-              ),
-              signature: Array.from(
-                new Uint8Array(signature),
-              ),
+              publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
+              publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+              publicSignKey: bufferToBase64(_myPublicSignKey),
+              signature: bufferToBase64(signature),
             }, {
               allowUnencrypted: true,
               receiver: _creatorId,
@@ -810,14 +782,8 @@ export const createClientConnector = (
           encryptedMessage,
         )
 
-        const encryptedString = String.fromCharCode.apply(
-          null,
-          new Uint8Array(encryptedMessage),
-        )
-        const signatureString = String.fromCharCode.apply(
-          null,
-          new Uint8Array(signature),
-        )
+        const encryptedString = bufferToBase64(encryptedMessage)
+        const signatureString = bufferToBase64(signature)
 
         message = prefix(
           wrapPayload(
@@ -852,11 +818,8 @@ export const createClientConnector = (
         name: SHARED_ENCRYPTION_ALGORITHM,
       }, _sharedKey, new TextEncoder().encode(message))
 
-      const encryptedString = String.fromCharCode.apply(
-        null,
-        new Uint8Array(encrypted),
-      )
-      const ivString = String.fromCharCode.apply(null, ivBuffer)
+      const encryptedString = bufferToBase64(encrypted)
+      const ivString = bufferToBase64(ivBuffer)
 
       message = prefix(
         wrapPayload(ivString, INITIALIZATION_VECTOR_PAYLOAD)
