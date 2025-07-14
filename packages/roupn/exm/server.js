@@ -33,6 +33,7 @@ const {
   handleSocketUpgrade,
 } = createServerConnector({
   maxUsersPerRoom: 4,
+  rateLimitDuration: 0,
 })
 
 onUserJoin.addListener(({

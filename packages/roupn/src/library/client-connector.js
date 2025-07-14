@@ -11,6 +11,7 @@ import {
   createEvent,
 } from '../utilities/event.js'
 import {
+  CREATOR_PREFIX,
   INITIALIZATION_VECTOR_PAYLOAD,
   ROOM_PREFIX,
   SERVER_PREFIX,
@@ -261,6 +262,7 @@ export const createClientConnector = (
           // Can't decrypt without the key. Fail silently since it might not have been shared with.
           return
         }
+        _sharedKey = await _sharedKey;
 
         [ivString, payload] = splitInitializationVector(payload)
 
@@ -340,14 +342,20 @@ export const createClientConnector = (
       }
       data = deserializedData
 
-      console.warn('message: ', data) // FIXME:
       switch (data.type) {
         case KEY_EXCHANGE_OFFER:
-          if (
-            _myId === data.receiver
-            && _myId === _creatorId
-          ) {
+          if (_myId === _creatorId) {
             const newUserId = data.sender
+
+            const publicEncryptKeyData = new Uint8Array(data.publicEncryptKey)
+            const publicEncryptKey = await window.crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              publicEncryptKeyData,
+              { name: USER_ENCRYPTION_ALGORITHM, hash: HASH_ALGORITHM, },
+              true,
+              ['encrypt',],
+            )
+            _userEncryptKeys.set(newUserId, publicEncryptKey)
 
             const publicSignKeyData = new Uint8Array(data.publicSignKey)
             const publicSignKey = await window.crypto.subtle.importKey(
@@ -405,10 +413,12 @@ export const createClientConnector = (
             )
 
             if (_password) {
-              _message({
+              const message = serializeMessage({
                 type: KEY_EXCHANGE_ACCEPT,
-                receiver: newUserId,
                 password: true,
+                receiver: newUserId,
+                sender: _myId,
+
                 publicEncryptKey: Array.from(
                   new Uint8Array(_myPublicEncryptKey),
                 ),
@@ -422,6 +432,9 @@ export const createClientConnector = (
                   new Uint8Array(mySignature),
                 ),
               })
+              _socket.send(
+                wrapPayload(newUserId, USER_PAYLOAD) + message,
+              )
             } else {
               const exportedSharedKey = await window.crypto.subtle.exportKey(
                 'raw',
@@ -434,24 +447,37 @@ export const createClientConnector = (
                 iv,
               }, derivedKey, exportedSharedKey)
 
-              _message({
+              const message = serializeMessage({
                 type: KEY_EXCHANGE_ACCEPT,
+                password: false,
                 receiver: newUserId,
+                sender: _myId,
+
                 publicExchangeKey: Array.from(
                   new Uint8Array(myPublicExchangeKey),
                 ),
                 publicSignKey: Array.from(
                   new Uint8Array(_myPublicSignKey),
                 ),
+                signature: Array.from(
+                  new Uint8Array(mySignature),
+                ),
+
                 sharedKey: Array.from(
                   new Uint8Array(encryptedSharedKey),
                 ),
                 sharedKeyIv: Array.from(iv),
-                signature: Array.from(
-                  new Uint8Array(mySignature),
-                ),
               })
+              _socket.send(
+                wrapPayload(
+                  newUserId,
+                  USER_PAYLOAD,
+                ) + message,
+              )
 
+              onUserValidated.dispatch({
+                userId: newUserId,
+              })
               messageServer({
                 type: USER_VALIDATED,
                 userId: newUserId,
@@ -474,7 +500,10 @@ export const createClientConnector = (
                 ['verify',],
               )
 
-              if (data.publicExchangeKey && data.signature) {
+              if (
+                data.publicExchangeKey
+                && data.signature
+              ) {
                 const publicExchangeKeyData = new Uint8Array(data.publicExchangeKey)
                 const signatureData = new Uint8Array(data.signature)
                 const isVerified = await window.crypto.subtle.verify(
@@ -536,11 +565,14 @@ export const createClientConnector = (
                 leaveRoom()
                 return
               }
-              messageUser({
+              messageCreator({
                 type: PASSWORD_VALIDATION,
                 password: _password,
-              }, hostId)
-            } else if (data.sharedKey && data.sharedKeyIv) {
+              })
+            } else if (
+              data.sharedKey
+              && data.sharedKeyIv
+            ) {
               const derivedKey = _userDerivedKeys.get(hostId)
               if (!derivedKey) {
                 onError.dispatch({
@@ -555,7 +587,8 @@ export const createClientConnector = (
                 name: SHARED_ENCRYPTION_ALGORITHM,
                 iv,
               }, derivedKey, encryptedSharedKey)
-              _sharedKey = await window.crypto.subtle.importKey(
+              // Store now and await before usage so no messages are missed.
+              _sharedKey = window.crypto.subtle.importKey(
                 'raw',
                 decryptedSharedKeyData,
                 { name: SHARED_ENCRYPTION_ALGORITHM, },
@@ -567,11 +600,9 @@ export const createClientConnector = (
           break
 
         case PASSWORD_VALIDATION:
-          if (
-            _myId === data.receiver
-            && _myId === _creatorId
-          ) {
+          if (_myId === _creatorId) {
             const newUserId = data.sender
+
             if (data.password !== _password) {
               messageServer({
                 type: USER_KICK,
@@ -582,8 +613,9 @@ export const createClientConnector = (
 
             const derivedKey = _userDerivedKeys.get(newUserId)
             if (!derivedKey) {
-              onError.dispatch({
-                error: new Error('No derived key for user: ' + newUserId),
+              messageServer({
+                type: USER_KICK,
+                userId: newUserId,
               })
               return
             }
@@ -599,15 +631,26 @@ export const createClientConnector = (
               iv,
             }, derivedKey, exportedSharedKey)
 
-            _message({
+            const message = serializeMessage({
               type: KEY_EXCHANGE_ACCEPT,
               receiver: newUserId,
+              sender: _myId,
+
               sharedKey: Array.from(
                 new Uint8Array(encryptedSharedKey),
               ),
               sharedKeyIv: Array.from(iv),
             })
+            _socket.send(
+              wrapPayload(
+                newUserId,
+                USER_PAYLOAD,
+              ) + message,
+            )
 
+            onUserValidated.dispatch({
+              userId: newUserId,
+            })
             messageServer({
               type: USER_VALIDATED,
               userId: newUserId,
@@ -639,9 +682,11 @@ export const createClientConnector = (
               myPublicExchangeKey,
             )
 
-            _message({
+            messageCreator({
               type: KEY_EXCHANGE_OFFER,
-              receiver: _creatorId,
+              publicEncryptKey: Array.from(
+                new Uint8Array(_myPublicEncryptKey),
+              ),
               publicExchangeKey: Array.from(
                 new Uint8Array(myPublicExchangeKey),
               ),
@@ -751,6 +796,11 @@ export const createClientConnector = (
         options.receiver,
         USER_PAYLOAD,
       ) + payload
+    } else if (options.creator) {
+      message = prefix(
+        message,
+        CREATOR_PREFIX,
+      )
     } else if (options.server) {
       message = prefix(
         message,
@@ -791,6 +841,15 @@ export const createClientConnector = (
 
     return true
   }
+  const messageCreator = (
+    data,
+  ) => (
+    _myId
+    && _myId !== _creatorId
+    && _message(data, {
+      creator: true,
+    })
+  )
   const messageServer = (
     data,
   ) => (
@@ -825,6 +884,7 @@ export const createClientConnector = (
     messageRoom: (
       data,
     ) => _message(data),
+    messageCreator,
     messageServer,
     messageUser,
 
@@ -833,10 +893,9 @@ export const createClientConnector = (
       type: ROOM_CLOSED,
     }),
     createRoom: async (
-      password,
       options = {},
     ) => {
-      _password = password
+      _password = options.password
 
       _sharedKey = await window.crypto.subtle.generateKey({
         name: SHARED_ENCRYPTION_ALGORITHM,
@@ -871,7 +930,7 @@ export const createClientConnector = (
 
       _joinRoom(
         data.roomCode,
-        password,
+        _password,
         data.creatorSecret,
       )
 

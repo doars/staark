@@ -14,6 +14,7 @@ export const SIGNATURE_PAYLOAD = 'H'
 export const INITIALIZATION_VECTOR_PAYLOAD = 'V'
 
 const PREFIXES = [
+  CREATOR_PREFIX,
   ROOM_PREFIX,
   SERVER_PREFIX,
 ]
@@ -111,7 +112,7 @@ export const splitUserId = (
 ) => splitPayload(
   payload,
   USER_PAYLOAD,
-  36,
+  37,
   (character) => (
     (character >= '0' && character <= '9')
     || (character >= 'a' && character <= 'f')

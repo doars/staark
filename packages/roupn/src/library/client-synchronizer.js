@@ -205,8 +205,8 @@ export const createClientSynchronizer = (
       for (const key in publicState) {
         delete publicState[key]
       }
-      for (const key in delta.state) {
-        publicState[key] = delta.state[key]
+      for (const key in data.state) {
+        publicState[key] = data.state[key]
       }
 
       // Apply any newer state updates.

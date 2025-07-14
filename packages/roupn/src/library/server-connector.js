@@ -12,6 +12,7 @@ import {
   USER_LEFT,
   USER_KICK,
   USER_VALIDATED,
+  ROOM_CLOSED,
 } from './types.js'
 
 import {
@@ -322,8 +323,6 @@ export const createServerConnector = (
         return
       }
 
-      console.log('message', event.data) // FIXME:
-
       let payload = event.data,
         receiver
       [receiver, payload] = splitUserId(payload)
@@ -340,9 +339,19 @@ export const createServerConnector = (
 
       let prefix
       [prefix, payload] = getPrefix(payload)
-      console.log('receiver', prefix, payload)
       if (!prefix) {
         // No prefix given.
+        return
+      }
+
+      if (prefix === CREATOR_PREFIX) {
+        // Send message to the room's creator.
+        messageUser(
+          roomCode,
+          userId,
+          room.creatorId,
+          payload,
+        )
         return
       }
 
@@ -355,7 +364,7 @@ export const createServerConnector = (
         let parsedData
         try {
           parsedData = deserializeMessage(
-            data,
+            payload,
           )
         } catch {
           // Is server message, but not able to parse?
