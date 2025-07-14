@@ -1,15 +1,13 @@
+
 export const base64ToBuffer = (
   base64,
 ) => {
-  console.trace('base64ToBuffer', base64)
+  console.log('base64ToBuffer', base64)
   const binary = atob(base64)
-  const length = binary.length
-  const buffer = new ArrayBuffer(length)
-  const view = new Uint8Array(buffer)
-  for (let i = 0; i < length; i++) {
-    view[i] = binary.charCodeAt(i)
-  }
-  return buffer
+  return Uint8Array.from(
+    binary,
+    character => character.charCodeAt(0),
+  ).buffer
 }
 
 export const base64ToString = (
@@ -27,8 +25,19 @@ export const stringToBase64 = (
   string,
 ) => {
   const bytes = new TextEncoder().encode(string)
+
+  if (bytes.length < 65536) {
+    return btoa(
+      String.fromCharCode(...bytes),
+    )
+  }
+
   let binary = ''
-  bytes.forEach(byte => binary += String.fromCharCode(byte))
+  const chunkSize = 65536
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize)
+    binary += String.fromCharCode(...chunk)
+  }
   return btoa(binary)
 }
 
@@ -36,7 +45,18 @@ export const bufferToBase64 = (
   buffer,
 ) => {
   const bytes = new Uint8Array(buffer)
+
+  if (bytes.length < 65536) {
+    return btoa(
+      String.fromCharCode(...bytes),
+    )
+  }
+
   let binary = ''
-  bytes.forEach(byte => binary += String.fromCharCode(byte))
+  const chunkSize = 65536
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize)
+    binary += String.fromCharCode(...chunk)
+  }
   return btoa(binary)
 }
