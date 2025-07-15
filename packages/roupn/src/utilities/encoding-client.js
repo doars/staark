@@ -1,8 +1,6 @@
-
 export const base64ToBuffer = (
   base64,
 ) => {
-  console.log('base64ToBuffer', base64)
   const binary = atob(base64)
   return Uint8Array.from(
     binary,

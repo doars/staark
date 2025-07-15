@@ -242,8 +242,6 @@ export const createClientConnector = (
     _socket.addEventListener('message', async (
       event,
     ) => {
-      console.log('message received', event.data) // FIXME:
-
       const parts = decode(
         event.data,
         base64ToString,
@@ -252,10 +250,17 @@ export const createClientConnector = (
         T: serverTime,
         R: roomPayload,
         S: serverPayload,
-        U: userPayload,
         E: sharedEncryptionPayload,
-        P: userEncryptionPayload
+        I: sharedEncryptionIv,
+        P: userEncryptionPayload,
+        G: userEncryptionSignature,
+        K: userEncryptionKey,
+        V: userEncryptionIv,
+        U: userPayload,
+        D: userDirectPayload,
       } = parts
+
+      console.log('message received', parts) // FIXME:
 
       let data, deserializedData, payload
 
@@ -263,8 +268,8 @@ export const createClientConnector = (
         payload = roomPayload
       } else if (serverPayload) {
         payload = serverPayload
-      } else if (userPayload) {
-        payload = userPayload
+      } else if (userDirectPayload) {
+        payload = userDirectPayload
       } else {
         payload = event.data
       }
@@ -274,10 +279,15 @@ export const createClientConnector = (
           // Can't decrypt without the key. Fail silently since it might not have been shared with.
           return
         }
+        if (!sharedEncryptionIv) {
+          onError.dispatch(
+            new Error('Missing IV to decrypt message.')
+          )
+          return
+        }
 
-        const [ivString, encryptedPayload] = sharedEncryptionPayload.split('|')
-        const dataBuffer = base64ToBuffer(encryptedPayload)
-        const iv = base64ToBuffer(ivString)
+        const dataBuffer = base64ToBuffer(sharedEncryptionPayload)
+        const iv = base64ToBuffer(sharedEncryptionIv)
 
         data = await window.crypto.subtle.decrypt({
           iv,
@@ -285,52 +295,70 @@ export const createClientConnector = (
         }, _sharedKey, dataBuffer)
         data = new TextDecoder().decode(data)
       } else if (userEncryptionPayload) {
-        console.log('userEncryptionPayload', userEncryptionPayload)
-        const [signature, encryptedPayload] = userEncryptionPayload.split('|')
-        const dataBuffer = base64ToBuffer(encryptedPayload)
+        if (!userEncryptionSignature || !userEncryptionKey || !userEncryptionIv) {
+          // Assume the message is not encrypted just send as a user specific message.
+          return
+        }
+        const dataBuffer = base64ToBuffer(userEncryptionPayload)
 
         if (!_generatedKeys) {
           await _generateMyKeys()
         }
 
-        const decryptedPayload = await window.crypto.subtle.decrypt({
+        const decryptedTempKey = await window.crypto.subtle.decrypt({
           name: USER_ENCRYPTION_ALGORITHM,
-        }, _myEncryptKeys.privateKey, dataBuffer)
+        }, _myEncryptKeys.privateKey, base64ToBuffer(userEncryptionKey))
+
+        const tempKey = await window.crypto.subtle.importKey('raw', decryptedTempKey, {
+          name: SHARED_ENCRYPTION_ALGORITHM,
+        }, true, ['encrypt', 'decrypt'])
+
+        const iv = base64ToBuffer(userEncryptionIv)
+        const decryptedPayload = await window.crypto.subtle.decrypt({
+          iv,
+          name: SHARED_ENCRYPTION_ALGORITHM,
+        }, tempKey, dataBuffer)
+
         const jsonPayload = new TextDecoder().decode(decryptedPayload)
         const payloadData = deserializeMessage(jsonPayload)
-        const senderId = payloadData.sender
 
-        if (!senderId) {
-          onError.dispatch({
-            error: new Error('Message from unknown sender'),
-          })
-          return
+        if (payloadData.type === KEY_EXCHANGE_ACCEPT) {
+          deserializedData = payloadData
+        } else {
+          const senderId = payloadData.sender
+
+          if (!senderId) {
+            onError.dispatch({
+              error: new Error('Message from unknown sender'),
+            })
+            return
+          }
+
+          const senderPublicKey = _userSignKeys.get(senderId)
+          if (!senderPublicKey) {
+            onError.dispatch({
+              error: new Error('No public key for user: ' + senderId),
+            })
+            return
+          }
+
+          const signatureBuf = base64ToBuffer(userEncryptionSignature)
+          const isValid = await window.crypto.subtle.verify(
+            USER_SIGNATURE_ALGORITHM,
+            senderPublicKey,
+            signatureBuf,
+            dataBuffer,
+          )
+
+          if (!isValid) {
+            onError.dispatch({
+              error: new Error('Invalid signature for message from ' + senderId),
+            })
+            return
+          }
+
+          deserializedData = payloadData
         }
-
-        const senderPublicKey = _userSignKeys.get(senderId)
-        if (!senderPublicKey) {
-          onError.dispatch({
-            error: new Error('No public key for user: ' + senderId),
-          })
-          return
-        }
-
-        const signatureBuf = base64ToBuffer(signature)
-        const isValid = await window.crypto.subtle.verify(
-          USER_SIGNATURE_ALGORITHM,
-          senderPublicKey,
-          signatureBuf,
-          dataBuffer,
-        )
-
-        if (!isValid) {
-          onError.dispatch({
-            error: new Error('Invalid signature for message from ' + senderId),
-          })
-          return
-        }
-
-        deserializedData = payloadData
       } else {
         data = payload
       }
@@ -347,6 +375,7 @@ export const createClientConnector = (
       }
       data = deserializedData
 
+      console.log('message processing', data) // FIXME:
       switch (data.type) {
         case KEY_EXCHANGE_OFFER:
           if (_myId === _creatorId) {
@@ -661,7 +690,6 @@ export const createClientConnector = (
               myPublicExchangeKey,
             )
 
-            // TODO: Is un encrypted, but should still be base 64 encoded.
             _message({
               type: KEY_EXCHANGE_OFFER,
               publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
@@ -734,9 +762,22 @@ export const createClientConnector = (
       const receiverPublicKey = _userEncryptKeys.get(options.receiver)
       if (receiverPublicKey) {
         const encodedMessage = new TextEncoder().encode(message)
-        const encryptedMessage = await window.crypto.subtle.encrypt({
+
+        // Use hybrid encryption for large messages
+        const tempKey = await window.crypto.subtle.generateKey({
+          name: SHARED_ENCRYPTION_ALGORITHM,
+          length: 256,
+        }, true, ['encrypt', 'decrypt'])
+        const iv = window.crypto.getRandomValues(new Uint8Array(12))
+        const encryptedPayload = await window.crypto.subtle.encrypt({
+          iv,
+          name: SHARED_ENCRYPTION_ALGORITHM,
+        }, tempKey, encodedMessage)
+
+        const exportedTempKey = await window.crypto.subtle.exportKey('raw', tempKey)
+        const encryptedTempKey = await window.crypto.subtle.encrypt({
           name: USER_ENCRYPTION_ALGORITHM,
-        }, receiverPublicKey, encodedMessage)
+        }, receiverPublicKey, exportedTempKey)
 
         if (!_generatedKeys) {
           await _generateMyKeys()
@@ -744,17 +785,20 @@ export const createClientConnector = (
         const signature = await window.crypto.subtle.sign(
           USER_SIGNATURE_ALGORITHM,
           _mySignKeys.privateKey,
-          encryptedMessage,
+          encryptedPayload,
         )
 
-        parts.P = bufferToBase64(signature) + '|' + bufferToBase64(encryptedMessage)
+        parts.G = bufferToBase64(signature)
+        parts.K = bufferToBase64(encryptedTempKey)
+        parts.P = bufferToBase64(encryptedPayload)
+        parts.V = bufferToBase64(iv)
       } else if (!options.allowUnencrypted) {
         onError.dispatch({
           error: new Error('No public key for user: ' + options.receiver),
         })
         return false
       } else {
-        parts.P = message
+        parts.D = message
       }
 
       parts.U = options.receiver
@@ -769,13 +813,17 @@ export const createClientConnector = (
         name: SHARED_ENCRYPTION_ALGORITHM,
       }, _sharedKey, new TextEncoder().encode(message))
 
-      parts.E = bufferToBase64(ivBuffer) + '|' + bufferToBase64(encrypted)
+      parts.E = bufferToBase64(encrypted)
+      parts.I = bufferToBase64(ivBuffer)
       parts.R = '1' // Change to roomCode perhaps?
     } else {
-      parts.R = message
+      onError.dispatch(
+        new Error('Trying to send a message without a valid destination.')
+      )
+      return
     }
 
-    console.log('send message', parts) // FIXME:
+    console.log('send message after', parts) // FIXME:
     _socket.send(
       encode(
         parts,
