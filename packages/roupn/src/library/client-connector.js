@@ -20,6 +20,10 @@ import {
   decode,
   encode,
 } from '../utilities/protocol.js'
+import {
+  calculateTime,
+} from '../utilities/time.js'
+import { SERVER_PAYLOAD, SERVER_TIME, SHARED_ENCRYPTION_IV, SHARED_ENCRYPTION_PAYLOAD, USER_DIRECT_PAYLOAD, USER_ENCRYPTION_IV, USER_ENCRYPTION_KEY, USER_ENCRYPTION_PAYLOAD, USER_ENCRYPTION_SIGNATURE, USER } from './keys.js'
 
 const DIFFIE_HELLMAN_ALGORITHM = 'ECDH'
 const DIFFIE_HELLMAN_CURVE = 'P-256'
@@ -247,17 +251,18 @@ export const createClientConnector = (
         base64ToString,
       )
       const {
-        T: serverTime,
-        R: roomPayload,
-        S: serverPayload,
-        E: sharedEncryptionPayload,
-        I: sharedEncryptionIv,
-        P: userEncryptionPayload,
-        G: userEncryptionSignature,
-        K: userEncryptionKey,
-        V: userEncryptionIv,
-        U: userPayload,
-        D: userDirectPayload,
+        [SERVER_PAYLOAD]: serverPayload,
+        [SERVER_TIME]: serverTime,
+
+        [SHARED_ENCRYPTION_IV]: sharedEncryptionIv,
+        [SHARED_ENCRYPTION_PAYLOAD]: sharedEncryptionPayload,
+
+        [USER_DIRECT_PAYLOAD]: userDirectPayload,
+        [USER_ENCRYPTION_IV]: userEncryptionIv,
+        [USER_ENCRYPTION_KEY]: userEncryptionKey,
+        [USER_ENCRYPTION_PAYLOAD]: userEncryptionPayload,
+        [USER_ENCRYPTION_SIGNATURE]: userEncryptionSignature,
+        [USER]: userReceiver,
       } = parts
 
       console.log('message received', parts) // FIXME:
@@ -277,11 +282,12 @@ export const createClientConnector = (
       if (sharedEncryptionPayload) {
         if (!_sharedKey) {
           // Can't decrypt without the key. Fail silently since it might not have been shared with.
+          // TODO: Store messages and process when _sharedKey is available.
           return
         }
         if (!sharedEncryptionIv) {
           onError.dispatch(
-            new Error('Missing IV to decrypt message.')
+            new Error('Missing IV to decrypt message')
           )
           return
         }
@@ -295,8 +301,18 @@ export const createClientConnector = (
         }, _sharedKey, dataBuffer)
         data = new TextDecoder().decode(data)
       } else if (userEncryptionPayload) {
-        if (!userEncryptionSignature || !userEncryptionKey || !userEncryptionIv) {
+        if (
+          !userEncryptionSignature
+          || !userEncryptionKey
+          || !userEncryptionIv
+        ) {
           // Assume the message is not encrypted just send as a user specific message.
+          console.log(
+            'message is not encrypted, fall through.',
+            userEncryptionSignature,
+            userEncryptionKey,
+            userEncryptionIv,
+          )
           return
         }
         const dataBuffer = base64ToBuffer(userEncryptionPayload)
@@ -337,7 +353,7 @@ export const createClientConnector = (
           const senderPublicKey = _userSignKeys.get(senderId)
           if (!senderPublicKey) {
             onError.dispatch({
-              error: new Error('No public key for user: ' + senderId),
+              error: new Error('No public key for ' + senderId),
             })
             return
           }
@@ -352,7 +368,7 @@ export const createClientConnector = (
 
           if (!isValid) {
             onError.dispatch({
-              error: new Error('Invalid signature for message from ' + senderId),
+              error: new Error('Invalid signature from ' + senderId),
             })
             return
           }
@@ -368,7 +384,7 @@ export const createClientConnector = (
           deserializedData = deserializeMessage(data)
         } catch (error) {
           onError.dispatch({
-            error: new Error('Failed to parse message: ' + event.data),
+            error: new Error('Failed to parse message ' + event.data),
           })
           return
         }
@@ -410,7 +426,7 @@ export const createClientConnector = (
             )
             if (!isVerified) {
               onError.dispatch({
-                error: new Error('Invalid signature for key exchange from ' + newUserId),
+                error: new Error('Invalid signature for exchange from ' + newUserId),
               })
               return
             }
@@ -500,7 +516,7 @@ export const createClientConnector = (
 
         case KEY_EXCHANGE_ACCEPT:
           if (
-            _myId === data.receiver
+            userReceiver === _myId
             && data.sender === _creatorId
           ) {
             if (data.publicSignKey) {
@@ -527,7 +543,7 @@ export const createClientConnector = (
                 )
                 if (!isVerified) {
                   onError.dispatch({
-                    error: new Error('Invalid signature for key exchange from ' + _creatorId),
+                    error: new Error('Invalid signature for exchange from ' + _creatorId),
                   })
                   leaveRoom()
                   return
@@ -574,7 +590,7 @@ export const createClientConnector = (
 
               if (!_password) {
                 onError.dispatch({
-                  error: new Error('Room requires a password, but none was provided.'),
+                  error: new Error('Room requires a password, none provided'),
                 })
                 leaveRoom()
                 return
@@ -590,7 +606,7 @@ export const createClientConnector = (
               const derivedKey = _userDerivedKeys.get(_creatorId)
               if (!derivedKey) {
                 onError.dispatch({
-                  error: new Error('No derived key for host: ' + _creatorId),
+                  error: new Error('No derived key for host ' + _creatorId),
                 })
                 return
               }
@@ -746,7 +762,7 @@ export const createClientConnector = (
       || _socket.readyState !== WebSocket.OPEN
     ) {
       onError.dispatch({
-        error: new Error('Socket is not open'),
+        error: new Error('No open socket'),
       })
       return false
     }
@@ -788,22 +804,22 @@ export const createClientConnector = (
           encryptedPayload,
         )
 
-        parts.G = bufferToBase64(signature)
-        parts.K = bufferToBase64(encryptedTempKey)
-        parts.P = bufferToBase64(encryptedPayload)
-        parts.V = bufferToBase64(iv)
+        parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(signature)
+        parts[USER_ENCRYPTION_KEY] = bufferToBase64(encryptedTempKey)
+        parts[USER_ENCRYPTION_PAYLOAD] = bufferToBase64(encryptedPayload)
+        parts[USER_ENCRYPTION_IV] = bufferToBase64(iv)
       } else if (!options.allowUnencrypted) {
         onError.dispatch({
-          error: new Error('No public key for user: ' + options.receiver),
+          error: new Error('No public key for ' + options.receiver),
         })
         return false
       } else {
-        parts.D = message
+        parts[USER_DIRECT_PAYLOAD] = message
       }
 
-      parts.U = options.receiver
+      parts[USER] = options.receiver
     } else if (options.server) {
-      parts.S = message
+      parts[SERVER_PAYLOAD] = message
     } else if (_sharedKey) {
       const ivBuffer = crypto.getRandomValues(
         new Uint8Array(12),
@@ -813,24 +829,21 @@ export const createClientConnector = (
         name: SHARED_ENCRYPTION_ALGORITHM,
       }, _sharedKey, new TextEncoder().encode(message))
 
-      parts.E = bufferToBase64(encrypted)
-      parts.I = bufferToBase64(ivBuffer)
-      parts.R = '1' // Change to roomCode perhaps?
+      parts[SHARED_ENCRYPTION_IV] = bufferToBase64(ivBuffer)
+      parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(encrypted)
     } else {
       onError.dispatch(
-        new Error('Trying to send a message without a valid destination.')
+        new Error('Trying to send without valid destination')
       )
-      return
+      return false
     }
 
-    console.log('send message after', parts) // FIXME:
     _socket.send(
       encode(
         parts,
         stringToBase64,
       ),
     )
-
     return true
   }
 

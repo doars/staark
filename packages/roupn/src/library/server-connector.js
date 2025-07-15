@@ -33,6 +33,12 @@ import {
   decode,
   encode,
 } from '../utilities/protocol.js'
+import {
+  SERVER_PAYLOAD,
+  SERVER_TIME,
+  SHARED_ENCRYPTION_PAYLOAD,
+  USER,
+} from './keys.js'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -286,13 +292,16 @@ export const createServerConnector = (
       roomCode,
       userId,
       encode({
-        S: serializeMessage({
+        [SERVER_PAYLOAD]: serializeMessage({
           type: USER_JOINED,
           userId,
         })
       }, stringToBase64),
     )
-    onUserJoin.dispatch({ roomCode, userId })
+    onUserJoin.dispatch({
+      roomCode,
+      userId,
+    })
 
     connection.addEventListener('close', () => {
       leaveRoom(roomCode, userId)
@@ -323,19 +332,28 @@ export const createServerConnector = (
         base64ToString,
       )
       const {
-        R: roomPayload,
-        S: serverPayload,
-        U: userPayload,
+        [SHARED_ENCRYPTION_PAYLOAD]: sharedEncryptionPayload,
+        [SERVER_PAYLOAD]: serverPayload,
+        [USER]: userPayload,
       } = parts
 
       if (userPayload) {
-        messageUser(roomCode, userId, userPayload, event.data)
+        messageUser(
+          roomCode,
+          userId,
+          userPayload,
+          event.data,
+        )
         return
       }
 
-      if (roomPayload) {
+      if (sharedEncryptionPayload) {
         if (userData.validated) {
-          messageRoom(roomCode, userId, event.data)
+          messageRoom(
+            roomCode,
+            userId,
+            event.data,
+          )
         }
         return
       }
@@ -355,19 +373,27 @@ export const createServerConnector = (
               break
 
             case USER_KICK:
-              if (parsedData.userId && parsedData.userId !== userId) {
+              if (
+                parsedData.userId
+                && parsedData.userId !== userId
+              ) {
                 leaveRoom(roomCode, parsedData.userId)
               }
               break
 
             case USER_VALIDATED:
-              if (parsedData.userId && room.users.has(parsedData.userId)) {
-                const payload = serializeMessage({ type: USER_VALIDATED, userId: parsedData.userId })
+              if (
+                parsedData.userId
+                && room.users.has(parsedData.userId)
+              ) {
                 _broadcast(
                   roomCode,
                   userId,
                   encode({
-                    S: payload,
+                    [SERVER_PAYLOAD]: serializeMessage({
+                      type: USER_VALIDATED,
+                      userId: parsedData.userId,
+                    }),
                   }, stringToBase64)
                 )
                 room.users.get(parsedData.userId).validated = true
@@ -397,11 +423,17 @@ export const createServerConnector = (
   ) {
     const _room = _rooms.get(roomCode)
     if (!_room) {
-      return [false, { type: ERROR, reason: 'room_not_found' }]
+      return [false, {
+        type: ERROR,
+        reason: 'room_not_found',
+      }]
     }
 
     if (!_room.users.has(userId)) {
-      return [false, { type: ERROR, reason: 'user_not_found' }]
+      return [false, {
+        type: ERROR,
+        reason: 'user_not_found',
+      }]
     }
     const { connection } = _room.users.get(userId)
     _room.users.delete(userId)
@@ -409,13 +441,16 @@ export const createServerConnector = (
       roomCode,
       userId,
       encode({
-        S: serializeMessage({
+        [SERVER_PAYLOAD]: serializeMessage({
           type: USER_LEFT,
           userId,
         })
       }, stringToBase64),
     )
-    onUserLeave.dispatch({ roomCode, userId })
+    onUserLeave.dispatch({
+      roomCode,
+      userId,
+    })
     connection.close()
 
     if (_room.creatorId === userId) {
@@ -425,13 +460,16 @@ export const createServerConnector = (
           roomCode,
           otherUserId,
           encode({
-            S: serializeMessage({
+            [SERVER_PAYLOAD]: serializeMessage({
               type: USER_LEFT,
               userId: otherUserId,
             }),
           }, stringToBase64),
         )
-        onUserLeave.dispatch({ roomCode, userId: otherUserId })
+        onUserLeave.dispatch({
+          roomCode,
+          userId: otherUserId,
+        })
         otherConnection.close()
       }
     }
@@ -447,7 +485,10 @@ export const createServerConnector = (
   ) {
     const room = _rooms.get(roomCode)
     if (!room) {
-      return [false, { type: ERROR, reason: 'room_not_found' }]
+      return [false, {
+        type: ERROR,
+        reason: 'room_not_found',
+      }]
     }
 
     for (const userId of room.users.keys()) {
@@ -459,10 +500,15 @@ export const createServerConnector = (
 
     if (_rooms.get(roomCode)) {
       _rooms.delete(roomCode)
-      onRoomRemove.dispatch({ roomCode })
+      onRoomRemove.dispatch({
+        roomCode,
+      })
     }
 
-    return [true, { type: ROOM_REMOVED, code: roomCode }]
+    return [true, {
+      type: ROOM_REMOVED,
+      code: roomCode,
+    }]
   }
 
   /**
@@ -475,13 +521,22 @@ export const createServerConnector = (
   ) => {
     const _room = _rooms.get(roomCode)
     if (!_room) {
-      return [false, { type: ERROR, reason: 'room_not_found' }]
+      return [false, {
+        type: ERROR,
+        reason: 'room_not_found',
+      }]
     }
 
-    const message = `T:${stringToBase64(String(Date.now()))}|${payload}`
+    const message = SERVER_TIME + ':' + stringToBase64(String(Date.now())) + '|' + payload
 
     for (const [userId, { connection, validated }] of _room.users) {
-      if (!validated || (sender && sender === userId)) {
+      if (
+        !validated
+        || (
+          sender
+          && sender === userId
+        )
+      ) {
         continue
       }
 
@@ -502,7 +557,11 @@ export const createServerConnector = (
   ) => {
     const [_success, _result] = _broadcast(roomCode, sender, payload)
     if (_success) {
-      onRoomMessage.dispatch({ payload, roomCode, sender })
+      onRoomMessage.dispatch({
+        payload,
+        roomCode,
+        sender,
+      })
     }
     return [_success, _result]
   }
@@ -518,22 +577,36 @@ export const createServerConnector = (
   ) => {
     const room = _rooms.get(roomCode)
     if (!room) {
-      return [false, { type: ERROR, reason: 'room_not_found' }]
+      return [false, {
+        type: ERROR,
+        reason: 'room_not_found',
+      }]
     }
 
     if (!room.users.has(receiver)) {
-      return [false, { type: ERROR, reason: 'user_not_found' }]
+      return [false, {
+        type: ERROR,
+        reason: 'user_not_found',
+      }]
     }
     const { connection } = room.users.get(receiver)
 
     if (!connection) {
-      return [false, { type: ERROR, reason: 'user_no_connection' }]
+      return [false, {
+        type: ERROR,
+        reason: 'user_no_connection',
+      }]
     }
     if (connection.readyState !== connection.OPEN) {
-      return [false, { type: ERROR, reason: 'user_no_active_connection' }]
+      return [false, {
+        type: ERROR,
+        reason: 'user_no_active_connection',
+      }]
     }
 
-    connection.send(`T:${stringToBase64(String(Date.now()))}|${data}`)
+    connection.send(
+      SERVER_TIME + ':' + stringToBase64(String(Date.now())) + '|' + data,
+    )
     return [true, {}]
   }
 
@@ -558,25 +631,53 @@ export const createServerConnector = (
       request,
       response,
     ) => {
-      const { pathname = '', searchParams = {} } = new URL(request.url, serverOrigin)
+      const {
+        pathname = '',
+        searchParams = {},
+      } = new URL(request.url, serverOrigin)
 
       if (pathname === createRoomEndpoint) {
         if (isRateLimited(request)) {
-          response.writeHead(429, { 'Content-Type': contentType })
+          response.writeHead(429, {
+            'Content-Type': contentType,
+          })
           response.end(serializeMessage({ type: ERROR, reason: 'too_many_requests' }))
           return true
         }
-        if (validateCreateRequest && !validateCreateRequest(request)) {
-          response.writeHead(401, { 'Content-Type': contentType })
-          response.end(serializeMessage({ type: ERROR, reason: 'unauthorized' }))
+        if (
+          validateCreateRequest
+          && !validateCreateRequest(request)
+        ) {
+          response.writeHead(401, {
+            'Content-Type': contentType,
+          })
+          response.end(serializeMessage({
+            type: ERROR,
+            reason: 'unauthorized',
+          }))
           return true
         }
 
-        const limit = parseInt(searchParams.get('limit'), 10) || undefined
-        const { creatorSecret, roomCode, userId } = createRoom({ limit })
+        const limit = parseInt(
+          searchParams.get('limit'),
+          10
+        ) || undefined
+        const {
+          creatorSecret,
+          roomCode,
+          userId,
+        } = createRoom({
+          limit,
+        })
 
-        response.writeHead(200, { 'Content-Type': contentType })
-        response.end(serializeMessage({ creatorSecret, roomCode, userId }))
+        response.writeHead(200, {
+          'Content-Type': contentType,
+        })
+        response.end(serializeMessage({
+          creatorSecret,
+          roomCode,
+          userId,
+        }))
         return true
       }
 
@@ -589,16 +690,42 @@ export const createServerConnector = (
       head,
       socketServer,
     ) => {
-      const { pathname = '', searchParams = {} } = new URL(request.url, serverOrigin)
+      const {
+        pathname = '',
+        searchParams = {},
+      } = new URL(request.url, serverOrigin)
 
       if (pathname === joinRoomEndpoint) {
         if (isRateLimited(request)) {
-          socket.write(closeMessage(request, '429 Too many requests', contentType, serializeMessage({ type: ERROR, reason: 'too_many_requests' })))
+          socket.write(
+            closeMessage(
+              request,
+              '429 Too many requests',
+              contentType,
+              serializeMessage({
+                type: ERROR,
+                reason: 'too_many_requests',
+              }),
+            ),
+          )
           socket.destroy()
           return true
         }
-        if (validateJoinRequest && !validateJoinRequest(request)) {
-          socket.write(closeMessage(request, '401 Unauthorized', contentType, serializeMessage({ type: ERROR, reason: 'unauthorized' })))
+        if (
+          validateJoinRequest
+          && !validateJoinRequest(request)
+        ) {
+          socket.write(
+            closeMessage(
+              request,
+              '401 Unauthorized',
+              contentType,
+              serializeMessage({
+                type: ERROR,
+                reason: 'unauthorized',
+              }),
+            ),
+          )
           socket.destroy()
           return true
         }
@@ -610,7 +737,11 @@ export const createServerConnector = (
             return
           }
 
-          const [_success, _data] = joinRoom(roomCode, connection, searchParams.get('creator') || null)
+          const [_success, _data] = joinRoom(
+            roomCode,
+            connection,
+            searchParams.get('creator') || null,
+          )
           if (!_success) {
             connection.close(1008, _data.reason)
             return
@@ -618,7 +749,7 @@ export const createServerConnector = (
 
           connection.send(
             encode({
-              S: serializeMessage({
+              [SERVER_PAYLOAD]: serializeMessage({
                 type: ROOM_JOINED,
                 creatorId: _data.creatorId,
                 userId: _data.userId,
