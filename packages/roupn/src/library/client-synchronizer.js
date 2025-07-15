@@ -78,10 +78,10 @@ export const createClientSynchronizer = (
   privateState = {},
   publicState = {},
 ) => {
-  const roomSync = createClientConnector(options)
+  const connector = createClientConnector(options)
   const {
     messageRoom,
-  } = roomSync
+  } = connector
 
   const {
     windowPerUser = 16,
@@ -165,7 +165,7 @@ export const createClientSynchronizer = (
     )
   }
 
-  roomSync.onMessage.addListener(({
+  connector.onMessage.addListener(({
     data,
     time,
   }) => {
@@ -278,7 +278,7 @@ export const createClientSynchronizer = (
     }
   })
 
-  roomSync.onRoomJoin.addListener(({
+  connector.onRoomJoin.addListener(({
     creatorId,
     roomCode,
     userId,
@@ -301,7 +301,7 @@ export const createClientSynchronizer = (
       )
     }
   })
-  roomSync.onRoomLeave.addListener((
+  connector.onRoomLeave.addListener((
   ) => {
     for (const key in privateState) {
       delete privateState[key]
@@ -311,7 +311,7 @@ export const createClientSynchronizer = (
     }
   })
 
-  roomSync.onUserValidated.addListener(({
+  connector.onUserValidated.addListener(({
     userId,
   }) => {
     privateState.users.push(
@@ -328,7 +328,7 @@ export const createClientSynchronizer = (
       _synchroniseState()
     }
   })
-  roomSync.onUserLeave.addListener(({
+  connector.onUserLeave.addListener(({
     userId,
   }) => {
     for (let index = 0; index < privateState.users.length; index++) {
@@ -348,5 +348,5 @@ export const createClientSynchronizer = (
     privateState,
     publicState,
     sendUpdate,
-  }, roomSync)
+  }, connector)
 }

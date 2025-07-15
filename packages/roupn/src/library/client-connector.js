@@ -23,7 +23,24 @@ import {
 import {
   calculateTime,
 } from '../utilities/time.js'
-import { SERVER_PAYLOAD, SERVER_TIME, SHARED_ENCRYPTION_IV, SHARED_ENCRYPTION_PAYLOAD, USER_DIRECT_PAYLOAD, USER_ENCRYPTION_IV, USER_ENCRYPTION_KEY, USER_ENCRYPTION_PAYLOAD, USER_ENCRYPTION_SIGNATURE, USER } from './keys.js'
+import {
+  IDENTIFIABLE_CHARACTERS,
+} from '../utilities/code.js'
+import {
+  SERVER_PAYLOAD,
+  SERVER_TIME,
+
+  SHARED_ENCRYPTION_IV,
+  SHARED_ENCRYPTION_PAYLOAD,
+
+  USER,
+  USER_DIRECT_PAYLOAD,
+
+  USER_ENCRYPTION_IV,
+  USER_ENCRYPTION_KEY,
+  USER_ENCRYPTION_PAYLOAD,
+  USER_ENCRYPTION_SIGNATURE,
+} from './keys.js'
 
 const DIFFIE_HELLMAN_ALGORITHM = 'ECDH'
 const DIFFIE_HELLMAN_CURVE = 'P-256'
@@ -55,6 +72,8 @@ const PASSWORD_VALIDATION = 'password-validation'
  *
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
+ *
+ * @property {string} verificationCodeLength
  */
 
 /**
@@ -114,7 +133,8 @@ export const createClientConnector = (
     _roomCode,
     _userDerivedKeys = new Map(),
     _userEncryptKeys = new Map(),
-    _userSignKeys = new Map()
+    _userSignKeys = new Map(),
+    _userVerification = new Map()
   const _generateMyKeys = () => {
     if (!_generatedKeys) {
       if (!_keyGenerationPromise) {
@@ -179,6 +199,35 @@ export const createClientConnector = (
   const onUserLeave = createEvent()
   const onUserValidated = createEvent()
 
+  const _generateVerifyCode = async (
+    userId,
+  ) => {
+    if (!_userSignKeys.has(userId)) {
+      return
+    }
+
+    const userPublicKey = _userSignKeys.get(userId)
+    const exportedTheirKey = await window.crypto.subtle.exportKey(
+      PUBLIC_KEY_EXPORT_FORMAT,
+      userPublicKey,
+    )
+
+    const encoder = new TextEncoder()
+    const data = encoder.encode(
+      _roomCode
+      + bufferToBase64(_myPublicSignKey)
+      + bufferToBase64(exportedTheirKey),
+    )
+    const hashBuffer = await window.crypto.subtle.digest(
+      HASH_ALGORITHM,
+      data,
+    )
+    const hashArray = Array.from(
+      new Uint8Array(hashBuffer),
+    )
+    _userVerification.set(userId, hashArray)
+  }
+
   /**
    * Closes the current socket connection and resets the socket reference. This function should be called when leaving a room to ensure that the socket connection is properly closed and the state is cleaned up.
    */
@@ -190,6 +239,7 @@ export const createClientConnector = (
       _userDerivedKeys.clear()
       _userEncryptKeys.clear()
       _userSignKeys.clear()
+      _userVerification.clear()
 
       // Setup new keys right away.
       _generateMyKeys()
@@ -485,7 +535,9 @@ export const createClientConnector = (
               publicExchangeKey: bufferToBase64(myPublicExchangeKey),
               publicSignKey: bufferToBase64(_myPublicSignKey),
               signature: bufferToBase64(mySignature),
-            }, { receiver: newUserId })
+            }, {
+              receiver: newUserId,
+            })
           } else {
             const exportedSharedKey = await window.crypto.subtle.exportKey(
               'raw',
@@ -517,6 +569,7 @@ export const createClientConnector = (
             onUserValidated.dispatch({
               userId: newUserId,
             })
+            _generateVerifyCode(newUserId)
             messageServer({
               type: USER_VALIDATED,
               userId: newUserId,
@@ -633,6 +686,7 @@ export const createClientConnector = (
               true,
               ['encrypt', 'decrypt',],
             )
+            _generateVerifyCode(_creatorId)
             if (_sharedMessagesBuffer.length > 0) {
               while (_sharedMessagesBuffer.length > 0) {
                 const { parts, raw } = _sharedMessagesBuffer.shift()
@@ -884,6 +938,22 @@ export const createClientConnector = (
     })
   )
 
+  const getVerifyCode = (
+    userId,
+    codeLength = 6,
+  ) => {
+    if (!_userVerification.has(userId)) {
+      return false
+    }
+    const hashArray = _userVerification.get(userId)
+    let code = ''
+    for (let i = 0; i < codeLength; i++) {
+      const index = hashArray[i] % IDENTIFIABLE_CHARACTERS.length
+      code += IDENTIFIABLE_CHARACTERS[index]
+    }
+    return code
+  }
+
   return {
     onError,
     onMessage,
@@ -965,5 +1035,21 @@ export const createClientConnector = (
       type: USER_KICK,
       userId,
     }),
+
+    getVerifyCode,
+    verifyCode: async (
+      userId,
+      code,
+    ) => {
+      const expectedCode = getVerifyCode(
+        userId,
+        code.length,
+      )
+      return (
+        expectedCode
+        && code
+        && expectedCode === code
+      )
+    },
   }
 }
