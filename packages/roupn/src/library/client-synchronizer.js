@@ -49,7 +49,8 @@ import {
  * @property {Event} onRoomLeave - Event for room leave notifications.
  * @property {Event} onUserJoin - Event for user join notifications.
  * @property {Event} onUserLeave - Event for user leave notifications.
- * @property {Event} onUserValidated - Event for user validated notifications.
+ * @property {Event} onUserVerified - Event for user validated notifications.
+ * @property {Event} onUserVerificationCode - Event for verification code ready notifications.
  *
  * @property {Object} privateState - Internal state, including user and room information.
  * @property {Object} publicState - Shared state object synchronized across users.
@@ -289,11 +290,14 @@ export const createClientSynchronizer = (
     privateState.roomCode = roomCode
     privateState.userId = userId
     privateState.users = users
+    privateState.validatedUsers = []
     privateState.previousState = cloneRecursive(
       publicState,
     )
 
     if (userId === creatorId) {
+      privateState.validatedUsers.push(userId)
+
       // Let the creator send resynchronisation messages every once in a well to get all users in sync.
       _synchronisationIntervalId = setInterval(
         _synchroniseState,
@@ -311,10 +315,30 @@ export const createClientSynchronizer = (
     }
   })
 
-  connector.onUserValidated.addListener(({
+  connector.onUserJoin.addListener(({
     userId,
   }) => {
     privateState.users.push(
+      userId,
+    )
+
+    // Update the amount state updates to store.
+    _stateUpdatesWindow = windowPerUser + (
+      windowPerUser * privateState.users.length
+    )
+  })
+  connector.onUserVerificationCode.addListener((
+    event
+  ) => {
+    if (event.userId === privateState.creatorId) {
+      privateState.verificationCode = event.code
+    }
+  })
+
+  connector.onUserVerified.addListener(({
+    userId,
+  }) => {
+    privateState.validatedUsers.push(
       userId,
     )
 
@@ -334,6 +358,12 @@ export const createClientSynchronizer = (
     for (let index = 0; index < privateState.users.length; index++) {
       if (privateState.users[index] === userId) {
         privateState.users.splice(index, 1)
+        break
+      }
+    }
+    for (let index = 0; index < privateState.validatedUsers.length; index++) {
+      if (privateState.validatedUsers[index] === userId) {
+        privateState.validatedUsers.splice(index, 1)
         break
       }
     }

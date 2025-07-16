@@ -6,6 +6,6 @@ Do note the system makes some assumptions about its users, primarily that they a
 
 ## Tasks
 
-- Remove the password. Instead when joining the joining party should be shown the verification code and provide it via another channel to the creator for them to enter before the user is given the shared key. The other way around is not do-able since then the users will need to figure out which uuid corresponds to which person. This can easily be done wrong since a lot of users can suddenly join when the room code is leaked.
 - The message buffer should only hold onto messages until the last full_sync. Since it can't decrypt them and a resync is only a concept of the syncing extension it should be a configurable maximum number of messages until it starts remove the earliest message received.
 - Ensure that the application can derive the state the connection is in so it can show to the user it is establishing a connection.
+- Optionally allow server to require the user's device to solve a cryptographic challenge before creating or joining a room. This wastes compute time and allows open servers to not be abused.

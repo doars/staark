@@ -10,7 +10,7 @@ import {
   USER_JOINED,
   USER_LEFT,
   USER_KICK,
-  USER_VALIDATED,
+  USER_VERIFIED,
   ROOM_CLOSED,
 } from './types.js'
 
@@ -381,7 +381,7 @@ export const createServerConnector = (
               }
               break
 
-            case USER_VALIDATED:
+            case USER_VERIFIED:
               if (
                 parsedData.userId
                 && room.users.has(parsedData.userId)
@@ -391,7 +391,7 @@ export const createServerConnector = (
                   userId,
                   encode({
                     [SERVER_PAYLOAD]: serializeMessage({
-                      type: USER_VALIDATED,
+                      type: USER_VERIFIED,
                       userId: parsedData.userId,
                     }),
                   }, stringToBase64)

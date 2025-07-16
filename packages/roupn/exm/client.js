@@ -38,60 +38,126 @@ import {
             ]),
             n('hr'),
 
-            n('p', 'Users in the room:'),
-            n('ul',
-              state.privateState.users.map((userId) => (
-                n('li', n('code', userId))
-              )),
-            ),
-
-            n('hr'),
-
-            ...c(state.publicState.messages.length,
+            ...c(
+              state.privateState.validatedUsers.includes(state.privateState.userId),
+              // If validated.
               () => [
-                n('p', 'Messages in the room:'),
+                n('p', 'Users in the room:'),
                 n('ul',
-                  state.publicState.messages.map((message) => (
+                  state.privateState.users.map((userId) => (
                     n('li', [
-                      ' (',
-                      n('time', {
-                        datetime: new Date(message.timestamp).toISOString(),
-                      }, new Date(message.timestamp).toLocaleString()),
-                      ') ',
-                      n('code', message.userId),
-                      ': ',
-                      n('span', message.message),
+                      n('code', userId),
+                      ...c(
+                        state.privateState.validatedUsers.includes(userId),
+                        () => n('span', ' (validated)'),
+                        () => n('span', ' (unvalidated)'),
+                      ),
                     ])
                   )),
                 ),
-              ],
-              () => n('p', 'No messages have been send yet.'),
-            ),
 
-            n('label', {
-              for: 'message-input',
-            }, 'Message:'),
-            n('textarea', {
-              id: 'message-input',
-              type: 'text',
-              required: true,
-              input: (
-                event,
-              ) => {
-                state.message = event.target.value
-              },
-            }, state.message),
-            n('button', {
-              click: (
-              ) => {
-                state.publicState.messages.push({
-                  message: state.message,
-                  timestamp: Date.now(),
-                  userId: state.privateState.userId,
-                })
-                state.message = null
-              },
-            }, 'Send message'),
+                ...c(
+                  state.privateState.userId === state.privateState.creatorId,
+                  () => {
+                    const unvalidatedUsers = state.privateState.users.filter((userId) => !state.privateState.validatedUsers.includes(userId))
+                    return c(
+                      unvalidatedUsers.length > 0,
+                      () => [
+                        n('hr'),
+                        n('p', 'The following users need to be validated:'),
+                        n('ul',
+                          unvalidatedUsers.map((userId) => (
+                            n('li', [
+                              n('code', userId),
+                              n('label', {
+                                for: 'user-verification-code-input-' + userId,
+                              }, 'Verification code:'),
+                              n('input', {
+                                id: 'user-verification-code-input-' + userId,
+                                type: 'text',
+                                required: true,
+                                input: (
+                                  event,
+                                ) => {
+                                  state.verificationCodes[userId] = event.target.value
+                                },
+                                value: state.verificationCodes[userId],
+                              }),
+                              n('button', {
+                                click: (
+                                ) => {
+                                  synchronizer.verifyUser(
+                                    userId,
+                                    state.verificationCodes[userId],
+                                  )
+                                },
+                              }, 'Validate'),
+                            ])
+                          )),
+                        ),
+                      ]
+                    )
+                  }
+                ),
+
+                n('hr'),
+
+                ...c(state.publicState.messages.length,
+                  () => [
+                    n('p', 'Messages in the room:'),
+                    n('ul',
+                      state.publicState.messages.map(
+                        (message) => (
+                          n('li', [
+                            ' (',
+                            n('time', {
+                              datetime: new Date(message.timestamp).toISOString(),
+                            }, new Date(message.timestamp).toLocaleString()),
+                            ') ',
+                            n('code', message.userId),
+                            ': ',
+                            n('span', message.message),
+                          ])
+                        ),
+                      ),
+                    ),
+                  ],
+                  () => n('p', 'No messages have been send yet.'),
+                ),
+
+                n('label', {
+                  for: 'message-input',
+                }, 'Message:'),
+                n('textarea', {
+                  id: 'message-input',
+                  type: 'text',
+                  required: true,
+                  input: (
+                    event,
+                  ) => {
+                    state.message = event.target.value
+                  },
+                }, state.message),
+                n('button', {
+                  click: (
+                  ) => {
+                    state.publicState.messages.push({
+                      message: state.message,
+                      timestamp: Date.now(),
+                      userId: state.privateState.userId,
+                    })
+                    state.message = null
+                  },
+                }, 'Send message'),
+              ],
+              // If not validated.
+              () => [
+                n('p', [
+                  'You are not yet validated, please provide the following code to the room creator: ',
+                  n('code', state.privateState.verificationCode || 'Generating...'),
+                ]),
+              ],
+            ),
 
             n('hr'),
 
@@ -103,6 +169,7 @@ import {
               },
             }, 'Leave room'),
           ],
+          // If not in a room.
           () => [
             n('p', [
               'This is a simple example of using ',
@@ -115,27 +182,10 @@ import {
             n('hr'),
 
             n('p', 'You can create a new room.'),
-            n('label', {
-              for: 'room-create-password-input',
-            }, 'Room password (optional):'),
-            n('input', {
-              id: 'room-create-password-input',
-              type: 'password',
-              required: true,
-              input: (
-                event,
-              ) => {
-                state.roomCreatePassword = event.target.value
-              },
-              value: state.roomCreatePassword,
-            }),
             n('button', {
               click: (
               ) => {
-                synchronizer.createRoom({
-                  password: state.roomCreatePassword,
-                })
-                state.roomCreatePassword = ''
+                synchronizer.createRoom()
               },
             }, 'Create room'),
 
@@ -156,30 +206,14 @@ import {
               },
               value: state.roomCode,
             }),
-            n('label', {
-              for: 'room-join-password-input',
-            }, 'Room password:'),
-            n('input', {
-              id: 'room-join-password-input',
-              type: 'password',
-              required: true,
-              input: (
-                event,
-              ) => {
-                state.roomJoinPassword = event.target.value
-              },
-              value: state.roomJoinPassword,
-            }),
             n('button', {
               click: (
               ) => {
                 synchronizer.joinRoom(
                   state.roomCode,
-                  state.roomJoinPassword,
                 )
 
                 state.roomCode = ''
-                state.roomJoinPassword = ''
               },
             }, 'Join room'),
           ])
@@ -188,7 +222,8 @@ import {
     {
       message: '',
       roomCode: '',
-      roomJoinPassword: '',
+      verificationCode: null,
+      verificationCodes: {},
 
       privateState: {},
       publicState: {
@@ -227,7 +262,7 @@ import {
   ) => {
     console.log('User joined:', event)
   })
-  synchronizer.onUserValidated.addListener((
+  synchronizer.onUserVerified.addListener((
     event
   ) => {
     console.log('User validated:', event)
