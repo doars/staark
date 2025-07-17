@@ -72,6 +72,9 @@ const KEY_EXCHANGE_OFFER = 'key_exchange-offer'
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
  *
+ * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
+ * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
+ *
  * @property {string} verificationCodeLength
  */
 
@@ -114,6 +117,9 @@ export const createClientConnector = (
 
     httpUrl = 'http://localhost:3000',
     wsUrl = 'http://localhost:3000',
+
+    messageBufferMaxCount = 50,
+    messageBufferMaxDuration = 60 * 1000,
   } = options
 
   let _creatorId,
@@ -351,9 +357,15 @@ export const createClientConnector = (
       ) {
         // Can't decrypt without the key, store the messages for later.
         _sharedMessagesBuffer.push({
+          time: Date.now(),
           parts,
           raw,
         })
+
+        // Remove oldest message if buffer is full.
+        if (_sharedMessagesBuffer.length > messageBufferMaxCount) {
+          _sharedMessagesBuffer.shift()
+        }
         return
       }
       if (!sharedEncryptionIv) {
@@ -678,6 +690,11 @@ export const createClientConnector = (
             })
 
             if (_sharedMessagesBuffer.length > 0) {
+              const now = Date.now()
+              _sharedMessagesBuffer = _sharedMessagesBuffer.filter((item) => (
+                now - item.time < messageBufferMaxDuration
+              ))
+
               while (_sharedMessagesBuffer.length > 0) {
                 const {
                   parts,

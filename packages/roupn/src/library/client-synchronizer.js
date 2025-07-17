@@ -35,6 +35,9 @@ import {
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
  *
+ * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
+ * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
+ *
  * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user.
  * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for state synchronisation.
  */
