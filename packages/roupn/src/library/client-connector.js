@@ -137,7 +137,7 @@ export const createClientConnector = (
     if (!_generatedKeys) {
       if (!_keyGenerationPromise) {
         _keyGenerationPromise = Promise.all([
-          window.crypto.subtle.generateKey({
+          crypto.subtle.generateKey({
             name: USER_ENCRYPTION_ALGORITHM,
             modulusLength: 4096,
             publicExponent: new Uint8Array([1, 0, 1]),
@@ -146,7 +146,7 @@ export const createClientConnector = (
             .then(keys => {
               _myEncryptKeys = keys
             }),
-          window.crypto.subtle.generateKey({
+          crypto.subtle.generateKey({
             name: USER_SIGNATURE_ALGORITHM,
             modulusLength: 4096,
             publicExponent: new Uint8Array([1, 0, 1]),
@@ -155,7 +155,7 @@ export const createClientConnector = (
             .then(keys => {
               _mySignKeys = keys
             }),
-          window.crypto.subtle.generateKey({
+          crypto.subtle.generateKey({
             name: DIFFIE_HELLMAN_ALGORITHM,
             namedCurve: DIFFIE_HELLMAN_CURVE,
           }, true, ['deriveKey',])
@@ -164,13 +164,13 @@ export const createClientConnector = (
             }),
         ])
           .then(() => Promise.all([
-            window.crypto.subtle.exportKey(
+            crypto.subtle.exportKey(
               PUBLIC_KEY_EXPORT_FORMAT,
               _myEncryptKeys.publicKey,
             ).then(key => {
               _myPublicEncryptKey = key
             }),
-            window.crypto.subtle.exportKey(
+            crypto.subtle.exportKey(
               PUBLIC_KEY_EXPORT_FORMAT,
               _mySignKeys.publicKey,
             ).then(key => {
@@ -210,12 +210,12 @@ export const createClientConnector = (
       userId,
       Array.from(
         new Uint8Array(
-          await window.crypto.subtle.digest(
+          await crypto.subtle.digest(
             HASH_ALGORITHM,
             new TextEncoder().encode(
               _roomCode
               + bufferToBase64(
-                await window.crypto.subtle.exportKey(
+                await crypto.subtle.exportKey(
                   'raw',
                   derivedKey,
                 ),
@@ -363,7 +363,7 @@ export const createClientConnector = (
         return
       }
 
-      data = await window.crypto.subtle.decrypt(
+      data = await crypto.subtle.decrypt(
         {
           iv: base64ToBuffer(sharedEncryptionIv),
           name: SHARED_ENCRYPTION_ALGORITHM,
@@ -388,14 +388,14 @@ export const createClientConnector = (
       const payloadData = deserializeMessage(
         new TextDecoder()
           .decode(
-            await window.crypto.subtle.decrypt(
+            await crypto.subtle.decrypt(
               {
                 iv: base64ToBuffer(userEncryptionIv),
                 name: SHARED_ENCRYPTION_ALGORITHM,
               },
-              await window.crypto.subtle.importKey(
+              await crypto.subtle.importKey(
                 'raw',
-                await window.crypto.subtle.decrypt(
+                await crypto.subtle.decrypt(
                   {
                     name: USER_ENCRYPTION_ALGORITHM,
                   },
@@ -433,7 +433,7 @@ export const createClientConnector = (
           return
         }
 
-        if (!(await window.crypto.subtle.verify(
+        if (!(await crypto.subtle.verify(
           USER_SIGNATURE_ALGORITHM,
           senderPublicKey,
           base64ToBuffer(userEncryptionSignature),
@@ -470,7 +470,7 @@ export const createClientConnector = (
 
           _userEncryptKeys.set(
             newUserId,
-            await window.crypto.subtle.importKey(
+            await crypto.subtle.importKey(
               PUBLIC_KEY_EXPORT_FORMAT,
               base64ToBuffer(data.publicEncryptKey),
               { hash: HASH_ALGORITHM, name: USER_ENCRYPTION_ALGORITHM, },
@@ -479,7 +479,7 @@ export const createClientConnector = (
             ),
           )
 
-          const publicSignKey = await window.crypto.subtle.importKey(
+          const publicSignKey = await crypto.subtle.importKey(
             PUBLIC_KEY_EXPORT_FORMAT,
             base64ToBuffer(data.publicSignKey),
             { hash: HASH_ALGORITHM, name: USER_SIGNATURE_ALGORITHM, },
@@ -488,7 +488,7 @@ export const createClientConnector = (
           )
 
           const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey)
-          if (!(await window.crypto.subtle.verify(
+          if (!(await crypto.subtle.verify(
             USER_SIGNATURE_ALGORITHM,
             publicSignKey,
             base64ToBuffer(data.signature),
@@ -508,10 +508,10 @@ export const createClientConnector = (
 
           _userDerivedKeys.set(
             newUserId,
-            await window.crypto.subtle.deriveKey(
+            await crypto.subtle.deriveKey(
               {
                 name: DIFFIE_HELLMAN_ALGORITHM,
-                public: await window.crypto.subtle.importKey(
+                public: await crypto.subtle.importKey(
                   DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
                   publicExchangeKeyData,
                   {
@@ -532,7 +532,7 @@ export const createClientConnector = (
             ),
           )
 
-          const myPublicExchangeKey = await window.crypto.subtle.exportKey(
+          const myPublicExchangeKey = await crypto.subtle.exportKey(
             DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
             _myExchangeKeys.publicKey,
           )
@@ -543,7 +543,7 @@ export const createClientConnector = (
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
             publicSignKey: bufferToBase64(_myPublicSignKey),
             signature: bufferToBase64(
-              await window.crypto.subtle.sign(
+              await crypto.subtle.sign(
                 USER_SIGNATURE_ALGORITHM,
                 _mySignKeys.privateKey,
                 myPublicExchangeKey,
@@ -562,7 +562,7 @@ export const createClientConnector = (
           && data.sender === _creatorId
         ) {
           if (data.publicSignKey) {
-            const hostPublicSignKey = await window.crypto.subtle.importKey(
+            const hostPublicSignKey = await crypto.subtle.importKey(
               PUBLIC_KEY_EXPORT_FORMAT,
               base64ToBuffer(data.publicSignKey),
               {
@@ -577,7 +577,7 @@ export const createClientConnector = (
               data.publicExchangeKey
               && data.signature
             ) {
-              if (!(await window.crypto.subtle.verify(
+              if (!(await crypto.subtle.verify(
                 USER_SIGNATURE_ALGORITHM,
                 hostPublicSignKey,
                 base64ToBuffer(data.signature),
@@ -599,7 +599,7 @@ export const createClientConnector = (
           if (data.publicEncryptKey) {
             _userEncryptKeys.set(
               _creatorId,
-              await window.crypto.subtle.importKey(
+              await crypto.subtle.importKey(
                 PUBLIC_KEY_EXPORT_FORMAT,
                 base64ToBuffer(data.publicEncryptKey),
                 {
@@ -619,10 +619,10 @@ export const createClientConnector = (
 
             _userDerivedKeys.set(
               _creatorId,
-              await window.crypto.subtle.deriveKey(
+              await crypto.subtle.deriveKey(
                 {
                   name: DIFFIE_HELLMAN_ALGORITHM,
-                  public: await window.crypto.subtle.importKey(
+                  public: await crypto.subtle.importKey(
                     DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
                     base64ToBuffer(data.publicExchangeKey),
                     {
@@ -656,9 +656,9 @@ export const createClientConnector = (
               return
             }
 
-            _sharedKey = await window.crypto.subtle.importKey(
+            _sharedKey = await crypto.subtle.importKey(
               'raw',
-              await window.crypto.subtle.decrypt(
+              await crypto.subtle.decrypt(
                 {
                   iv: base64ToBuffer(data.sharedKeyIv),
                   name: SHARED_ENCRYPTION_ALGORITHM,
@@ -712,7 +712,7 @@ export const createClientConnector = (
             await _generateMyKeys()
           }
 
-          const myPublicExchangeKey = await window.crypto.subtle.exportKey(
+          const myPublicExchangeKey = await crypto.subtle.exportKey(
             DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
             _myExchangeKeys.publicKey,
           )
@@ -723,7 +723,7 @@ export const createClientConnector = (
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
             publicSignKey: bufferToBase64(_myPublicSignKey),
             signature: bufferToBase64(
-              await window.crypto.subtle.sign(
+              await crypto.subtle.sign(
                 USER_SIGNATURE_ALGORITHM,
                 _mySignKeys.privateKey,
                 myPublicExchangeKey,
@@ -793,7 +793,7 @@ export const createClientConnector = (
     if (options.receiver) {
       const receiverPublicKey = _userEncryptKeys.get(options.receiver)
       if (receiverPublicKey) {
-        const tempKey = await window.crypto.subtle.generateKey(
+        const tempKey = await crypto.subtle.generateKey(
           {
             name: SHARED_ENCRYPTION_ALGORITHM,
             length: 256,
@@ -801,10 +801,10 @@ export const createClientConnector = (
           true,
           ['encrypt', 'decrypt',],
         )
-        const iv = window.crypto.getRandomValues(
+        const iv = crypto.getRandomValues(
           new Uint8Array(12),
         )
-        const encryptedPayload = await window.crypto.subtle.encrypt(
+        const encryptedPayload = await crypto.subtle.encrypt(
           {
             iv,
             name: SHARED_ENCRYPTION_ALGORITHM,
@@ -818,19 +818,19 @@ export const createClientConnector = (
         }
 
         parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(
-          await window.crypto.subtle.sign(
+          await crypto.subtle.sign(
             USER_SIGNATURE_ALGORITHM,
             _mySignKeys.privateKey,
             encryptedPayload,
           ),
         )
         parts[USER_ENCRYPTION_KEY] = bufferToBase64(
-          await window.crypto.subtle.encrypt(
+          await crypto.subtle.encrypt(
             {
               name: USER_ENCRYPTION_ALGORITHM,
             },
             receiverPublicKey,
-            await window.crypto.subtle.exportKey(
+            await crypto.subtle.exportKey(
               'raw',
               tempKey,
             ),
@@ -857,7 +857,7 @@ export const createClientConnector = (
 
       parts[SHARED_ENCRYPTION_IV] = bufferToBase64(iv)
       parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(
-        await window.crypto.subtle.encrypt(
+        await crypto.subtle.encrypt(
           {
             iv,
             name: SHARED_ENCRYPTION_ALGORITHM,
@@ -942,7 +942,7 @@ export const createClientConnector = (
     createRoom: async (
       options = {},
     ) => {
-      _sharedKey = await window.crypto.subtle.generateKey(
+      _sharedKey = await crypto.subtle.generateKey(
         {
           length: SHARED_KEY_LENGTH,
           name: SHARED_ENCRYPTION_ALGORITHM,
@@ -1028,19 +1028,19 @@ export const createClientConnector = (
         return false
       }
 
-      const iv = window.crypto.getRandomValues(
+      const iv = crypto.getRandomValues(
         new Uint8Array(12),
       )
       _message({
         type: KEY_EXCHANGE_ACCEPT,
         sharedKey: bufferToBase64(
-          await window.crypto.subtle.encrypt(
+          await crypto.subtle.encrypt(
             {
               iv,
               name: SHARED_ENCRYPTION_ALGORITHM,
             },
             derivedKey,
-            await window.crypto.subtle.exportKey(
+            await crypto.subtle.exportKey(
               'raw',
               _sharedKey,
             ),
