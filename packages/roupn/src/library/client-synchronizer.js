@@ -46,6 +46,7 @@ import {
  * The object returned by createClientSynchronizer.
  * @typedef {Object} Synchronizer
  *
+ * @property {Event} onConnection - Event for connection state change notifications.
  * @property {Event} onError - Event for error handling.
  * @property {Event} onMessage - Event for receiving messages.
  * @property {Event} onRoomJoin - Event for room join notifications.
@@ -57,6 +58,8 @@ import {
  *
  * @property {Object} privateState - Internal state, including user and room information.
  * @property {Object} publicState - Shared state object synchronized across users.
+ *
+ * @property {Function} getConnectionState - Get the current connection state.
  *
  * @property {Function} closeRoom - Closes the room for all. Only allowed by the creator.
  * @property {Function} createRoom - Creates a new room and joins it.
@@ -282,6 +285,12 @@ export const createClientSynchronizer = (
     }
   })
 
+  connector.onConnection.addListener(({
+    state,
+  }) => {
+    privateState.connectionState = state
+  })
+
   connector.onRoomJoin.addListener(({
     creatorId,
     roomCode,
@@ -337,7 +346,6 @@ export const createClientSynchronizer = (
       privateState.verificationCode = event.code
     }
   })
-
   connector.onUserVerified.addListener(({
     userId,
   }) => {

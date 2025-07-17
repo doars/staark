@@ -5,6 +5,12 @@ import {
   USER_KICK,
   USER_LEFT,
   USER_VERIFIED,
+
+  CONNECTION_CONNECTED,
+  CONNECTION_CONNECTING,
+  CONNECTION_DISCONNECTED,
+  CONNECTION_DISCONNECTING,
+  CONNECTION_PENDING_VERIFICATION,
 } from './types.js'
 
 import {
@@ -81,6 +87,7 @@ const KEY_EXCHANGE_OFFER = 'key_exchange-offer'
 /**
  * @typedef {Object} ConnectorAPI
  *
+ * @property {Event} onConnection - Event for connection state change notifications.
  * @property {Event} onError - Event for error handling.
  * @property {Event} onMessage - Event for receiving messages.
  * @property {Event} onRoomJoin - Event for room join notifications.
@@ -138,7 +145,8 @@ export const createClientConnector = (
     _userDerivedKeys = new Map(),
     _userEncryptKeys = new Map(),
     _userSignKeys = new Map(),
-    _userVerification = new Map()
+    _userVerification = new Map(),
+    _connectionState = CONNECTION_DISCONNECTED
   const _generateMyKeys = () => {
     if (!_generatedKeys) {
       if (!_keyGenerationPromise) {
@@ -203,6 +211,18 @@ export const createClientConnector = (
   const onUserLeave = createEvent()
   const onUserVerified = createEvent()
   const onUserVerificationCode = createEvent()
+  const onConnection = createEvent()
+
+  const _setConnectionState = (
+    state,
+  ) => {
+    if (_connectionState !== state) {
+      _connectionState = state
+      onConnection.dispatch({
+        state,
+      })
+    }
+  }
 
   const _generateVerificationCode = async (
     userId,
@@ -243,17 +263,28 @@ export const createClientConnector = (
    */
   const leaveRoom = (
   ) => {
+    if (
+      _connectionState === CONNECTION_DISCONNECTED
+      || _connectionState === CONNECTION_DISCONNECTING
+    ) {
+      return
+    }
+    _setConnectionState(CONNECTION_DISCONNECTING)
+
     if (_socket) {
       _socket.close()
-      _creatorId = _generatedKeys = _keyGenerationPromise = _myId = _myEncryptKeys = _myExchangeKeys = _myPublicEncryptKey = _myPublicSignKey = _mySignKeys = _sharedKey = _sharedMessagesBuffer = _socket = null
-      _userDerivedKeys.clear()
-      _userEncryptKeys.clear()
-      _userSignKeys.clear()
-      _userVerification.clear()
-
-      // Setup new keys right away.
-      _generateMyKeys()
     }
+
+    _creatorId = _generatedKeys = _keyGenerationPromise = _myId = _myEncryptKeys = _myExchangeKeys = _myPublicEncryptKey = _myPublicSignKey = _mySignKeys = _sharedKey = _sharedMessagesBuffer = _socket = null
+    _userDerivedKeys.clear()
+    _userEncryptKeys.clear()
+    _userSignKeys.clear()
+    _userVerification.clear()
+
+    // Setup new keys right away.
+    _generateMyKeys()
+
+    _setConnectionState(CONNECTION_DISCONNECTED)
   }
 
   /**
@@ -267,6 +298,15 @@ export const createClientConnector = (
     roomCode,
     creatorSecret = null,
   ) => {
+    if (
+      !creatorSecret
+      && _connectionState
+      && _connectionState !== CONNECTION_DISCONNECTED
+    ) {
+      return
+    }
+    _setConnectionState(CONNECTION_CONNECTING)
+
     _roomCode = roomCode
 
     const url = new URL(
@@ -293,6 +333,8 @@ export const createClientConnector = (
       onRoomLeave.dispatch({
         event,
       })
+
+      leaveRoom()
     })
 
     _socket.addEventListener('error', (
@@ -707,6 +749,8 @@ export const createClientConnector = (
                 )
               }
             }
+
+            _setConnectionState(CONNECTION_CONNECTED)
           } else {
             _generateVerificationCode(_creatorId)
           }
@@ -725,6 +769,8 @@ export const createClientConnector = (
         })
 
         if (_myId !== _creatorId) {
+          _setConnectionState(CONNECTION_PENDING_VERIFICATION)
+
           if (!_generatedKeys) {
             await _generateMyKeys()
           }
@@ -750,6 +796,8 @@ export const createClientConnector = (
             allowUnencrypted: true,
             receiver: _creatorId,
           })
+        } else {
+          _setConnectionState(CONNECTION_CONNECTED)
         }
         break
 
@@ -935,6 +983,7 @@ export const createClientConnector = (
   }
 
   return {
+    onConnection,
     onError,
     onMessage,
 
@@ -959,6 +1008,14 @@ export const createClientConnector = (
     createRoom: async (
       options = {},
     ) => {
+      if (
+        _connectionState
+        && _connectionState !== CONNECTION_DISCONNECTED
+      ) {
+        return
+      }
+      _setConnectionState(CONNECTION_CONNECTING)
+
       _sharedKey = await crypto.subtle.generateKey(
         {
           length: SHARED_KEY_LENGTH,
@@ -985,7 +1042,6 @@ export const createClientConnector = (
           Accept: contentType,
         },
       })
-
       if (!response.ok) {
         throw new Error('Failed to create room')
       }

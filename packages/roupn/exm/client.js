@@ -9,6 +9,13 @@ import {
   createClientSynchronizer,
 } from '../src/index.js'
 
+import {
+  CONNECTION_CONNECTED,
+  CONNECTION_CONNECTING,
+  CONNECTION_DISCONNECTING,
+  CONNECTION_PENDING_VERIFICATION,
+} from '../src/library/types.js'
+
 (function () {
   let synchronizer = null
 
@@ -26,150 +33,150 @@ import {
 
       return [
         n('h1', 'roupn example'),
-        ...c(
-          state.privateState.roomCode,
-          () => [
-            n('p', [
-              'You are user ',
-              n('code', state.privateState.userId),
-              ' in room ',
-              n('code', state.privateState.roomCode),
-              '.',
-            ]),
-            n('hr'),
+        ...m(state.privateState.connectionState,
+          {
+            [CONNECTION_CONNECTED]: () => [
+              n('p', [
+                'You are user ',
+                n('code', state.privateState.userId),
+                ' in room ',
+                n('code', state.privateState.roomCode),
+                '.',
+              ]),
+              n('hr'),
 
-            ...c(
-              state.privateState.validatedUsers.includes(state.privateState.userId),
-              // If validated.
-              () => [
-                n('p', 'Users in the room:'),
-                n('ul',
-                  state.privateState.users.map((userId) => (
-                    n('li', [
-                      n('code', userId),
-                      ...c(
-                        state.privateState.validatedUsers.includes(userId),
-                        () => n('span', ' (validated)'),
-                        () => n('span', ' (unvalidated)'),
-                      ),
-                    ])
-                  )),
-                ),
+              n('p', 'Users in the room:'),
+              n('ul',
+                state.privateState.users.map((userId) => (
+                  n('li', [
+                    n('code', userId),
+                    ...c(
+                      state.privateState.validatedUsers.includes(userId),
+                      () => n('span', ' (validated)'),
+                      () => n('span', ' (unvalidated)'),
+                    ),
+                  ])
+                )),
+              ),
 
-                ...c(
-                  state.privateState.userId === state.privateState.creatorId,
-                  () => {
-                    const unvalidatedUsers = state.privateState.users.filter((userId) => !state.privateState.validatedUsers.includes(userId))
-                    return c(
-                      unvalidatedUsers.length > 0,
-                      () => [
-                        n('hr'),
-                        n('p', 'The following users need to be validated:'),
-                        n('ul',
-                          unvalidatedUsers.map((userId) => (
-                            n('li', [
-                              n('code', userId),
-                              n('label', {
-                                for: 'user-verification-code-input-' + userId,
-                              }, 'Verification code:'),
-                              n('input', {
-                                id: 'user-verification-code-input-' + userId,
-                                type: 'text',
-                                required: true,
-                                input: (
-                                  event,
-                                ) => {
-                                  state.verificationCodes[userId] = event.target.value
-                                },
-                                value: state.verificationCodes[userId],
-                              }),
-                              n('button', {
-                                click: (
-                                ) => {
-                                  synchronizer.verifyUser(
-                                    userId,
-                                    state.verificationCodes[userId],
-                                  )
-                                },
-                              }, 'Validate'),
-                            ])
-                          )),
-                        ),
-                      ]
-                    )
-                  }
-                ),
-
-                n('hr'),
-
-                ...c(state.publicState.messages.length,
-                  () => [
-                    n('p', 'Messages in the room:'),
-                    n('ul',
-                      state.publicState.messages.map(
-                        (message) => (
+              ...c(
+                state.privateState.userId === state.privateState.creatorId,
+                () => {
+                  const unvalidatedUsers = state.privateState.users.filter((userId) => !state.privateState.validatedUsers.includes(userId))
+                  return c(
+                    unvalidatedUsers.length > 0,
+                    () => [
+                      n('hr'),
+                      n('p', 'The following users need to be validated:'),
+                      n('ul',
+                        // TODO: Should technically only be listed here after the code has been generated.
+                        unvalidatedUsers.map((userId) => (
                           n('li', [
-                            ' (',
-                            n('time', {
-                              datetime: new Date(message.timestamp).toISOString(),
-                            }, new Date(message.timestamp).toLocaleString()),
-                            ') ',
-                            n('code', message.userId),
-                            ': ',
-                            n('span', message.message),
+                            n('code', userId),
+                            n('label', {
+                              for: 'user-verification-code-input-' + userId,
+                            }, 'Verification code:'),
+                            n('input', {
+                              id: 'user-verification-code-input-' + userId,
+                              type: 'text',
+                              required: true,
+                              input: (
+                                event,
+                              ) => {
+                                state.verificationCodes[userId] = event.target.value
+                              },
+                              value: state.verificationCodes[userId],
+                            }),
+                            n('button', {
+                              click: (
+                              ) => {
+                                synchronizer.verifyUser(
+                                  userId,
+                                  state.verificationCodes[userId],
+                                )
+                              },
+                            }, 'Validate'),
                           ])
-                        ),
+                        )),
+                      ),
+                    ]
+                  )
+                }
+              ),
+
+              n('hr'),
+
+              ...c(state.publicState.messages.length,
+                () => [
+                  n('p', 'Messages in the room:'),
+                  n('ul',
+                    state.publicState.messages.map(
+                      (message) => (
+                        n('li', [
+                          ' (',
+                          n('time', {
+                            datetime: new Date(message.timestamp).toISOString(),
+                          }, new Date(message.timestamp).toLocaleString()),
+                          ') ',
+                          n('code', message.userId),
+                          ': ',
+                          n('span', message.message),
+                        ])
                       ),
                     ),
-                  ],
-                  () => n('p', 'No messages have been send yet.'),
-                ),
+                  ),
+                ],
+                () => n('p', 'No messages have been send yet.'),
+              ),
 
-                n('label', {
-                  for: 'message-input',
-                }, 'Message:'),
-                n('textarea', {
-                  id: 'message-input',
-                  type: 'text',
-                  required: true,
-                  input: (
-                    event,
-                  ) => {
-                    state.message = event.target.value
-                  },
-                }, state.message),
-                n('button', {
-                  click: (
-                  ) => {
-                    state.publicState.messages.push({
-                      message: state.message,
-                      timestamp: Date.now(),
-                      userId: state.privateState.userId,
-                    })
-                    state.message = null
-                  },
-                }, 'Send message'),
-              ],
-              // If not validated.
-              () => [
-                n('p', [
-                  'You are not yet validated, please provide the following code to the room creator: ',
-                  n('code', state.privateState.verificationCode || 'Generating...'),
-                ]),
-              ],
-            ),
+              n('label', {
+                for: 'message-input',
+              }, 'Message:'),
+              n('textarea', {
+                id: 'message-input',
+                type: 'text',
+                required: true,
+                input: (
+                  event,
+                ) => {
+                  state.message = event.target.value
+                },
+              }, state.message),
+              n('button', {
+                click: (
+                ) => {
+                  state.publicState.messages.push({
+                    message: state.message,
+                    timestamp: Date.now(),
+                    userId: state.privateState.userId,
+                  })
+                  state.message = null
+                },
+              }, 'Send message'),
 
-            n('hr'),
+              n('hr'),
 
-            n('p', 'You can leave the room.'),
-            n('button', {
-              click: (
-              ) => {
-                synchronizer.leaveRoom()
-              },
-            }, 'Leave room'),
-          ],
-          // If not in a room.
+              n('p', 'You can leave the room.'),
+              n('button', {
+                click: (
+                ) => {
+                  synchronizer.leaveRoom()
+                },
+              }, 'Leave room'),
+            ],
+            [CONNECTION_CONNECTING]: () => [
+              n('p', 'Connecting to room...'),
+            ],
+            [CONNECTION_DISCONNECTING]: () => [
+              n('p', 'Disconnecting from room...'),
+            ],
+            [CONNECTION_PENDING_VERIFICATION]: () => [
+              n('p', [
+                'You are not yet validated, please provide the following code to the room creator: ',
+                n('code', state.privateState.verificationCode || 'Generating...'),
+              ]),
+            ],
+          },
           () => [
             n('p', [
               'This is a simple example of using ',
@@ -216,13 +223,14 @@ import {
                 state.roomCode = ''
               },
             }, 'Join room'),
-          ])
+          ],
+        ),
       ]
     },
+
     {
       message: '',
       roomCode: '',
-      verificationCode: null,
       verificationCodes: {},
 
       privateState: {},
@@ -247,6 +255,14 @@ import {
   ) => {
     console.log('Message received:', event)
   })
+
+
+  synchronizer.onConnection.addListener((
+    event
+  ) => {
+    console.log('Connection state received:', event)
+  })
+
   synchronizer.onRoomJoin.addListener((
     event
   ) => {
@@ -257,6 +273,7 @@ import {
   ) => {
     console.log('Room left:', event)
   })
+
   synchronizer.onUserJoin.addListener((
     event
   ) => {
