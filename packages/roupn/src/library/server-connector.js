@@ -12,7 +12,7 @@ import {
   USER_KICK,
   USER_VERIFIED,
   ROOM_CLOSED,
-} from './types.js'
+} from './message-types.js'
 
 import {
   IDENTIFIABLE_CHARACTERS,
@@ -38,7 +38,7 @@ import {
   SERVER_TIME,
   SHARED_ENCRYPTION_PAYLOAD,
   USER,
-} from './keys.js'
+} from './payload-keys.js'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event

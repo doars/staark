@@ -1,5 +1,8 @@
-export const ERROR = 'err'
-export const MESSAGE = 'msg'
+export const ERROR = '_ER'
+export const MESSAGE = '_MS'
+
+export const KEY_EXCHANGE_ACCEPT = '_KA'
+export const KEY_EXCHANGE_OFFER = '_KO'
 
 export const ROOM_CLOSED = '_RC'
 export const ROOM_JOINED = '_RJ'

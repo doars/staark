@@ -1,4 +1,6 @@
 import {
+  KEY_EXCHANGE_ACCEPT,
+  KEY_EXCHANGE_OFFER,
   ROOM_CLOSED,
   ROOM_JOINED,
   USER_JOINED,
@@ -11,7 +13,7 @@ import {
   CONNECTION_DISCONNECTED,
   CONNECTION_DISCONNECTING,
   CONNECTION_PENDING_VERIFICATION,
-} from './types.js'
+} from './message-types.js'
 
 import {
   base64ToBuffer,
@@ -33,6 +35,20 @@ import {
   IDENTIFIABLE_CHARACTERS,
 } from '../utilities/code.js'
 import {
+  DIFFIE_HELLMAN_ALGORITHM,
+  DIFFIE_HELLMAN_CURVE,
+  DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
+  HASH_ALGORITHM,
+  PUBLIC_KEY_EXPORT_FORMAT,
+  SHARED_ENCRYPTION_ALGORITHM,
+  SHARED_KEY_LENGTH,
+  sharedKeyGenerator,
+  USER_ENCRYPTION_ALGORITHM,
+  USER_SIGNATURE_ALGORITHM,
+
+  userKeyGenerator,
+} from './key-generator.js'
+import {
   SERVER_PAYLOAD,
   SERVER_TIME,
 
@@ -46,20 +62,7 @@ import {
   USER_ENCRYPTION_KEY,
   USER_ENCRYPTION_PAYLOAD,
   USER_ENCRYPTION_SIGNATURE,
-} from './keys.js'
-
-const DIFFIE_HELLMAN_ALGORITHM = 'ECDH'
-const DIFFIE_HELLMAN_CURVE = 'P-256'
-const DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT = 'raw'
-const HASH_ALGORITHM = 'SHA-256'
-const PUBLIC_KEY_EXPORT_FORMAT = 'spki'
-const SHARED_ENCRYPTION_ALGORITHM = 'AES-GCM'
-const SHARED_KEY_LENGTH = 256
-const USER_ENCRYPTION_ALGORITHM = 'RSA-OAEP'
-const USER_SIGNATURE_ALGORITHM = 'RSASSA-PKCS1-v1_5'
-
-const KEY_EXCHANGE_ACCEPT = 'key_exchange-accept'
-const KEY_EXCHANGE_OFFER = 'key_exchange-offer'
+} from './payload-keys.js'
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -148,57 +151,56 @@ export const createClientConnector = (
     _userVerification = new Map(),
     _connectionState = CONNECTION_DISCONNECTED
   const _generateMyKeys = () => {
-    if (!_generatedKeys) {
-      if (!_keyGenerationPromise) {
-        _keyGenerationPromise = Promise.all([
-          crypto.subtle.generateKey({
-            name: USER_ENCRYPTION_ALGORITHM,
-            modulusLength: 4096,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: { name: HASH_ALGORITHM, },
-          }, true, ['encrypt', 'decrypt',])
-            .then(keys => {
-              _myEncryptKeys = keys
-            }),
-          crypto.subtle.generateKey({
-            name: USER_SIGNATURE_ALGORITHM,
-            modulusLength: 4096,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: { name: HASH_ALGORITHM, },
-          }, true, ['sign', 'verify',])
-            .then(keys => {
-              _mySignKeys = keys
-            }),
-          crypto.subtle.generateKey({
-            name: DIFFIE_HELLMAN_ALGORITHM,
-            namedCurve: DIFFIE_HELLMAN_CURVE,
-          }, true, ['deriveKey',])
-            .then(keys => {
-              _myExchangeKeys = keys
-            }),
-        ])
-          .then(() => Promise.all([
-            crypto.subtle.exportKey(
-              PUBLIC_KEY_EXPORT_FORMAT,
-              _myEncryptKeys.publicKey,
-            ).then(key => {
-              _myPublicEncryptKey = key
-            }),
-            crypto.subtle.exportKey(
-              PUBLIC_KEY_EXPORT_FORMAT,
-              _mySignKeys.publicKey,
-            ).then(key => {
-              _myPublicSignKey = key
-            }),
-          ])
-            .then(() => {
-              _generatedKeys = true;
-              _keyGenerationPromise = null
+    if (
+      !_generatedKeys
+      && !_keyGenerationPromise
+    ) {
+      const worker = new Worker(
+        URL.createObjectURL(
+          new Blob([
+            '(' + userKeyGenerator.toString() + ')()'
+          ], {
+            type: 'text/javascript',
+          }),
+        ),
+      )
+
+      _keyGenerationPromise = new Promise((resolve, reject) => {
+        worker.onmessage = (event) => {
+          if (event.data.success) {
+            _myEncryptKeys = event.data.data.myEncryptKeys
+            _mySignKeys = event.data.data.mySignKeys
+            _myExchangeKeys = event.data.data.myExchangeKeys
+            _myPublicEncryptKey = event.data.data.myPublicEncryptKey
+            _myPublicSignKey = event.data.data.myPublicSignKey
+
+            _generatedKeys = true
+            _keyGenerationPromise = null
+            resolve()
+          } else {
+            const error = new Error(event.data.error)
+            onError.dispatch({
+              error,
             })
-          )
-      }
-      return _keyGenerationPromise
+            reject(error)
+          }
+          worker.terminate()
+        }
+
+        worker.onerror = (error) => {
+          onError.dispatch({
+            error,
+          })
+          reject(error)
+          worker.terminate()
+        }
+
+        worker.postMessage({
+          type: 'USER_KEYS',
+        })
+      })
     }
+    return _keyGenerationPromise
   }
   // Start generating new keys.
   _generateMyKeys()
@@ -1016,14 +1018,50 @@ export const createClientConnector = (
       }
       _setConnectionState(CONNECTION_CONNECTING)
 
-      _sharedKey = await crypto.subtle.generateKey(
-        {
-          length: SHARED_KEY_LENGTH,
-          name: SHARED_ENCRYPTION_ALGORITHM,
-        },
-        true,
-        ['encrypt', 'decrypt',],
+      const worker = new Worker(
+        URL.createObjectURL(
+          new Blob([
+            '(' + sharedKeyGenerator.toString() + ')()'
+          ], {
+            type: 'text/javascript',
+          }),
+        ),
       )
+
+      const keyGenerationPromise = new Promise((
+        resolve,
+        reject,
+      ) => {
+        worker.addEventListener('message', (
+          event,
+        ) => {
+          if (event.data.success) {
+            _sharedKey = event.data.data.sharedKey
+            resolve()
+          } else {
+            const error = new Error(event.data.error)
+            onError.dispatch({
+              error,
+            })
+            reject(error)
+          }
+          worker.terminate()
+        })
+        worker.addEventListener('error', (
+          error,
+        ) => {
+          onError.dispatch({
+            error,
+          })
+          reject(error)
+          worker.terminate()
+        })
+        worker.postMessage({
+          type: 'SHARED_KEY',
+        })
+      })
+
+      await keyGenerationPromise
 
       const url = new URL(
         httpUrl

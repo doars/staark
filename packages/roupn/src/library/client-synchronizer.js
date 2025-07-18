@@ -11,7 +11,7 @@ import {
 import {
   STATE_SYNCH,
   STATE_UPDATE,
-} from './types.js'
+} from './message-types.js'
 
 import {
   generateCode,

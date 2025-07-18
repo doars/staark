@@ -14,7 +14,7 @@ import {
   CONNECTION_CONNECTING,
   CONNECTION_DISCONNECTING,
   CONNECTION_PENDING_VERIFICATION,
-} from '../src/library/types.js'
+} from '../src/library/message-types.js'
 
 (function () {
   let synchronizer = null
