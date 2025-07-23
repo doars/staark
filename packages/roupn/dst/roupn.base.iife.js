@@ -1,0 +1,1098 @@
+(() => {
+  // ../../helpers/iife.js
+  var iife = (path, data) => {
+    let subject = window;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+        subject[path[i]] = {};
+      }
+      subject = subject[path[i]];
+    }
+    subject[path[path.length - 1]] = data;
+  };
+
+  // src/library/message-types.js
+  var CONNECTION_CONNECTED = "CONNECTED";
+  var CONNECTION_CONNECTING = "CONNECTING";
+  var CONNECTION_DISCONNECTED = "DISCONNECTED";
+  var CONNECTION_DISCONNECTING = "DISCONNECTING";
+  var CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
+  var KEY_EXCHANGE_ACCEPT = "_KA";
+  var KEY_EXCHANGE_OFFER = "_KO";
+  var ROOM_CLOSED = "_RC";
+  var ROOM_JOINED = "_RJ";
+  var USER_JOINED = "_UJ";
+  var USER_KICK = "_UK";
+  var USER_LEFT = "_UL";
+  var USER_VERIFIED = "_UV";
+
+  // src/utilities/encoding-client.js
+  var base64ToBuffer = (base64) => {
+    const binary = atob(base64);
+    return Uint8Array.from(
+      binary,
+      (character) => character.charCodeAt(0)
+    ).buffer;
+  };
+  var base64ToString = (base64) => {
+    const binary = atob(base64);
+    const bytes = Uint8Array.from(
+      binary,
+      (character) => character.charCodeAt(0)
+    );
+    return new TextDecoder().decode(bytes);
+  };
+  var stringToBase64 = (string) => {
+    const bytes = new TextEncoder().encode(string);
+    if (bytes.length < 65536) {
+      return btoa(
+        String.fromCharCode(...bytes)
+      );
+    }
+    let binary = "";
+    const chunkSize = 65536;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  };
+  var bufferToBase64 = (buffer) => {
+    const bytes = new Uint8Array(buffer);
+    if (bytes.length < 65536) {
+      return btoa(
+        String.fromCharCode(...bytes)
+      );
+    }
+    let binary = "";
+    const chunkSize = 65536;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary);
+  };
+
+  // src/utilities/event.js
+  var createEvent = () => {
+    const listeners = /* @__PURE__ */ new Map();
+    return {
+      /**
+       * Adds a listener callback for the event.
+       * @param {EventListenerCallback} callback - The listener function to add.
+       * @param {EventListenerOptions} [options] - Optional options for the listener (e.g., { once: true }).
+       */
+      addListener: (callback, options) => {
+        if (!listeners.has(callback)) {
+          listeners.set(callback, options);
+        }
+      },
+      /**
+       * Removes a listener callback from the event.
+       * @param {EventListenerCallback} callback - The listener function to remove.
+       */
+      removeListener: (callback) => {
+        listeners.delete(callback);
+      },
+      /**
+       * Dispatches the event to all registered listeners.
+       * @param {any} data - Data to pass to each listener callback.
+       */
+      dispatch: (data) => {
+        for (const [listener, options] of listeners.entries()) {
+          listener(data);
+          if (options && options.once) {
+            listeners.delete(listener);
+          }
+        }
+      }
+    };
+  };
+
+  // src/utilities/protocol.js
+  var DELIMITER = "|";
+  var INFIX = ":";
+  var encode = (parts, stringToBase642) => {
+    const segments = [];
+    for (const key in parts) {
+      const value = parts[key];
+      if (value !== null && value !== void 0) {
+        segments.push(
+          key + INFIX + stringToBase642(
+            String(value)
+          )
+        );
+      }
+    }
+    return segments.join(DELIMITER);
+  };
+  var decode = (message, base64ToString2) => {
+    const parts = {};
+    const segments = message.split(DELIMITER);
+    for (const segment of segments) {
+      const index = segment.indexOf(INFIX);
+      if (index > 0) {
+        const key = segment.substring(0, index);
+        const value = segment.substring(index + 1);
+        parts[key] = base64ToString2(value);
+      }
+    }
+    return parts;
+  };
+
+  // src/utilities/time.js
+  var calculateTime = (serverTime, senderTime) => {
+    const receiverTime = Date.now();
+    if (!serverTime) {
+      return {
+        delay: 0,
+        offset: 0,
+        adjusted: receiverTime
+      };
+    }
+    if (!senderTime) {
+      const offset2 = serverTime - receiverTime;
+      return {
+        delay: 0,
+        offset: offset2,
+        adjusted: receiverTime + offset2
+      };
+    }
+    const delay = receiverTime - senderTime;
+    const offset = (serverTime - senderTime + (serverTime - receiverTime)) / 2;
+    return {
+      delay,
+      offset,
+      adjusted: receiverTime - delay + offset
+    };
+  };
+
+  // src/utilities/code.js
+  var IDENTIFIABLE_CHARACTERS = "ABCDEFGHKMNPQRSTUVWXYZ23456789";
+
+  // src/library/key-generator.js
+  var DIFFIE_HELLMAN_ALGORITHM = "ECDH";
+  var DIFFIE_HELLMAN_CURVE = "P-256";
+  var DIFFIE_HELLMAN_EXPORT_FORMAT = "raw";
+  var HASH_ALGORITHM = "SHA-256";
+  var PUBLIC_KEY_EXPORT_FORMAT = "spki";
+  var SHARED_ENCRYPTION_ALGORITHM = "AES-GCM";
+  var SHARED_KEY_LENGTH = 256;
+  var USER_ENCRYPTION_ALGORITHM = "RSA-OAEP";
+  var USER_SIGNATURE_ALGORITHM = "RSASSA-PKCS1-v1_5";
+  var USER_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
+    Promise.all([
+      crypto.subtle.generateKey({
+        name: "RSA-OAEP",
+        modulusLength: 4096,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: { name: "SHA-256" }
+      }, true, ["encrypt", "decrypt"]),
+      crypto.subtle.generateKey({
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: 4096,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: { name: "SHA-256" }
+      }, true, ["sign", "verify"]),
+      crypto.subtle.generateKey({
+        name: "ECDH",
+        namedCurve: "P-256"
+      }, true, ["deriveKey"])
+    ]).then(([
+      myEncryptKeys,
+      mySignKeys,
+      myExchangeKeys
+    ]) => {
+      Promise.all([
+        crypto.subtle.exportKey(
+          "spki",
+          myEncryptKeys.publicKey
+        ),
+        crypto.subtle.exportKey(
+          "spki",
+          mySignKeys.publicKey
+        )
+      ]).then(([
+        myPublicEncryptKey,
+        myPublicSignKey
+      ]) => {
+        self.postMessage({
+          success: true,
+          myEncryptKeys,
+          mySignKeys,
+          myExchangeKeys,
+          myPublicEncryptKey,
+          myPublicSignKey
+        });
+      }).catch((error) => {
+        self.postMessage({
+          success: false,
+          error: error.message
+        });
+      });
+    }).catch((error) => {
+      self.postMessage({
+        success: false,
+        error: error.message
+      });
+    });
+  }).toString() + ")";
+  var SHARED_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
+    crypto.subtle.generateKey({
+      length: 256,
+      name: "AES-GCM"
+    }, true, ["encrypt", "decrypt"]).then((sharedKey) => {
+      self.postMessage({
+        success: true,
+        sharedKey
+      });
+    }).catch((error) => {
+      self.postMessage({
+        success: false,
+        error: error.message
+      });
+    });
+  }).toString() + ")";
+
+  // src/library/payload-keys.js
+  var SERVER_PAYLOAD = "S";
+  var SERVER_TIME = "T";
+  var SHARED_ENCRYPTION_PAYLOAD = "E";
+  var SHARED_ENCRYPTION_IV = "I";
+  var USER = "U";
+  var USER_DIRECT_PAYLOAD = "D";
+  var USER_ENCRYPTION_IV = "V";
+  var USER_ENCRYPTION_KEY = "K";
+  var USER_ENCRYPTION_PAYLOAD = "P";
+  var USER_ENCRYPTION_SIGNATURE = "G";
+
+  // src/library/client-connector.js
+  var createClientConnector = (options = {}) => {
+    const {
+      contentType = "application/json",
+      deserializeMessage = JSON.parse,
+      serializeMessage = JSON.stringify,
+      createRoomEndpoint = "/create-room",
+      joinRoomEndpoint = "/join-room",
+      httpUrl = "http://localhost:3000",
+      wsUrl = "http://localhost:3000",
+      messageBufferMaxCount = 50,
+      messageBufferMaxDuration = 60 * 1e3
+    } = options;
+    let _creatorId, _generatedKeys, _keyGenerationPromise, _myId, _myEncryptKeys, _myExchangeKeys, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _sharedKey, _sharedMessagesBuffer = [], _socket, _roomCode, _userDerivedKeys = /* @__PURE__ */ new Map(), _userEncryptKeys = /* @__PURE__ */ new Map(), _userSignKeys = /* @__PURE__ */ new Map(), _userVerification = /* @__PURE__ */ new Map(), _connectionState = CONNECTION_DISCONNECTED;
+    const _generateMyKeys = () => {
+      if (!_generatedKeys && !_keyGenerationPromise) {
+        _keyGenerationPromise = new Promise((resolve, reject) => {
+          const worker = new Worker(
+            URL.createObjectURL(
+              new Blob([USER_KEY_GENERATOR], {
+                type: "text/javascript"
+              })
+            )
+          );
+          worker.addEventListener("message", (event) => {
+            if (event.data.success) {
+              _myEncryptKeys = event.data.myEncryptKeys;
+              _mySignKeys = event.data.mySignKeys;
+              _myExchangeKeys = event.data.myExchangeKeys;
+              _myPublicEncryptKey = event.data.myPublicEncryptKey;
+              _myPublicSignKey = event.data.myPublicSignKey;
+              _generatedKeys = true;
+              _keyGenerationPromise = null;
+              resolve();
+            } else {
+              const error = new Error(event.data.error);
+              onError.dispatch({
+                error
+              });
+              reject(error);
+            }
+            worker.terminate();
+          });
+          worker.addEventListener("error", (error) => {
+            onError.dispatch({
+              error
+            });
+            reject(error);
+            worker.terminate();
+          });
+          worker.postMessage({
+            type: "USER_KEYS"
+          });
+        });
+      }
+      return _keyGenerationPromise;
+    };
+    _generateMyKeys();
+    const onError = createEvent();
+    const onMessage = createEvent();
+    const onRoomJoin = createEvent();
+    const onRoomLeave = createEvent();
+    const onUserJoin = createEvent();
+    const onUserLeave = createEvent();
+    const onUserVerified = createEvent();
+    const onUserVerificationCode = createEvent();
+    const onConnection = createEvent();
+    const _setConnectionState = (state) => {
+      if (_connectionState !== state) {
+        _connectionState = state;
+        onConnection.dispatch({
+          state
+        });
+      }
+    };
+    const _generateVerificationCode = async (userId) => {
+      const derivedKey = _userDerivedKeys.get(userId);
+      if (!derivedKey) {
+        return;
+      }
+      _userVerification.set(
+        userId,
+        Array.from(
+          new Uint8Array(
+            await crypto.subtle.digest(
+              HASH_ALGORITHM,
+              new TextEncoder().encode(
+                _roomCode + bufferToBase64(
+                  await crypto.subtle.exportKey(
+                    "raw",
+                    derivedKey
+                  )
+                )
+              )
+            )
+          )
+        )
+      );
+      onUserVerificationCode.dispatch({
+        userId,
+        code: getVerificationCode(userId)
+      });
+    };
+    const leaveRoom = () => {
+      if (_connectionState === CONNECTION_DISCONNECTED || _connectionState === CONNECTION_DISCONNECTING) {
+        return;
+      }
+      _setConnectionState(CONNECTION_DISCONNECTING);
+      if (_socket) {
+        _socket.close();
+      }
+      _creatorId = _generatedKeys = _keyGenerationPromise = _myId = _myEncryptKeys = _myExchangeKeys = _myPublicEncryptKey = _myPublicSignKey = _mySignKeys = _sharedKey = _sharedMessagesBuffer = _socket = null;
+      _userDerivedKeys.clear();
+      _userEncryptKeys.clear();
+      _userSignKeys.clear();
+      _userVerification.clear();
+      _generateMyKeys();
+      _setConnectionState(CONNECTION_DISCONNECTED);
+    };
+    const _joinRoom = (roomCode, creatorSecret = null) => {
+      if (!creatorSecret && _connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
+        return;
+      }
+      _setConnectionState(CONNECTION_CONNECTING);
+      _roomCode = roomCode;
+      const url = new URL(
+        wsUrl + joinRoomEndpoint
+      );
+      url.searchParams.append(
+        "code",
+        _roomCode
+      );
+      if (creatorSecret) {
+        url.searchParams.append(
+          "creator",
+          creatorSecret
+        );
+      }
+      _socket = new WebSocket(
+        url.toString()
+      );
+      _socket.addEventListener("close", (event) => {
+        onRoomLeave.dispatch({
+          event
+        });
+        leaveRoom();
+      });
+      _socket.addEventListener("error", (event) => {
+        onError.dispatch({
+          event
+        });
+        leaveRoom();
+      });
+      _socket.addEventListener("message", async (event) => {
+        _processMessage(
+          decode(
+            event.data,
+            base64ToString
+          ),
+          event.data
+        );
+      });
+    };
+    const _processMessage = async (parts, raw, isBuffered = false) => {
+      const {
+        [SERVER_PAYLOAD]: serverPayload,
+        [SERVER_TIME]: serverTime,
+        [SHARED_ENCRYPTION_IV]: sharedEncryptionIv,
+        [SHARED_ENCRYPTION_PAYLOAD]: sharedEncryptionPayload,
+        [USER_DIRECT_PAYLOAD]: userDirectPayload,
+        [USER_ENCRYPTION_IV]: userEncryptionIv,
+        [USER_ENCRYPTION_KEY]: userEncryptionKey,
+        [USER_ENCRYPTION_PAYLOAD]: userEncryptionPayload,
+        [USER_ENCRYPTION_SIGNATURE]: userEncryptionSignature,
+        [USER]: userReceiver
+      } = parts;
+      let data, deserializedData, payload;
+      if (serverPayload) {
+        payload = serverPayload;
+      } else if (userDirectPayload) {
+        payload = userDirectPayload;
+      } else {
+        payload = raw;
+      }
+      if (sharedEncryptionPayload) {
+        if (!_sharedKey || !isBuffered && _sharedMessagesBuffer.length > 0) {
+          _sharedMessagesBuffer.push({
+            time: Date.now(),
+            parts,
+            raw
+          });
+          if (_sharedMessagesBuffer.length > messageBufferMaxCount) {
+            _sharedMessagesBuffer.shift();
+          }
+          return;
+        }
+        if (!sharedEncryptionIv) {
+          onError.dispatch(
+            new Error("Missing IV to decrypt message")
+          );
+          return;
+        }
+        data = await crypto.subtle.decrypt(
+          {
+            iv: base64ToBuffer(sharedEncryptionIv),
+            name: SHARED_ENCRYPTION_ALGORITHM
+          },
+          _sharedKey,
+          base64ToBuffer(sharedEncryptionPayload)
+        );
+        data = new TextDecoder().decode(data);
+      } else if (userEncryptionPayload) {
+        if (!userEncryptionSignature || !userEncryptionKey || !userEncryptionIv) {
+          return;
+        }
+        if (!_generatedKeys) {
+          await _generateMyKeys();
+        }
+        const payloadData = deserializeMessage(
+          new TextDecoder().decode(
+            await crypto.subtle.decrypt(
+              {
+                iv: base64ToBuffer(userEncryptionIv),
+                name: SHARED_ENCRYPTION_ALGORITHM
+              },
+              await crypto.subtle.importKey(
+                "raw",
+                await crypto.subtle.decrypt(
+                  {
+                    name: USER_ENCRYPTION_ALGORITHM
+                  },
+                  _myEncryptKeys.privateKey,
+                  base64ToBuffer(userEncryptionKey)
+                ),
+                {
+                  name: SHARED_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt", "decrypt"]
+              ),
+              base64ToBuffer(userEncryptionPayload)
+            )
+          )
+        );
+        if (payloadData.type === KEY_EXCHANGE_ACCEPT) {
+          deserializedData = payloadData;
+        } else {
+          const senderId = payloadData.sender;
+          if (!senderId) {
+            onError.dispatch({
+              error: new Error("Message from unknown sender")
+            });
+            return;
+          }
+          const senderPublicKey = _userSignKeys.get(senderId);
+          if (!senderPublicKey) {
+            onError.dispatch({
+              error: new Error("No public key for " + senderId)
+            });
+            return;
+          }
+          if (!await crypto.subtle.verify(
+            USER_SIGNATURE_ALGORITHM,
+            senderPublicKey,
+            base64ToBuffer(userEncryptionSignature),
+            dataBuffer
+          )) {
+            onError.dispatch({
+              error: new Error("Invalid signature from " + senderId)
+            });
+            return;
+          }
+          deserializedData = payloadData;
+        }
+      } else {
+        data = payload;
+      }
+      if (!deserializedData) {
+        try {
+          deserializedData = deserializeMessage(data);
+        } catch (error) {
+          onError.dispatch({
+            error: new Error("Failed to parse message " + raw)
+          });
+          return;
+        }
+      }
+      data = deserializedData;
+      switch (data.type) {
+        case KEY_EXCHANGE_OFFER:
+          if (_myId === _creatorId) {
+            const newUserId = data.sender;
+            _userEncryptKeys.set(
+              newUserId,
+              await crypto.subtle.importKey(
+                PUBLIC_KEY_EXPORT_FORMAT,
+                base64ToBuffer(data.publicEncryptKey),
+                { hash: HASH_ALGORITHM, name: USER_ENCRYPTION_ALGORITHM },
+                true,
+                ["encrypt"]
+              )
+            );
+            const publicSignKey = await crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              base64ToBuffer(data.publicSignKey),
+              { hash: HASH_ALGORITHM, name: USER_SIGNATURE_ALGORITHM },
+              true,
+              ["verify"]
+            );
+            const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey);
+            if (!await crypto.subtle.verify(
+              USER_SIGNATURE_ALGORITHM,
+              publicSignKey,
+              base64ToBuffer(data.signature),
+              publicExchangeKeyData
+            )) {
+              onError.dispatch({
+                error: new Error("Invalid signature for exchange from " + newUserId)
+              });
+              return;
+            }
+            _userSignKeys.set(newUserId, publicSignKey);
+            if (!_generatedKeys) {
+              await _generateMyKeys();
+            }
+            _userDerivedKeys.set(
+              newUserId,
+              await crypto.subtle.deriveKey(
+                {
+                  name: DIFFIE_HELLMAN_ALGORITHM,
+                  public: await crypto.subtle.importKey(
+                    DIFFIE_HELLMAN_EXPORT_FORMAT,
+                    publicExchangeKeyData,
+                    {
+                      name: DIFFIE_HELLMAN_ALGORITHM,
+                      namedCurve: DIFFIE_HELLMAN_CURVE
+                    },
+                    true,
+                    []
+                  )
+                },
+                _myExchangeKeys.privateKey,
+                {
+                  length: SHARED_KEY_LENGTH,
+                  name: SHARED_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt", "decrypt"]
+              )
+            );
+            const myPublicExchangeKey = await crypto.subtle.exportKey(
+              DIFFIE_HELLMAN_EXPORT_FORMAT,
+              _myExchangeKeys.publicKey
+            );
+            _message({
+              type: KEY_EXCHANGE_ACCEPT,
+              publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
+              publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+              publicSignKey: bufferToBase64(_myPublicSignKey),
+              signature: bufferToBase64(
+                await crypto.subtle.sign(
+                  USER_SIGNATURE_ALGORITHM,
+                  _mySignKeys.privateKey,
+                  myPublicExchangeKey
+                )
+              )
+            }, {
+              receiver: newUserId
+            });
+            _generateVerificationCode(newUserId);
+          }
+          break;
+        case KEY_EXCHANGE_ACCEPT:
+          if (userReceiver === _myId && data.sender === _creatorId) {
+            if (data.publicSignKey) {
+              const hostPublicSignKey = await crypto.subtle.importKey(
+                PUBLIC_KEY_EXPORT_FORMAT,
+                base64ToBuffer(data.publicSignKey),
+                {
+                  hash: HASH_ALGORITHM,
+                  name: USER_SIGNATURE_ALGORITHM
+                },
+                true,
+                ["verify"]
+              );
+              if (data.publicExchangeKey && data.signature) {
+                if (!await crypto.subtle.verify(
+                  USER_SIGNATURE_ALGORITHM,
+                  hostPublicSignKey,
+                  base64ToBuffer(data.signature),
+                  base64ToBuffer(data.publicExchangeKey)
+                )) {
+                  onError.dispatch({
+                    error: new Error("Invalid signature for exchange from " + _creatorId)
+                  });
+                  leaveRoom();
+                  return;
+                }
+              }
+              _userSignKeys.set(
+                _creatorId,
+                hostPublicSignKey
+              );
+            }
+            if (data.publicEncryptKey) {
+              _userEncryptKeys.set(
+                _creatorId,
+                await crypto.subtle.importKey(
+                  PUBLIC_KEY_EXPORT_FORMAT,
+                  base64ToBuffer(data.publicEncryptKey),
+                  {
+                    hash: HASH_ALGORITHM,
+                    name: USER_ENCRYPTION_ALGORITHM
+                  },
+                  true,
+                  ["encrypt"]
+                )
+              );
+            }
+            if (data.publicExchangeKey) {
+              if (!_generatedKeys) {
+                await _generateMyKeys();
+              }
+              _userDerivedKeys.set(
+                _creatorId,
+                await crypto.subtle.deriveKey(
+                  {
+                    name: DIFFIE_HELLMAN_ALGORITHM,
+                    public: await crypto.subtle.importKey(
+                      DIFFIE_HELLMAN_EXPORT_FORMAT,
+                      base64ToBuffer(data.publicExchangeKey),
+                      {
+                        name: DIFFIE_HELLMAN_ALGORITHM,
+                        namedCurve: DIFFIE_HELLMAN_CURVE
+                      },
+                      true,
+                      []
+                    )
+                  },
+                  _myExchangeKeys.privateKey,
+                  {
+                    length: SHARED_KEY_LENGTH,
+                    name: SHARED_ENCRYPTION_ALGORITHM
+                  },
+                  true,
+                  ["encrypt", "decrypt"]
+                )
+              );
+            }
+            if (data.sharedKey && data.sharedKeyIv) {
+              const derivedKey = _userDerivedKeys.get(_creatorId);
+              if (!derivedKey) {
+                onError.dispatch({
+                  error: new Error("No derived key for host " + _creatorId)
+                });
+                return;
+              }
+              _sharedKey = await crypto.subtle.importKey(
+                "raw",
+                await crypto.subtle.decrypt(
+                  {
+                    iv: base64ToBuffer(data.sharedKeyIv),
+                    name: SHARED_ENCRYPTION_ALGORITHM
+                  },
+                  derivedKey,
+                  base64ToBuffer(data.sharedKey)
+                ),
+                {
+                  name: SHARED_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt", "decrypt"]
+              );
+              onUserVerified.dispatch({
+                userId: _myId
+              });
+              if (_sharedMessagesBuffer.length > 0) {
+                const now = Date.now();
+                _sharedMessagesBuffer = _sharedMessagesBuffer.filter((item) => now - item.time < messageBufferMaxDuration);
+                while (_sharedMessagesBuffer.length > 0) {
+                  const {
+                    parts: parts2,
+                    raw: raw2
+                  } = _sharedMessagesBuffer.shift();
+                  _processMessage(
+                    parts2,
+                    raw2,
+                    true
+                  );
+                }
+              }
+              _setConnectionState(CONNECTION_CONNECTED);
+            } else {
+              _generateVerificationCode(_creatorId);
+            }
+          }
+          break;
+        case ROOM_JOINED:
+          _creatorId = data.creatorId;
+          _myId = data.userId;
+          onRoomJoin.dispatch({
+            creatorId: data.creatorId,
+            roomCode: _roomCode,
+            userId: data.userId,
+            users: data.users
+          });
+          if (_myId !== _creatorId) {
+            _setConnectionState(CONNECTION_PENDING_VERIFICATION);
+            if (!_generatedKeys) {
+              await _generateMyKeys();
+            }
+            const myPublicExchangeKey = await crypto.subtle.exportKey(
+              DIFFIE_HELLMAN_EXPORT_FORMAT,
+              _myExchangeKeys.publicKey
+            );
+            _message({
+              type: KEY_EXCHANGE_OFFER,
+              publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
+              publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+              publicSignKey: bufferToBase64(_myPublicSignKey),
+              signature: bufferToBase64(
+                await crypto.subtle.sign(
+                  USER_SIGNATURE_ALGORITHM,
+                  _mySignKeys.privateKey,
+                  myPublicExchangeKey
+                )
+              )
+            }, {
+              allowUnencrypted: true,
+              receiver: _creatorId
+            });
+          } else {
+            _setConnectionState(CONNECTION_CONNECTED);
+          }
+          break;
+        case USER_LEFT:
+          onUserLeave.dispatch({
+            userId: data.userId
+          });
+          _userDerivedKeys.delete(data.userId);
+          _userEncryptKeys.delete(data.userId);
+          _userSignKeys.delete(data.userId);
+          break;
+        case USER_JOINED:
+          onUserJoin.dispatch({
+            userId: data.userId
+          });
+          break;
+        case USER_VERIFIED:
+          onUserVerified.dispatch({
+            userId: data.userId
+          });
+          break;
+        default:
+          onMessage.dispatch({
+            data,
+            time: calculateTime(
+              serverTime,
+              data?.senderTime
+            )
+          });
+          break;
+      }
+    };
+    const _message = async (data, options2 = {}) => {
+      if (!_socket || _socket.readyState !== WebSocket.OPEN) {
+        onError.dispatch({
+          error: new Error("No open socket")
+        });
+        return false;
+      }
+      const message = serializeMessage({
+        ...data,
+        sender: _myId,
+        senderTime: Date.now()
+      });
+      const parts = {};
+      if (options2.receiver) {
+        const receiverPublicKey = _userEncryptKeys.get(options2.receiver);
+        if (receiverPublicKey) {
+          const tempKey = await crypto.subtle.generateKey(
+            {
+              name: SHARED_ENCRYPTION_ALGORITHM,
+              length: 256
+            },
+            true,
+            ["encrypt", "decrypt"]
+          );
+          const iv = crypto.getRandomValues(
+            new Uint8Array(12)
+          );
+          const encryptedPayload = await crypto.subtle.encrypt(
+            {
+              iv,
+              name: SHARED_ENCRYPTION_ALGORITHM
+            },
+            tempKey,
+            new TextEncoder().encode(message)
+          );
+          if (!_generatedKeys) {
+            await _generateMyKeys();
+          }
+          parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(
+            await crypto.subtle.sign(
+              USER_SIGNATURE_ALGORITHM,
+              _mySignKeys.privateKey,
+              encryptedPayload
+            )
+          );
+          parts[USER_ENCRYPTION_KEY] = bufferToBase64(
+            await crypto.subtle.encrypt(
+              {
+                name: USER_ENCRYPTION_ALGORITHM
+              },
+              receiverPublicKey,
+              await crypto.subtle.exportKey(
+                "raw",
+                tempKey
+              )
+            )
+          );
+          parts[USER_ENCRYPTION_PAYLOAD] = bufferToBase64(encryptedPayload);
+          parts[USER_ENCRYPTION_IV] = bufferToBase64(iv);
+        } else if (!options2.allowUnencrypted) {
+          onError.dispatch({
+            error: new Error("No public key for " + options2.receiver)
+          });
+          return false;
+        } else {
+          parts[USER_DIRECT_PAYLOAD] = message;
+        }
+        parts[USER] = options2.receiver;
+      } else if (options2.server) {
+        parts[SERVER_PAYLOAD] = message;
+      } else if (_sharedKey) {
+        const iv = crypto.getRandomValues(
+          new Uint8Array(12)
+        );
+        parts[SHARED_ENCRYPTION_IV] = bufferToBase64(iv);
+        parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(
+          await crypto.subtle.encrypt(
+            {
+              iv,
+              name: SHARED_ENCRYPTION_ALGORITHM
+            },
+            _sharedKey,
+            new TextEncoder().encode(message)
+          )
+        );
+      } else {
+        onError.dispatch(
+          new Error("Trying to send without valid destination")
+        );
+        return false;
+      }
+      _socket.send(
+        encode(
+          parts,
+          stringToBase64
+        )
+      );
+      return true;
+    };
+    const messageServer = (data) => _myId && _myId === _creatorId && _message(data, {
+      server: true
+    });
+    const messageUser = (data, userId) => userId && _message(data, {
+      receiver: userId
+    });
+    const getVerificationCode = (userId, codeLength = 6) => {
+      if (!_userVerification.has(userId)) {
+        return false;
+      }
+      const hashArray = _userVerification.get(userId);
+      let code = "";
+      for (let i = 0; i < codeLength; i++) {
+        const index = hashArray[i] % IDENTIFIABLE_CHARACTERS.length;
+        code += IDENTIFIABLE_CHARACTERS[index];
+      }
+      return code;
+    };
+    return {
+      onConnection,
+      onError,
+      onMessage,
+      onRoomJoin,
+      onRoomLeave,
+      onUserJoin,
+      onUserLeave,
+      onUserVerified,
+      onUserVerificationCode,
+      messageRoom: (data) => _message(data),
+      messageServer,
+      messageUser,
+      closeRoom: () => messageServer({
+        type: ROOM_CLOSED
+      }),
+      createRoom: async (options2 = {}) => {
+        if (_connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
+          return;
+        }
+        _setConnectionState(CONNECTION_CONNECTING);
+        try {
+          await new Promise((resolve, reject) => {
+            const worker = new Worker(
+              URL.createObjectURL(
+                new Blob([SHARED_KEY_GENERATOR], {
+                  type: "text/javascript"
+                })
+              )
+            );
+            worker.addEventListener("message", (event) => {
+              if (event.data.success) {
+                _sharedKey = event.data.sharedKey;
+                resolve();
+              } else {
+                reject(
+                  new Error(event.data.error)
+                );
+              }
+              worker.terminate();
+            });
+            worker.addEventListener("error", (error) => {
+              reject(error);
+              worker.terminate();
+            });
+            worker.postMessage({
+              type: "SHARED_KEY"
+            });
+          });
+        } catch (error) {
+          _setConnectionState(CONNECTION_DISCONNECTED);
+          onError.dispatch({
+            error
+          });
+          return;
+        }
+        const url = new URL(
+          httpUrl + createRoomEndpoint
+        );
+        if (options2.limit) {
+          url.searchParams.append(
+            "limit",
+            options2.limit
+          );
+        }
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          headers: {
+            Accept: contentType
+          }
+        });
+        if (!response.ok) {
+          throw new Error("Failed to create room");
+        }
+        let data = await response.text();
+        data = deserializeMessage(data);
+        _myId = data.userId;
+        _joinRoom(
+          data.roomCode,
+          data.creatorSecret
+        );
+        return data;
+      },
+      joinRoom: (roomCode) => _joinRoom(
+        roomCode
+      ),
+      leaveRoom,
+      kickUser: (userId) => messageServer({
+        type: USER_KICK,
+        userId
+      }),
+      getVerificationCode,
+      verifyUser: async (userId, code) => {
+        if (_myId !== _creatorId || !code) {
+          return false;
+        }
+        const expectedCode = getVerificationCode(
+          userId,
+          code.length
+        );
+        if (!expectedCode || !code || expectedCode !== code) {
+          return false;
+        }
+        const derivedKey = _userDerivedKeys.get(userId);
+        if (!derivedKey) {
+          return false;
+        }
+        const iv = crypto.getRandomValues(
+          new Uint8Array(12)
+        );
+        _message({
+          type: KEY_EXCHANGE_ACCEPT,
+          sharedKey: bufferToBase64(
+            await crypto.subtle.encrypt(
+              {
+                iv,
+                name: SHARED_ENCRYPTION_ALGORITHM
+              },
+              derivedKey,
+              await crypto.subtle.exportKey(
+                "raw",
+                _sharedKey
+              )
+            )
+          ),
+          sharedKeyIv: bufferToBase64(iv)
+        }, {
+          receiver: userId
+        });
+        onUserVerified.dispatch({
+          userId
+        });
+        messageServer({
+          type: USER_VERIFIED,
+          userId
+        });
+        return true;
+      }
+    };
+  };
+
+  // src/index.base.iife.js
+  iife([
+    "roupn"
+  ], {
+    createClientConnector
+  });
+})();
+//# sourceMappingURL=roupn.base.iife.js.map
