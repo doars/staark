@@ -15,6 +15,7 @@ import {
   WebSocketServer,
 } from 'ws'
 
+// Import the library.
 import {
   createServerConnector,
 } from '../src/library/server-connector.js'
@@ -23,6 +24,7 @@ const PORT = 3000
 const FILE_NAME = fileURLToPath(import.meta.url)
 const DIRECTORY_NAME = dirname(FILE_NAME)
 
+// Create a server connector instance.
 const {
   onUserJoin,
   onUserLeave,
@@ -31,11 +33,16 @@ const {
 
   handleHttpRequest,
   handleSocketUpgrade,
+
+  // Additional functions and events are also exported.
 } = createServerConnector({
-  maxUsersPerRoom: 4,
+  // Configuration options.
+
+  // We don't want to rate limit ourselves whilst testing.
   rateLimitDuration: 0,
 })
 
+// Log events so we can see what is happening.
 onUserJoin.addListener(({
   userId,
   roomCode,
@@ -60,12 +67,14 @@ onRoomRemove.addListener(({
   console.log(`Room ${roomCode} is empty`)
 })
 
+// Set up the HTTP server.
 const httpServer = createHttpServer((
   request,
   response,
 ) => {
   const url = request.url
 
+  // Provide the data to the client.
   const staticFiles = {
     '/': {
       file: 'index.html',
@@ -95,16 +104,19 @@ const httpServer = createHttpServer((
     return
   }
 
-  const found = handleHttpRequest(
+  // The connector handles requests to the /create-room endpoint.
+  const handled = handleHttpRequest(
     request,
     response,
   )
-  if (!found) {
+  if (!handled) {
+    // Handle other requests or return 404.
     response.writeHead(404)
     response.end('Not found')
   }
 })
 
+// Set up the WebSocket server.
 const socketServer = new WebSocketServer({
   noServer: true,
 })
@@ -113,18 +125,19 @@ httpServer.on('upgrade', (
   socket,
   head,
 ) => {
-  const success = handleSocketUpgrade(
+  // The connector handles upgrades for the /join-room endpoint.
+  const handled = handleSocketUpgrade(
     request,
     socket,
     head,
     socketServer,
   )
-  if (!success) {
+  if (!handled) {
     socket.destroy()
   }
 })
 
+// Start the server.
 httpServer.listen(PORT, () => {
   console.log('HTTP server listening on http://localhost:' + PORT)
-  console.log('WebSocket server listening on ws://localhost:' + PORT)
 })

@@ -1,3 +1,16 @@
+/**
+ * Example script demonstrating the usage of the `@doars/roupn` library with `@doars/staark` for real-time room-based synchronization and rendering. The UI is rendered using a declarative approach, with state-driven updates and event handlers for user interactions. This script mounts a UI to the provided `rootElement` and manages the state of a chat room, including:
+ * - Creating and joining rooms
+ * - Displaying users and their validation status
+ * - Validating users as the room creator
+ * - Sending and displaying messages in real-time
+ * - Handling connection states (connected, connecting, disconnecting, pending verification)
+ * - Leaving the room.
+ *
+ * @see {@link https://github.com/doars/roupn} for more information about `@doars/roupn`.
+ * @see {@link https://github.com/doars/staark} for more information about `@doars/staark`.
+ */
+
 import {
   conditional as c,
   match as m,
@@ -19,9 +32,89 @@ import {
 (function () {
   let synchronizer = null
 
+  // Updates the verification code for a user as the creator types it in the input field.
+  const handleVerificationInput = (
+    event,
+    state,
+  ) => {
+    const userId = event.target.closest('li').getAttribute('data-user-id')
+    state.verificationCodes[userId] = event.target.value
+  }
+
+  // Submits the verification code for a user, triggering validation via the synchronizer.
+  const handleVerificationSubmit = (
+    event,
+    state,
+  ) => {
+    const userId = event.target.closest('li').getAttribute('data-user-id')
+    synchronizer.verifyUser(
+      userId,
+      state.verificationCodes[userId],
+    )
+  }
+
+  // Updates the current chat message as the user types in the textarea.
+  const handleMessageInput = (
+    event,
+    state,
+  ) => {
+    state.message = event.target.value
+  }
+
+  // Sends the current chat message to the room and clears the input field.
+  const handleMessageSubmit = (
+    _event,
+    state,
+  ) => {
+    state.publicState.messages.push({
+      message: state.message,
+      timestamp: Date.now(),
+      userId: state.privateState.userId,
+    })
+    state.message = null
+  }
+
+  // Requests the synchronizer to create a new room for the user.
+  const handleRoomCreate = (
+    _event,
+    _state,
+  ) => {
+    synchronizer.createRoom()
+  }
+
+  // Requests the synchronizer to leave the current room.
+  const handleRoomLeave = (
+    _event,
+    _state,
+  ) => {
+    synchronizer.leaveRoom()
+  }
+
+  // Updates the room code as the user types it in the join room input field.
+  const handleRoomCodeInput = (
+    event,
+    state,
+  ) => {
+    state.roomCode = event.target.value
+  }
+
+  // Attempts to join a room using the entered room code, then clears the input.
+  const handleRoomCodeSubmit = (
+    _event,
+    state,
+  ) => {
+    synchronizer.joinRoom(
+      state.roomCode,
+    )
+    state.roomCode = ''
+  }
+
+  // Creates the root element for the application and appends it to the document body.
   const rootElement = document.createElement('div')
   rootElement.setAttribute('id', 'app')
   document.body.appendChild(rootElement)
+
+  // Mounts the UI using staark, providing the state and a render function that describes the UI tree.
   const [
     _update,
     _unmount,
@@ -29,13 +122,16 @@ import {
   ] = mount(
     rootElement,
     (state) => {
+      // Notifies the synchronizer of state changes after each render.
       synchronizer?.sendUpdate()
 
+      // Renders the UI based on the current connection state.
       return [
         n('h1', 'roupn example'),
         ...m(state.privateState.connectionState,
           {
             [CONNECTION_CONNECTED]: () => [
+              // Shows the user's ID and the room code when connected.
               n('p', [
                 'You are user ',
                 n('code', state.privateState.userId),
@@ -45,33 +141,36 @@ import {
               ]),
               n('hr'),
 
+              // Displays a list of users in the room, indicating their validation status.
               n('p', 'Users in the room:'),
               n('ul',
                 state.privateState.users.map((userId) => (
                   n('li', [
                     n('code', userId),
                     ...c(
-                      state.privateState.validatedUsers.includes(userId),
-                      () => n('span', ' (validated)'),
-                      () => n('span', ' (unvalidated)'),
+                      state.privateState.verifiedUsers.includes(userId),
+                      () => n('span', ' (verified)'),
+                      () => n('span', ' (unverified)'),
                     ),
                   ])
                 )),
               ),
 
+              // If the current user is the room creator, show UI to verify joining users.
               ...c(
                 state.privateState.userId === state.privateState.creatorId,
                 () => {
-                  const unvalidatedUsers = state.privateState.users.filter((userId) => !state.privateState.validatedUsers.includes(userId))
+                  const unverifiedUsers = state.privateState.users.filter((userId) => !state.privateState.verifiedUsers.includes(userId))
                   return c(
-                    unvalidatedUsers.length > 0,
+                    unverifiedUsers.length > 0,
                     () => [
                       n('hr'),
-                      n('p', 'The following users need to be validated:'),
+                      n('p', 'The following users need to be verified:'),
                       n('ul',
-                        // TODO: Should technically only be listed here after the code has been generated.
-                        unvalidatedUsers.map((userId) => (
-                          n('li', [
+                        unverifiedUsers.map((userId) => (
+                          n('li', {
+                            'data-user-id': userId,
+                          }, [
                             n('code', userId),
                             n('label', {
                               for: 'user-verification-code-input-' + userId,
@@ -80,21 +179,11 @@ import {
                               id: 'user-verification-code-input-' + userId,
                               type: 'text',
                               required: true,
-                              input: (
-                                event,
-                              ) => {
-                                state.verificationCodes[userId] = event.target.value
-                              },
+                              input: handleVerificationInput,
                               value: state.verificationCodes[userId],
                             }),
                             n('button', {
-                              click: (
-                              ) => {
-                                synchronizer.verifyUser(
-                                  userId,
-                                  state.verificationCodes[userId],
-                                )
-                              },
+                              click: handleVerificationSubmit,
                             }, 'Validate'),
                           ])
                         )),
@@ -106,6 +195,7 @@ import {
 
               n('hr'),
 
+              // Shows chat messages if present, otherwise displays a placeholder message.
               ...c(state.publicState.messages.length,
                 () => [
                   n('p', 'Messages in the room:'),
@@ -129,6 +219,7 @@ import {
                 () => n('p', 'No messages have been send yet.'),
               ),
 
+              // Provides a textarea for composing messages and a button to send them.
               n('label', {
                 for: 'message-input',
               }, 'Message:'),
@@ -136,47 +227,37 @@ import {
                 id: 'message-input',
                 type: 'text',
                 required: true,
-                input: (
-                  event,
-                ) => {
-                  state.message = event.target.value
-                },
+                input: handleMessageInput,
               }, state.message),
               n('button', {
-                click: (
-                ) => {
-                  state.publicState.messages.push({
-                    message: state.message,
-                    timestamp: Date.now(),
-                    userId: state.privateState.userId,
-                  })
-                  state.message = null
-                },
+                click: handleMessageSubmit,
               }, 'Send message'),
 
               n('hr'),
 
+              // Allows the user to leave the room.
               n('p', 'You can leave the room.'),
               n('button', {
-                click: (
-                ) => {
-                  synchronizer.leaveRoom()
-                },
+                click: handleRoomLeave,
               }, 'Leave room'),
             ],
             [CONNECTION_CONNECTING]: () => [
+              // Indicates that the client is connecting to a room.
               n('p', 'Connecting to room...'),
             ],
             [CONNECTION_DISCONNECTING]: () => [
+              // Indicates that the client is disconnecting from a room.
               n('p', 'Disconnecting from room...'),
             ],
             [CONNECTION_PENDING_VERIFICATION]: () => [
+              // Shows the verification code for the user to provide to the room creator.
               n('p', [
-                'You are not yet validated, please provide the following code to the room creator: ',
+                'You are not yet verified, please provide the following code to the room creator: ',
                 n('code', state.privateState.verificationCode || 'Generating...'),
               ]),
             ],
           },
+          // Default UI shown when not connected: options to create or join a room.
           () => [
             n('p', [
               'This is a simple example of using ',
@@ -190,10 +271,7 @@ import {
 
             n('p', 'You can create a new room.'),
             n('button', {
-              click: (
-              ) => {
-                synchronizer.createRoom()
-              },
+              click: handleRoomCreate,
             }, 'Create room'),
 
             n('hr'),
@@ -206,29 +284,18 @@ import {
               id: 'room-code-input',
               type: 'text',
               required: true,
-              input: (
-                event,
-              ) => {
-                state.roomCode = event.target.value
-              },
+              input: handleRoomCodeInput,
               value: state.roomCode,
             }),
             n('button', {
-              click: (
-              ) => {
-                synchronizer.joinRoom(
-                  state.roomCode,
-                )
-
-                state.roomCode = ''
-              },
+              click: handleRoomCodeSubmit,
             }, 'Join room'),
           ],
         ),
       ]
     },
-
     {
+      // Initial state for the application, including message input, room code, and verification codes.
       message: '',
       roomCode: '',
       verificationCodes: {},
@@ -239,54 +306,44 @@ import {
       },
     },
   )
+
+  // Instantiates the synchronizer to manage real-time state synchronization between clients.
   synchronizer = createClientSynchronizer(
     {},
     state.privateState,
     state.publicState,
   )
 
-  synchronizer.onError.addListener((
-    event
-  ) => {
+  // Logs information from the synchronizer for debugging purposes.
+  synchronizer.onError.addListener((event) => {
     console.warn('Error:', event)
   })
-  synchronizer.onMessage.addListener((
-    event
-  ) => {
+  // Logs all messages received from the synchronizer.
+  synchronizer.onMessage.addListener((event) => {
     console.log('Message received:', event)
   })
-
-
-  synchronizer.onConnection.addListener((
-    event
-  ) => {
+  // Logs connection state changes.
+  synchronizer.onConnection.addListener((event) => {
     console.log('Connection state received:', event)
   })
-
-  synchronizer.onRoomJoin.addListener((
-    event
-  ) => {
+  // Logs when the client joins a room.
+  synchronizer.onRoomJoin.addListener((event) => {
     console.log('Room joined:', event)
   })
-  synchronizer.onRoomLeave.addListener((
-    event
-  ) => {
+  // Logs when the client leaves a room.
+  synchronizer.onRoomLeave.addListener((event) => {
     console.log('Room left:', event)
   })
-
-  synchronizer.onUserJoin.addListener((
-    event
-  ) => {
+  // Logs when a new user joins the room.
+  synchronizer.onUserJoin.addListener((event) => {
     console.log('User joined:', event)
   })
-  synchronizer.onUserVerified.addListener((
-    event
-  ) => {
-    console.log('User validated:', event)
+  // Logs when a user is verified by the creator.
+  synchronizer.onUserVerified.addListener((event) => {
+    console.log('User verified:', event)
   })
-  synchronizer.onUserLeave.addListener((
-    event
-  ) => {
+  // Logs when a user leaves the room.
+  synchronizer.onUserLeave.addListener((event) => {
     console.log('User left:', event)
   })
 }())
