@@ -1,4 +1,10 @@
 import {
+  CONNECTION_CONNECTED,
+  CONNECTION_CONNECTING,
+  CONNECTION_DISCONNECTED,
+  CONNECTION_DISCONNECTING,
+  CONNECTION_PENDING_VERIFICATION,
+
   KEY_EXCHANGE_ACCEPT,
   KEY_EXCHANGE_OFFER,
   ROOM_CLOSED,
@@ -7,12 +13,6 @@ import {
   USER_KICK,
   USER_LEFT,
   USER_VERIFIED,
-
-  CONNECTION_CONNECTED,
-  CONNECTION_CONNECTING,
-  CONNECTION_DISCONNECTED,
-  CONNECTION_DISCONNECTING,
-  CONNECTION_PENDING_VERIFICATION,
 } from './message-types.js'
 
 import {
@@ -37,16 +37,16 @@ import {
 import {
   DIFFIE_HELLMAN_ALGORITHM,
   DIFFIE_HELLMAN_CURVE,
-  DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
+  DIFFIE_HELLMAN_EXPORT_FORMAT,
   HASH_ALGORITHM,
   PUBLIC_KEY_EXPORT_FORMAT,
   SHARED_ENCRYPTION_ALGORITHM,
   SHARED_KEY_LENGTH,
-  sharedKeyGenerator,
   USER_ENCRYPTION_ALGORITHM,
   USER_SIGNATURE_ALGORITHM,
 
-  userKeyGenerator,
+  SHARED_KEY_GENERATOR,
+  USER_KEY_GENERATOR,
 } from './key-generator.js'
 import {
   SERVER_PAYLOAD,
@@ -97,7 +97,7 @@ import {
  * @property {Event} onRoomLeave - Event for room leave notifications.
  * @property {Event} onUserJoin - Event for user join notifications.
  * @property {Event} onUserLeave - Event for user leave notifications.
- * @property {Event} onUserVerified - Event for user validated notifications.
+ * @property {Event} onUserVerified - Event for user verified notifications.
  *
  * @property {Function} createRoom - Creates a new room and joins it.
  * @property {Function} closeRoom - Closes the room for all. Only allowed by the creator.
@@ -150,29 +150,33 @@ export const createClientConnector = (
     _userSignKeys = new Map(),
     _userVerification = new Map(),
     _connectionState = CONNECTION_DISCONNECTED
-  const _generateMyKeys = () => {
+  const _generateMyKeys = (
+  ) => {
     if (
       !_generatedKeys
       && !_keyGenerationPromise
     ) {
-      const worker = new Worker(
-        URL.createObjectURL(
-          new Blob([
-            '(' + userKeyGenerator.toString() + ')()'
-          ], {
-            type: 'text/javascript',
-          }),
-        ),
-      )
+      _keyGenerationPromise = new Promise((
+        resolve,
+        reject,
+      ) => {
+        const worker = new Worker(
+          URL.createObjectURL(
+            new Blob([USER_KEY_GENERATOR,], {
+              type: 'text/javascript',
+            }),
+          ),
+        )
 
-      _keyGenerationPromise = new Promise((resolve, reject) => {
-        worker.onmessage = (event) => {
+        worker.addEventListener('message', (
+          event,
+        ) => {
           if (event.data.success) {
-            _myEncryptKeys = event.data.data.myEncryptKeys
-            _mySignKeys = event.data.data.mySignKeys
-            _myExchangeKeys = event.data.data.myExchangeKeys
-            _myPublicEncryptKey = event.data.data.myPublicEncryptKey
-            _myPublicSignKey = event.data.data.myPublicSignKey
+            _myEncryptKeys = event.data.myEncryptKeys
+            _mySignKeys = event.data.mySignKeys
+            _myExchangeKeys = event.data.myExchangeKeys
+            _myPublicEncryptKey = event.data.myPublicEncryptKey
+            _myPublicSignKey = event.data.myPublicSignKey
 
             _generatedKeys = true
             _keyGenerationPromise = null
@@ -185,15 +189,17 @@ export const createClientConnector = (
             reject(error)
           }
           worker.terminate()
-        }
+        })
 
-        worker.onerror = (error) => {
+        worker.addEventListener('error', (
+          error,
+        ) => {
           onError.dispatch({
             error,
           })
           reject(error)
           worker.terminate()
-        }
+        })
 
         worker.postMessage({
           type: 'USER_KEYS',
@@ -568,7 +574,7 @@ export const createClientConnector = (
               {
                 name: DIFFIE_HELLMAN_ALGORITHM,
                 public: await crypto.subtle.importKey(
-                  DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
+                  DIFFIE_HELLMAN_EXPORT_FORMAT,
                   publicExchangeKeyData,
                   {
                     name: DIFFIE_HELLMAN_ALGORITHM,
@@ -589,7 +595,7 @@ export const createClientConnector = (
           )
 
           const myPublicExchangeKey = await crypto.subtle.exportKey(
-            DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
+            DIFFIE_HELLMAN_EXPORT_FORMAT,
             _myExchangeKeys.publicKey,
           )
           _message({
@@ -679,7 +685,7 @@ export const createClientConnector = (
                 {
                   name: DIFFIE_HELLMAN_ALGORITHM,
                   public: await crypto.subtle.importKey(
-                    DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
+                    DIFFIE_HELLMAN_EXPORT_FORMAT,
                     base64ToBuffer(data.publicExchangeKey),
                     {
                       name: DIFFIE_HELLMAN_ALGORITHM,
@@ -778,7 +784,7 @@ export const createClientConnector = (
           }
 
           const myPublicExchangeKey = await crypto.subtle.exportKey(
-            DIFFIE_HELLMAN_PUBLIC_KEY_EXPORT_FORMAT,
+            DIFFIE_HELLMAN_EXPORT_FORMAT,
             _myExchangeKeys.publicKey,
           )
 
@@ -1018,50 +1024,51 @@ export const createClientConnector = (
       }
       _setConnectionState(CONNECTION_CONNECTING)
 
-      const worker = new Worker(
-        URL.createObjectURL(
-          new Blob([
-            '(' + sharedKeyGenerator.toString() + ')()'
-          ], {
-            type: 'text/javascript',
-          }),
-        ),
-      )
+      try {
+        await new Promise((
+          resolve,
+          reject,
+        ) => {
+          const worker = new Worker(
+            URL.createObjectURL(
+              new Blob([SHARED_KEY_GENERATOR,], {
+                type: 'text/javascript',
+              }),
+            ),
+          )
 
-      const keyGenerationPromise = new Promise((
-        resolve,
-        reject,
-      ) => {
-        worker.addEventListener('message', (
-          event,
-        ) => {
-          if (event.data.success) {
-            _sharedKey = event.data.data.sharedKey
-            resolve()
-          } else {
-            const error = new Error(event.data.error)
-            onError.dispatch({
-              error,
-            })
-            reject(error)
-          }
-          worker.terminate()
-        })
-        worker.addEventListener('error', (
-          error,
-        ) => {
-          onError.dispatch({
-            error,
+          worker.addEventListener('message', (
+            event,
+          ) => {
+            if (event.data.success) {
+              _sharedKey = event.data.sharedKey
+              resolve()
+            } else {
+              reject(
+                new Error(event.data.error)
+              )
+            }
+            worker.terminate()
           })
-          reject(error)
-          worker.terminate()
-        })
-        worker.postMessage({
-          type: 'SHARED_KEY',
-        })
-      })
 
-      await keyGenerationPromise
+          worker.addEventListener('error', (
+            error,
+          ) => {
+            reject(error)
+            worker.terminate()
+          })
+
+          worker.postMessage({
+            type: 'SHARED_KEY',
+          })
+        })
+      } catch (error) {
+        _setConnectionState(CONNECTION_DISCONNECTED)
+        onError.dispatch({
+          error,
+        })
+        return
+      }
 
       const url = new URL(
         httpUrl

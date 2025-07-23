@@ -15,6 +15,7 @@ A set of teeny-tiny libraries for building web apps. The goal of this toolkit is
 
 This mono repository contains several packages, see the overview below:
 
+- [`@doars/roupn`](https://github.com/doars/staark/tree/main/packages/roupn#readme) synchronise application state between users in real-time via end-to-end encrypted messages.
 - [`@doars/staark`](https://github.com/doars/staark/tree/main/packages/staark#readme) a teensy-tiny library for for building web apps.
 - [`@doars/staark-isomorphic`](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) a version of staark that can used on the server for rendering a view.
 - [`@doars/staark-patch`](https://github.com/doars/staark/tree/main/packages/staark-patch#readme) a version of staark without state management where the node tree is repeatedly patched.

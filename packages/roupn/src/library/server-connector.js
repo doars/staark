@@ -27,9 +27,6 @@ import {
   createEvent,
 } from '../utilities/event.js'
 import {
-  closeMessage,
-} from '../utilities/socket.js'
-import {
   decode,
   encode,
 } from '../utilities/protocol.js'
@@ -47,7 +44,7 @@ import {
 /**
  * @typedef {Object} UserData
  * @property {WebSocket} connection - Websocket of user
- * @property {boolean} validated - Whether the host has validated the user.
+ * @property {boolean} verified - Whether the host has verified the user.
  */
 
 /**
@@ -63,9 +60,6 @@ import {
  *
  * @property {number} [rateLimitAttempts=5] - Maximum number of requests for creating or joining a room.
  * @property {number} [rateLimitDuration=60000] - Time frame for rate limit in milliseconds.
- *
- * @property {Function} [validateCreateRequest=null] - Allow create requests to be filtered an only allow authorized users to create rooms.
- * @property {Function} [validateJoinRequest=null] - Allow join requests to be filtered an only allow authorized users to join rooms.
  */
 
 /**
@@ -110,9 +104,6 @@ export const createServerConnector = (
 
     rateLimitAttempts = 6,
     rateLimitDuration = 60 * 1e3,
-
-    validateCreateRequest = null,
-    validateJoinRequest = null,
   } = options
 
   const onRoomMessage = createEvent()
@@ -209,7 +200,7 @@ export const createServerConnector = (
     const userId = randomUUID()
     users.set(userId, {
       connection: null,
-      validated: false,
+      verified: false,
     })
 
     const creatorSecret = randomUUID()
@@ -263,7 +254,7 @@ export const createServerConnector = (
     // Prevent re-use of the creator secret.
     if (
       _isCreator
-      && _room.users.get(_room.creatorId).validated
+      && _room.users.get(_room.creatorId).verified
     ) {
       return [false, {
         type: ERROR,
@@ -284,7 +275,7 @@ export const createServerConnector = (
 
     const userData = {
       connection,
-      validated: _isCreator,
+      verified: _isCreator,
     }
     _room.users.set(userId, userData)
 
@@ -348,7 +339,7 @@ export const createServerConnector = (
       }
 
       if (sharedEncryptionPayload) {
-        if (userData.validated) {
+        if (userData.verified) {
           messageRoom(
             roomCode,
             userId,
@@ -396,7 +387,7 @@ export const createServerConnector = (
                     }),
                   }, stringToBase64)
                 )
-                room.users.get(parsedData.userId).validated = true
+                room.users.get(parsedData.userId).verified = true
               }
               break
           }
@@ -529,9 +520,9 @@ export const createServerConnector = (
 
     const message = SERVER_TIME + ':' + stringToBase64(String(Date.now())) + '|' + payload
 
-    for (const [userId, { connection, validated }] of _room.users) {
+    for (const [userId, { connection, verified }] of _room.users) {
       if (
-        !validated
+        !verified
         || (
           sender
           && sender === userId
@@ -641,19 +632,9 @@ export const createServerConnector = (
           response.writeHead(429, {
             'Content-Type': contentType,
           })
-          response.end(serializeMessage({ type: ERROR, reason: 'too_many_requests' }))
-          return true
-        }
-        if (
-          validateCreateRequest
-          && !validateCreateRequest(request)
-        ) {
-          response.writeHead(401, {
-            'Content-Type': contentType,
-          })
           response.end(serializeMessage({
             type: ERROR,
-            reason: 'unauthorized',
+            reason: 'too_many_requests',
           }))
           return true
         }
@@ -697,40 +678,24 @@ export const createServerConnector = (
 
       if (pathname === joinRoomEndpoint) {
         if (isRateLimited(request)) {
+          const message = serializeMessage({
+            type: ERROR,
+            reason: 'too_many_requests',
+          })
           socket.write(
-            closeMessage(
-              request,
-              '429 Too many requests',
-              contentType,
-              serializeMessage({
-                type: ERROR,
-                reason: 'too_many_requests',
-              }),
-            ),
-          )
-          socket.destroy()
-          return true
-        }
-        if (
-          validateJoinRequest
-          && !validateJoinRequest(request)
-        ) {
-          socket.write(
-            closeMessage(
-              request,
-              '401 Unauthorized',
-              contentType,
-              serializeMessage({
-                type: ERROR,
-                reason: 'unauthorized',
-              }),
-            ),
+            'HTTP/' + request.httpVersion + ' 429 Too many requests',
+            + '\r\nConnection: close'
+            + '\r\nContent-Type: ' + contentType
+            + '\r\nContent-Length: ' + Buffer.byteLength(message),
+            + '\r\n\r\n' + message
           )
           socket.destroy()
           return true
         }
 
-        socketServer.handleUpgrade(request, socket, head, (connection) => {
+        socketServer.handleUpgrade(request, socket, head, (
+          connection,
+        ) => {
           const roomCode = searchParams.get('code')
           if (!roomCode) {
             connection.close(1008, 'missing_room_code')

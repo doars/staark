@@ -38,8 +38,8 @@ import {
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
  *
- * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user.
- * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for state synchronisation.
+ * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user. Used in case of rollbacks.
+ * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for a full state synchronisation.
  */
 
 /**
@@ -53,7 +53,7 @@ import {
  * @property {Event} onRoomLeave - Event for room leave notifications.
  * @property {Event} onUserJoin - Event for user join notifications.
  * @property {Event} onUserLeave - Event for user leave notifications.
- * @property {Event} onUserVerified - Event for user validated notifications.
+ * @property {Event} onUserVerified - Event for user verified notifications.
  * @property {Event} onUserVerificationCode - Event for verification code ready notifications.
  *
  * @property {Object} privateState - Internal state, including user and room information.
@@ -302,13 +302,13 @@ export const createClientSynchronizer = (
     privateState.roomCode = roomCode
     privateState.userId = userId
     privateState.users = users
-    privateState.validatedUsers = []
+    privateState.verifiedUsers = []
     privateState.previousState = cloneRecursive(
       publicState,
     )
 
     if (userId === creatorId) {
-      privateState.validatedUsers.push(userId)
+      privateState.verifiedUsers.push(userId)
 
       // Let the creator send resynchronisation messages every once in a well to get all users in sync.
       _synchronisationIntervalId = setInterval(
@@ -349,7 +349,7 @@ export const createClientSynchronizer = (
   connector.onUserVerified.addListener(({
     userId,
   }) => {
-    privateState.validatedUsers.push(
+    privateState.verifiedUsers.push(
       userId,
     )
 
@@ -372,9 +372,9 @@ export const createClientSynchronizer = (
         break
       }
     }
-    for (let index = 0; index < privateState.validatedUsers.length; index++) {
-      if (privateState.validatedUsers[index] === userId) {
-        privateState.validatedUsers.splice(index, 1)
+    for (let index = 0; index < privateState.verifiedUsers.length; index++) {
+      if (privateState.verifiedUsers[index] === userId) {
+        privateState.verifiedUsers.splice(index, 1)
         break
       }
     }
