@@ -6,10 +6,10 @@
   "name": "@doars/roupn",
   "description": "",
   "keywords": [],
-  "version": "0.0.0-alpha.1",
+  "version": "0.0.0-beta.1",
   "license": "MIT",
   "type": "module",
-  "main": "src/index.js",
+  "main": "src/all.js",
   "homepage": "https://github.com/doars/staark#readme",
   "repository": {
     "type": "git",
