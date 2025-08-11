@@ -54,6 +54,13 @@ The synchronizer works with two state objects. A private state, this object hold
 - `messageBufferMaxCount` (`number`): The maximum number of messages to store in the buffer. Default: `50`.
 - `messageBufferMaxDuration` (`number`): The maximum duration in milliseconds to store a message in the buffer. Default: `60000`.
 
+When creating or joining a room, you can provide the following options:
+
+- `publicData` (`any`): Data that is shared publicly with other users before the connection is fully established. This can be used to verify that the applications are compatible, it is recommended to obfuscated this information to prevent the server from knowing which apps are used. This can be done by hashing the app name and verion number to gether with a nonce.
+- `verifyPublicData` (`Function`): A function that verifies the public data from other users.
+
+> TODO: add privateData exchange after end-to-end encryption has been verified, but before the joining user is given the room's shared key.
+
 #### `createClientSynchronizer(options)`
 
 - All createClientConnector options.
@@ -69,6 +76,14 @@ Via NPM
 ```sh
 npm install @doars/roupn
 ```
+
+## Server
+
+```javascript
+import { createServerConnector } from '@doars/roupn'
+```
+
+## Client
 
 IIFE build via a CDN
 
@@ -89,7 +104,3 @@ import { createClientConnector } from 'https://cdn.jsdelivr.net/npm/@doars/roupn
 // Full bundle (connector and synchronizer).
 import { createClientConnector, createClientSynchronizer } from 'https://cdn.jsdelivr.net/npm/@doars/roupn@1/dst/roupn.js'
 ```
-
-## Tasks
-
-- How to ensure that one application doesn't join the room of another application? Allow an object for application name and version number that can be checked by both parties before continuing the exchange further.

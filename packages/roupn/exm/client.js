@@ -12,21 +12,21 @@
  */
 
 import {
-  conditional as c,
-  match as m,
-  mount,
-  node as n,
+    conditional as c,
+    match as m,
+    mount,
+    node as n,
 } from '@doars/staark'
 
 import {
-  createClientSynchronizer,
+    createClientSynchronizer,
 } from '../src/index.js'
 
 import {
-  CONNECTION_CONNECTED,
-  CONNECTION_CONNECTING,
-  CONNECTION_DISCONNECTING,
-  CONNECTION_PENDING_VERIFICATION,
+    CONNECTION_CONNECTED,
+    CONNECTION_CONNECTING,
+    CONNECTION_DISCONNECTING,
+    CONNECTION_PENDING_VERIFICATION,
 } from '../src/library/message-types.js'
 
 (function () {
@@ -79,7 +79,18 @@ import {
     _event,
     _state,
   ) => {
-    synchronizer.createRoom()
+    synchronizer.createRoom({
+      publicData: {
+        appName: 'example',
+      },
+      verifyPublicData: ({
+        userId,
+        data,
+      }) => {
+        console.log('Verify public user data:', userId, data)
+        return data.appName === 'example'
+      },
+    })
   }
 
   // Requests the synchronizer to leave the current room.
@@ -105,6 +116,15 @@ import {
   ) => {
     synchronizer.joinRoom(
       state.roomCode,
+      {
+        publicData: {
+          appName: 'example',
+        },
+        verifyPublicData: ({ data, userId }) => {
+          console.log('Verify public user data:', userId, data)
+          return data.appName === 'example'
+        },
+      },
     )
     state.roomCode = ''
   }
