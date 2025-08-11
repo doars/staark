@@ -31,8 +31,6 @@ The server is responsible for creating rooms and relaying messages between users
 - `createRoomEndpoint` (`string`): Endpoint for creating a room. Default: `'/create-room'`.
 - `joinRoomEndpoint` (`string`): Endpoint for joining a room. Default: `'/join-room'`.
 - `maxUsersPerRoom` (`number`): Absolute maximum users allowed per room. Default: `50`.
-- `rateLimitAttempts` (`number`): Maximum number of requests for creating or joining a room. Default: `5`.
-- `rateLimitDuration` (`number`): Time frame for rate limit in milliseconds. Default: `60000`.
 
 > For a complete example see the [server.js in the example directory](./exm/server.js).
 

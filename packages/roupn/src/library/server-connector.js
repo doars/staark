@@ -1,40 +1,39 @@
 import {
-  createHash,
-  randomUUID,
+    randomUUID
 } from 'crypto'
 
 import {
-  ERROR,
-  ROOM_JOINED,
-  ROOM_REMOVED,
-  USER_JOINED,
-  USER_LEFT,
-  USER_KICK,
-  USER_VERIFIED,
-  ROOM_CLOSED,
+    ERROR,
+    ROOM_CLOSED,
+    ROOM_JOINED,
+    ROOM_REMOVED,
+    USER_JOINED,
+    USER_KICK,
+    USER_LEFT,
+    USER_VERIFIED,
 } from './message-types.js'
 
 import {
-  IDENTIFIABLE_CHARACTERS,
+    IDENTIFIABLE_CHARACTERS,
 
-  generateCode,
+    generateCode,
 } from '../utilities/code.js'
 import {
-  base64ToString,
-  stringToBase64,
+    base64ToString,
+    stringToBase64,
 } from '../utilities/encoding-server.js'
 import {
-  createEvent,
+    createEvent,
 } from '../utilities/event.js'
 import {
-  decode,
-  encode,
+    decode,
+    encode,
 } from '../utilities/protocol.js'
 import {
-  SERVER_PAYLOAD,
-  SERVER_TIME,
-  SHARED_ENCRYPTION_PAYLOAD,
-  USER,
+    SERVER_PAYLOAD,
+    SERVER_TIME,
+    SHARED_ENCRYPTION_PAYLOAD,
+    USER,
 } from './payload-keys.js'
 
 /**
@@ -57,9 +56,6 @@ import {
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
  *
  * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
- *
- * @property {number} [rateLimitAttempts=5] - Maximum number of requests for creating or joining a room.
- * @property {number} [rateLimitDuration=60000] - Time frame for rate limit in milliseconds.
  */
 
 /**
@@ -101,64 +97,12 @@ export const createServerConnector = (
     serverOrigin = 'http://localhost:3000',
 
     maxUsersPerRoom = 16,
-
-    rateLimitAttempts = 6,
-    rateLimitDuration = 60 * 1e3,
   } = options
 
   const onRoomMessage = createEvent()
   const onRoomRemove = createEvent()
   const onUserJoin = createEvent()
   const onUserLeave = createEvent()
-
-  /** @type {Map<string, number[]>} */
-  const _rateLimits = new Map()
-
-  /**
-   * Checks if a user is rate-limited based on their fingerprint.
-   *
-   * @param {Object} request - The request to check whether it should be limited.
-   * @returns {boolean} - True if the user is rate-limited, false otherwise.
-   */
-  const isRateLimited = (
-    request,
-  ) => {
-    if (
-      rateLimitAttempts <= 0
-      || rateLimitDuration <= 0
-    ) {
-      return false
-    }
-    const fingerprint = createHash('sha256')
-      .update([
-        // Fingerprint consists of IP address, user agent and preferred language.
-        request.socket.remoteAddress,
-        request.headers['user-agent'] || '',
-        request.headers['accept-language'] || ''
-      ].join('|'),
-      ).digest('hex')
-    if (!fingerprint) {
-      return false
-    }
-
-    const now = Date.now()
-    const windowStart = now - rateLimitDuration
-    const timestamps = (
-      _rateLimits.get(fingerprint)
-      || []
-    ).filter(
-      (timestamp) => timestamp > windowStart,
-    )
-
-    if (timestamps.length >= rateLimitAttempts) {
-      _rateLimits.set(fingerprint, timestamps)
-      return true
-    }
-
-    timestamps.push(now)
-    _rateLimits.set(fingerprint, timestamps)
-    return false
-  }
 
   /** @type {Map<string, { creatorId: string, creatorSecret: string, userLimit: number, users: Map<string, UserData> }>} */
   const _rooms = new Map()
@@ -628,17 +572,6 @@ export const createServerConnector = (
       } = new URL(request.url, serverOrigin)
 
       if (pathname === createRoomEndpoint) {
-        if (isRateLimited(request)) {
-          response.writeHead(429, {
-            'Content-Type': contentType,
-          })
-          response.end(serializeMessage({
-            type: ERROR,
-            reason: 'too_many_requests',
-          }))
-          return true
-        }
-
         const limit = parseInt(
           searchParams.get('limit'),
           10
@@ -677,22 +610,6 @@ export const createServerConnector = (
       } = new URL(request.url, serverOrigin)
 
       if (pathname === joinRoomEndpoint) {
-        if (isRateLimited(request)) {
-          const message = serializeMessage({
-            type: ERROR,
-            reason: 'too_many_requests',
-          })
-          socket.write(
-            'HTTP/' + request.httpVersion + ' 429 Too many requests',
-            + '\r\nConnection: close'
-            + '\r\nContent-Type: ' + contentType
-            + '\r\nContent-Length: ' + Buffer.byteLength(message),
-            + '\r\n\r\n' + message
-          )
-          socket.destroy()
-          return true
-        }
-
         socketServer.handleUpgrade(request, socket, head, (
           connection,
         ) => {

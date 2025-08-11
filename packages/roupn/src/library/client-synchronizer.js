@@ -1,20 +1,20 @@
 import {
-  applyDiff,
-  cloneRecursive,
-  determineDiff,
-  revertDiff,
+    applyDiff,
+    cloneRecursive,
+    determineDiff,
+    revertDiff,
 } from '@doars/tiedliene'
 
 import {
-  createClientConnector
+    createClientConnector
 } from './client-connector.js'
 import {
-  STATE_SYNCH,
-  STATE_UPDATE,
+    STATE_SYNCH,
+    STATE_UPDATE,
 } from './message-types.js'
 
 import {
-  generateCode,
+    generateCode,
 } from '../utilities/code.js'
 
 /**

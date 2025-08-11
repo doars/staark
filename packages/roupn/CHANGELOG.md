@@ -1,6 +1,7 @@
 # Changelog
 
-- Add join data to verify before allow data sharing.
+- Add public data exchanged on joining.
+- Removed rate limiter from server.
 
 ## 0.0.0
 
