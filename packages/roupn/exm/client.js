@@ -90,6 +90,13 @@ import {
         console.log('Verify public user data:', userId, data)
         return data.appName === 'example'
       },
+      privateData: {
+        userKey: 'creator',
+      },
+      verifyPrivateData: ({ data, userId }) => {
+        console.log('Verify private user data:', userId, data)
+        return data.userKey === 'joiner'
+      },
     })
   }
 
@@ -123,6 +130,13 @@ import {
         verifyPublicData: ({ data, userId }) => {
           console.log('Verify public user data:', userId, data)
           return data.appName === 'example'
+        },
+        privateData: {
+          userKey: 'joiner',
+        },
+        verifyPrivateData: ({ data, userId }) => {
+          console.log('Verify private user data:', userId, data)
+          return data.userKey === 'creator'
         },
       },
     )

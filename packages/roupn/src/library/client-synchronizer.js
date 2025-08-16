@@ -35,6 +35,11 @@ import {
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
  *
+ * @property {any} [publicData={}] - Public data to be shared with other clients in the room.
+ * @property {Function} [verifyPublicData] - Callback for verifying the public data of other users.
+ * @property {any} [privateData={}] - Private data to be shared with other clients in the room.
+ * @property {Function} [verifyPrivateData] - Callback for verifying the private data of other users.
+ *
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
  *

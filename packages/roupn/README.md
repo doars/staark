@@ -56,8 +56,8 @@ When creating or joining a room, you can provide the following options:
 
 - `publicData` (`any`): Data that is shared publicly with other users before the connection is fully established. This can be used to verify that the applications are compatible, it is recommended to obfuscated this information to prevent the server from knowing which apps are used. This can be done by hashing the app name and verion number to gether with a nonce.
 - `verifyPublicData` (`Function`): A function that verifies the public data from other users.
-
-> TODO: add privateData exchange after end-to-end encryption has been verified, but before the joining user is given the room's shared key.
+- `privateData` (`any`): Data that is shared privately after the end-to-end encryption has been established with other users. This can be used to verify additional user information.
+- `verifyPrivateata` (`Function`): A function that verifies the private data from other users.
 
 #### `createClientSynchronizer(options)`
 
