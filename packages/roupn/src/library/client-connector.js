@@ -1,70 +1,70 @@
 import {
-  CONNECTION_CONNECTED,
-  CONNECTION_CONNECTING,
-  CONNECTION_DISCONNECTED,
-  CONNECTION_DISCONNECTING,
-  CONNECTION_PENDING_VERIFICATION,
+    CONNECTION_CONNECTED,
+    CONNECTION_CONNECTING,
+    CONNECTION_DISCONNECTED,
+    CONNECTION_DISCONNECTING,
+    CONNECTION_PENDING_VERIFICATION,
 
-  EXCHANGE_0,
-  EXCHANGE_1,
-  EXCHANGE_2,
-  EXCHANGE_3,
-  EXCHANGE_4,
+    EXCHANGE_0,
+    EXCHANGE_1,
+    EXCHANGE_2,
+    EXCHANGE_3,
+    EXCHANGE_4,
 
-  ROOM_CLOSED,
-  ROOM_JOINED,
+    ROOM_CLOSED,
+    ROOM_JOINED,
 
-  USER_JOINED,
-  USER_KICK,
-  USER_LEFT,
-  USER_VERIFIED,
+    USER_JOINED,
+    USER_KICK,
+    USER_LEFT,
+    USER_VERIFIED,
 } from './message-types.js'
 
 import {
-  IDENTIFIABLE_CHARACTERS,
+    IDENTIFIABLE_CHARACTERS,
 } from '../utilities/code.js'
 import {
-  base64ToBuffer,
-  base64ToString,
-  bufferToBase64,
-  stringToBase64,
+    base64ToBuffer,
+    base64ToString,
+    bufferToBase64,
+    stringToBase64,
 } from '../utilities/encoding-client.js'
 import {
-  createEvent,
+    createEvent,
 } from '../utilities/event.js'
 import {
-  decode,
-  encode,
+    decode,
+    encode,
 } from '../utilities/protocol.js'
 import {
-  calculateTime,
+    calculateTime,
 } from '../utilities/time.js'
 import {
-  DIFFIE_HELLMAN_ALGORITHM,
-  DIFFIE_HELLMAN_CURVE,
-  DIFFIE_HELLMAN_EXPORT_FORMAT,
-  HASH_ALGORITHM,
-  PUBLIC_KEY_EXPORT_FORMAT,
-  SHARED_ENCRYPTION_ALGORITHM,
-  SHARED_KEY_GENERATOR,
-  SHARED_KEY_LENGTH,
-  USER_ENCRYPTION_ALGORITHM,
-  USER_KEY_GENERATOR,
-  USER_SIGNATURE_ALGORITHM,
+    DIFFIE_HELLMAN_ALGORITHM,
+    DIFFIE_HELLMAN_CURVE,
+    DIFFIE_HELLMAN_EXPORT_FORMAT,
+    HASH_ALGORITHM,
+    PUBLIC_KEY_EXPORT_FORMAT,
+    SHARED_ENCRYPTION_ALGORITHM,
+    SHARED_KEY_GENERATOR,
+    SHARED_KEY_LENGTH,
+    USER_ENCRYPTION_ALGORITHM,
+    USER_KEY_GENERATOR,
+    USER_SIGNATURE_ALGORITHM,
 } from './key-generator.js'
 import {
-  SERVER_PAYLOAD,
-  SERVER_TIME,
+    SERVER_PAYLOAD,
+    SERVER_TIME,
 
-  SHARED_ENCRYPTION_IV,
-  SHARED_ENCRYPTION_PAYLOAD,
-  USER,
-  USER_DIRECT_PAYLOAD,
+    SHARED_ENCRYPTION_IV,
+    SHARED_ENCRYPTION_PAYLOAD,
+    USER,
+    USER_DIRECT_PAYLOAD,
 
-  USER_ENCRYPTION_IV,
-  USER_ENCRYPTION_KEY,
-  USER_ENCRYPTION_PAYLOAD,
-  USER_ENCRYPTION_SIGNATURE
+    USER_ENCRYPTION_IV,
+    USER_ENCRYPTION_KEY,
+    USER_ENCRYPTION_PAYLOAD,
+    USER_ENCRYPTION_SIGNATURE
 } from './payload-keys.js'
 
 /**
@@ -405,7 +405,10 @@ export const createClientConnector = (
       [USER]: userReceiver,
     } = parts
 
-    let data, deserializedData, payload
+    let data,
+      deserializedData,
+      payload,
+      wasEncrypted
 
     if (serverPayload) {
       payload = serverPayload
@@ -452,10 +455,10 @@ export const createClientConnector = (
         base64ToBuffer(sharedEncryptionPayload),
       )
       data = new TextDecoder().decode(data)
+      wasEncrypted = true
     } else if (userEncryptionPayload) {
       if (
-        !userEncryptionSignature
-        || !userEncryptionKey
+        !userEncryptionKey
         || !userEncryptionIv
       ) {
         // Assume the message is not encrypted just send as a user specific message.
@@ -496,10 +499,12 @@ export const createClientConnector = (
             ),
           ),
       )
+      wasEncrypted = true
 
       if (payloadData.type === EXCHANGE_1) {
+        // We can't check the signature because we don't have the sender's public key yet.
         deserializedData = payloadData
-      } else {
+      } else if (userEncryptionSignature) {
         const senderId = payloadData.sender
 
         if (!senderId) {
@@ -532,6 +537,11 @@ export const createClientConnector = (
         }
 
         deserializedData = payloadData
+      } else {
+        onError.dispatch({
+          error: new Error('Missing encryption signature'),
+        })
+        return
       }
     } else {
       data = payload
@@ -549,7 +559,6 @@ export const createClientConnector = (
     }
     data = deserializedData
 
-    // TODO: Add encryption === true check to certain steps to prevent sending data over without proper encryption and signatures.
     switch (data.type) {
       case ROOM_JOINED:
         _creatorId = data.creatorId
@@ -586,13 +595,6 @@ export const createClientConnector = (
             publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
             publicSignKey: bufferToBase64(_myPublicSignKey),
-            signature: bufferToBase64(
-              await crypto.subtle.sign(
-                USER_SIGNATURE_ALGORITHM,
-                _mySignKeys.privateKey,
-                myPublicExchangeKey,
-              ),
-            ),
           }, {
             allowUnencrypted: true,
             receiver: _creatorId,
@@ -704,13 +706,6 @@ export const createClientConnector = (
             publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
             publicSignKey: bufferToBase64(_myPublicSignKey),
-            signature: bufferToBase64(
-              await crypto.subtle.sign(
-                USER_SIGNATURE_ALGORITHM,
-                _mySignKeys.privateKey,
-                myPublicExchangeKey,
-              ),
-            ),
           }, {
             receiver: newUserId,
           })
@@ -821,6 +816,13 @@ export const createClientConnector = (
           userReceiver === _myId
           && data.sender === _creatorId
         ) {
+          if (!wasEncrypted) {
+            onError.dispatch({
+              error: new Error('Message was not encrypted'),
+            })
+            return
+          }
+
           if (
             _privateDataVerify
             && !_privateDataVerify({
@@ -846,17 +848,28 @@ export const createClientConnector = (
           userReceiver === _creatorId
           && _myId === _creatorId
         ) {
+          if (!wasEncrypted) {
+            onError.dispatch({
+              error: new Error('Message was not encrypted'),
+            })
+            return
+          }
           const userId = data.sender
 
+          if (!_userVerified.get(userId)) {
+            onError.dispatch({
+              error: new Error('User not verified'),
+            })
+            kickUser(userId)
+            return
+          }
+
           if (
-            !_userVerified.get(userId)
-            || (
-              _privateDataVerify
-              && !_privateDataVerify({
-                data: data.privateData,
-                userId,
-              })
-            )
+            _privateDataVerify
+            && !_privateDataVerify({
+              data: data.privateData,
+              userId,
+            })
           ) {
             kickUser(userId)
             return
@@ -889,6 +902,13 @@ export const createClientConnector = (
           userReceiver === _myId
           && data.sender === _creatorId
         ) {
+          if (!wasEncrypted) {
+            onError.dispatch({
+              error: new Error('Message was not encrypted'),
+            })
+            return
+          }
+
           _sharedKey = await crypto.subtle.importKey(
             'raw',
             base64ToBuffer(
@@ -951,6 +971,13 @@ export const createClientConnector = (
         break
 
       default:
+        if (!wasEncrypted) {
+          onError.dispatch({
+            error: new Error('Message was not encrypted'),
+          })
+          return
+        }
+
         onMessage.dispatch({
           data,
           time: calculateTime(

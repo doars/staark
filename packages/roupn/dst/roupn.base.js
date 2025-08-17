@@ -437,7 +437,7 @@ var createClientConnector = (options = {}) => {
       [USER_ENCRYPTION_SIGNATURE]: userEncryptionSignature,
       [USER]: userReceiver
     } = parts;
-    let data, deserializedData, payload;
+    let data, deserializedData, payload, wasEncrypted;
     if (serverPayload) {
       payload = serverPayload;
     } else if (userDirectPayload) {
@@ -472,8 +472,9 @@ var createClientConnector = (options = {}) => {
         base64ToBuffer(sharedEncryptionPayload)
       );
       data = new TextDecoder().decode(data);
+      wasEncrypted = true;
     } else if (userEncryptionPayload) {
-      if (!userEncryptionSignature || !userEncryptionKey || !userEncryptionIv) {
+      if (!userEncryptionKey || !userEncryptionIv) {
         onError.dispatch({
           error: new Error("Missing signature or IV to decrypt message.")
         });
@@ -509,9 +510,10 @@ var createClientConnector = (options = {}) => {
           )
         )
       );
+      wasEncrypted = true;
       if (payloadData.type === EXCHANGE_1) {
         deserializedData = payloadData;
-      } else {
+      } else if (userEncryptionSignature) {
         const senderId = payloadData.sender;
         if (!senderId) {
           onError.dispatch({
@@ -538,6 +540,11 @@ var createClientConnector = (options = {}) => {
           return;
         }
         deserializedData = payloadData;
+      } else {
+        onError.dispatch({
+          error: new Error("Missing encryption signature")
+        });
+        return;
       }
     } else {
       data = payload;
@@ -579,14 +586,7 @@ var createClientConnector = (options = {}) => {
             publicData: typeof _publicData === "function" ? _publicData() : _publicData,
             publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-            publicSignKey: bufferToBase64(_myPublicSignKey),
-            signature: bufferToBase64(
-              await crypto.subtle.sign(
-                USER_SIGNATURE_ALGORITHM,
-                _mySignKeys.privateKey,
-                myPublicExchangeKey
-              )
-            )
+            publicSignKey: bufferToBase64(_myPublicSignKey)
           }, {
             allowUnencrypted: true,
             receiver: _creatorId
@@ -678,14 +678,7 @@ var createClientConnector = (options = {}) => {
             publicData: typeof _publicData === "function" ? _publicData() : _publicData,
             publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-            publicSignKey: bufferToBase64(_myPublicSignKey),
-            signature: bufferToBase64(
-              await crypto.subtle.sign(
-                USER_SIGNATURE_ALGORITHM,
-                _mySignKeys.privateKey,
-                myPublicExchangeKey
-              )
-            )
+            publicSignKey: bufferToBase64(_myPublicSignKey)
           }, {
             receiver: newUserId
           });
@@ -775,6 +768,12 @@ var createClientConnector = (options = {}) => {
         break;
       case EXCHANGE_2:
         if (userReceiver === _myId && data.sender === _creatorId) {
+          if (!wasEncrypted) {
+            onError.dispatch({
+              error: new Error("Message was not encrypted")
+            });
+            return;
+          }
           if (_privateDataVerify && !_privateDataVerify({
             data: data.privateData,
             userId: _creatorId
@@ -792,8 +791,21 @@ var createClientConnector = (options = {}) => {
         break;
       case EXCHANGE_3:
         if (userReceiver === _creatorId && _myId === _creatorId) {
+          if (!wasEncrypted) {
+            onError.dispatch({
+              error: new Error("Message was not encrypted")
+            });
+            return;
+          }
           const userId = data.sender;
-          if (!_userVerified.get(userId) || _privateDataVerify && !_privateDataVerify({
+          if (!_userVerified.get(userId)) {
+            onError.dispatch({
+              error: new Error("User not verified")
+            });
+            kickUser(userId);
+            return;
+          }
+          if (_privateDataVerify && !_privateDataVerify({
             data: data.privateData,
             userId
           })) {
@@ -822,6 +834,12 @@ var createClientConnector = (options = {}) => {
         break;
       case EXCHANGE_4:
         if (userReceiver === _myId && data.sender === _creatorId) {
+          if (!wasEncrypted) {
+            onError.dispatch({
+              error: new Error("Message was not encrypted")
+            });
+            return;
+          }
           _sharedKey = await crypto.subtle.importKey(
             "raw",
             base64ToBuffer(
@@ -873,6 +891,12 @@ var createClientConnector = (options = {}) => {
         });
         break;
       default:
+        if (!wasEncrypted) {
+          onError.dispatch({
+            error: new Error("Message was not encrypted")
+          });
+          return;
+        }
         onMessage.dispatch({
           data,
           time: calculateTime(

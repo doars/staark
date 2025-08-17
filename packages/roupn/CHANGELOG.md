@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Added security checks.
+- Upgraded depedency.
+
 ## 0.1.0
 
 - Add public data exchanged on joining.

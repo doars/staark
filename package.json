@@ -16,7 +16,7 @@
     "brotli-size": "^4.0.0",
     "detective-es6": "^5.0.1",
     "chokidar": "^4.0.3",
-    "esbuild": "^0.25.5",
-    "npm-check-updates": "^18.0.1"
+    "esbuild": "^0.25.9",
+    "npm-check-updates": "^18.0.2"
   }
 }
