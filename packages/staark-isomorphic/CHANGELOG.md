@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.8
+
+- Upgrade dependecy.
+
 ## 1.6.7
 
 - Add additional check in case both attributes and contents are empty.

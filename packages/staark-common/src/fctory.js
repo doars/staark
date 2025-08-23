@@ -1,8 +1,8 @@
 import {
-  node,
+    node,
 } from './node.js'
 import {
-  selectorToTokenizer,
+    selectorToTokenizer,
 } from './selector.js'
 
 /**
@@ -31,12 +31,12 @@ export const fctory = /*#__PURE__*/ new Proxy({}, {
     }
 
     const typeConverted = (
-      type[0] + type.substring(1)
+      type[0].toLowerCase() + type.substring(1)
         .replace(
           /([A-Z])/g,
-          capital => '-' + capital,
+          capital => '-' + capital.toLowerCase(),
         )
-    ).toUpperCase()
+    )
 
     return target[type] = (
       selector,

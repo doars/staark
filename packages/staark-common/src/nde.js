@@ -24,6 +24,6 @@ export const nde = (
     _: marker,
     a: attributes,
     c: arrayifyOrUndefined(contents),
-    t: type.toUpperCase(),
+    t: type,
   }
 }

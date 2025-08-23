@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.10
+
+- Added SVG support.
+
 ## 1.4.9
 
 - Fix setting value attribute.

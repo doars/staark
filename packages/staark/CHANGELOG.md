@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.14
+
+- Added SVG support.
+- Added agent files for working with LLM's.
+
 ## 1.7.13
 
 - Fix setting value attribute.

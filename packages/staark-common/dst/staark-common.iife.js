@@ -115,7 +115,7 @@
       _: marker,
       a: attributesOrContents,
       c: arrayifyOrUndefined(contents),
-      t: type.toUpperCase()
+      t: type
     };
   };
 
@@ -159,10 +159,10 @@
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = (type[0] + type.substring(1).replace(
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
         /([A-Z])/g,
-        (capital) => "-" + capital
-      )).toUpperCase();
+        (capital) => "-" + capital.toLowerCase()
+      );
       return target[type] = (attributesOrContents, contents) => node(
         typeConverted,
         attributesOrContents,
@@ -309,10 +309,10 @@
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = (type[0] + type.substring(1).replace(
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
         /([A-Z])/g,
-        (capital) => "-" + capital
-      )).toUpperCase();
+        (capital) => "-" + capital.toLowerCase()
+      );
       return target[type] = (selector, contents) => {
         let attributes;
         if (selector) {
@@ -376,7 +376,7 @@
       _: marker,
       a: attributes,
       c: arrayifyOrUndefined(contents),
-      t: type.toUpperCase()
+      t: type
     };
   };
 

@@ -25,12 +25,16 @@
           'with memo, will update, use memo input: ',
           state.count,
         ])
-      const renderCount2 = (state) => node('div', [
+      const renderCount2 = (state) =>
         node('div', [
           'with memo, will not update: ',
           state.count,
         ])
-      ])
+      const renderCount3 = (state) =>
+        node('div', [
+          'with memo function, but only updates half the time: ',
+          state.count,
+        ])
 
       console.log(
         '[update, unmount]',
@@ -53,6 +57,12 @@
             memo(
               renderCount2,
               null,
+            ),
+
+            // With memo function, but only updates half the time.
+            memo(
+              renderCount3,
+              Math.floor(state.count / 2),
             ),
 
             // Buttons to mutate the state, therefore invoke an update.

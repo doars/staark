@@ -37,7 +37,7 @@
       _: marker,
       a: attributesOrContents,
       c: arrayifyOrUndefined(contents),
-      t: type.toUpperCase()
+      t: type
     };
   };
 
@@ -52,10 +52,10 @@
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = (type[0] + type.substring(1).replace(
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
         /([A-Z])/g,
-        (capital) => "-" + capital
-      )).toUpperCase();
+        (capital) => "-" + capital.toLowerCase()
+      );
       return target[type] = (attributesOrContents, contents) => node(
         typeConverted,
         attributesOrContents,
@@ -196,10 +196,10 @@
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = (type[0] + type.substring(1).replace(
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
         /([A-Z])/g,
-        (capital) => "-" + capital
-      )).toUpperCase();
+        (capital) => "-" + capital.toLowerCase()
+      );
       return target[type] = (selector, contents) => {
         let attributes;
         if (selector) {
@@ -240,7 +240,7 @@
       _: marker,
       a: attributes,
       c: arrayifyOrUndefined(contents),
-      t: type.toUpperCase()
+      t: type
     };
   };
 
@@ -367,7 +367,7 @@
       }
     }
   };
-  var updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
+  var updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -402,7 +402,8 @@
                 updateChildren(
                   element.childNodes[newIndex],
                   newAbstract.c,
-                  oldAbstract.c
+                  oldAbstract.c,
+                  inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
                 );
               } else if (oldAbstract !== newAbstract) {
                 element.childNodes[newIndex].textContent = newAbstract;
@@ -414,16 +415,26 @@
         if (!matched) {
           let newNode;
           if (newAbstract.t) {
-            newNode = document.createElement(
-              newAbstract.t
-            );
+            let _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
+            if (_inSvg) {
+              newNode = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                newAbstract.t
+              );
+            } else {
+              newNode = document.createElement(
+                newAbstract.t
+              );
+            }
             updateAttributes(
               newNode,
               newAbstract.a
             );
             updateChildren(
               newNode,
-              newAbstract.c
+              newAbstract.c,
+              void 0,
+              _inSvg
             );
           } else {
             newNode = document.createTextNode(

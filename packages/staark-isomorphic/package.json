@@ -6,7 +6,7 @@
   "name": "@doars/staark-isomorphic",
   "description": "A server side rendering library for staark.",
   "keywords": [],
-  "version": "1.6.7",
+  "version": "1.6.8",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",
@@ -34,6 +34,6 @@
     "README.md"
   ],
   "dependencies": {
-    "@doars/staark-common": "^1.5.7"
+    "@doars/staark-common": "^1.5.8"
   }
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.8
+
+- Removed uppercasing tag names by default.
+
 ## 1.5.7
 
 - Add additional check in case both attributes and contents are empty.

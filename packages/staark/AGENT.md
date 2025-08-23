@@ -1,6 +1,6 @@
-# Staark
+# staark
 
-### Types
+## Types
 
 ```TypeScript
 export type NodeContent =
@@ -30,15 +30,15 @@ Behaviour: Attaches the application to a given DOM node.
 Parameters:
 - `rootNode` the element to attach he application to, if a string is used it will be used as a query selector.
 - `renderView` a function which receives the current state and returns an abstract node tree.
-- `initialState` can be an object or a recursive proxy; if a proxy is used, manual triggering of re-renders via update is expected.
-- `oldAbstractTree` is used for isomorphic / server-side rendering. If provided as a string, it will be parsed as JSON.
+- `initialState` can be an object or a recursive proxy; if a proxy is used, manual triggering of re-renders via the update function is expected.
+- `oldAbstractTree` is in combination with isomorphic / server-side rendering. If provided as a string, it will be parsed as JSON.
 
 Returns a tuple:
   1. update: Function to force a re-render.
   2. unmount: Function to remove the application from the DOM.
   3. state: The state proxy used within the app.
 
-### `node` (Alias: n)
+### `node` (Common alias: n)
 
 Signature:
 ```TypeScript
@@ -104,7 +104,7 @@ Note:
 
 The helper functions are not included in the base library, only in the full library.
 
-### `conditional`
+### `conditional` (Common alias: c)
 
 Signature:
 ```TypeScript
@@ -124,7 +124,7 @@ Parameters:
 
 Returns: an array, suitable for spreading into an abstract node tree.
 
-### `match`
+### `match` (Common alias: m)
 
 Signature:
 ```TypeScript
@@ -170,8 +170,8 @@ Behaviour: A object acting as a factory pattern that wraps the `node` function f
 
 Example:
 ```JavaScript
-const { div, span, button } = factory
-// Now `div([...])` is equivalent to `node('div', [...])`
+const { div, span } = factory
+// Now `div([...])` is equivalent to `node('div', [...])` and `span([...]) is equivalent to node('span', [...])`
 ```
 
 ### `fctory`
@@ -182,4 +182,85 @@ Example:
 ```JavaScript
 const { a } = fctory;
 // Now `a('.nav-link.active[href="/next-page/"][target=_blank]', 'Next page')` creates an anchor node.
+```
+
+## Example
+
+```JavaScript
+import {
+  mount,
+  node as n,
+} from '@doars/staark'
+
+const calculateBMI = (
+  state,
+) => {
+  const weight = parseFloat(state.weight)
+  const height = parseFloat(state.height) / 100
+  if (
+    weight
+    && height
+  ) {
+    state.bmi = (weight / (height * height)).toFixed(2)
+  }
+}
+
+const onWeightInput = (
+  event,
+  state,
+) => {
+  state.weight = event.target.value
+  calculateBMI(state)
+}
+
+const onHeightInput = (
+  event,
+  state,
+) => {
+  state.height = event.target.value
+  calculateBMI(state)
+}
+
+mount('#app', (state) =>
+  n('div', {
+    style: {
+      maxWidth: '256px',
+    }
+  }, [
+    n('p', 'BMI calculator'),
+
+    n('input', {
+      type: 'number',
+      placeholder: 'Weight (kg)',
+      value: state.weight,
+      input: onWeightInput,
+      style: {
+        marginBottom: '8px',
+        padding: '4px',
+        width: '100%',
+      },
+    }),
+
+    n('input', {
+      type: 'number',
+      placeholder: 'Height (cm)',
+      value: state.height,
+      input: onHeightInput,
+      style: {
+        marginBottom: '8px',
+        padding: '4px',
+        width: '100%',
+      },
+    }),
+
+    n('div', {
+      style: {
+        marginTop: '8px',
+      },
+    }, 'BMI: ' + state.bmi),
+  ]), {
+  weight: '',
+  height: '',
+  bmi: 0,
+}
 ```

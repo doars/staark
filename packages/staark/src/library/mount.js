@@ -1,17 +1,17 @@
 import {
-  arrayifyOrUndefined,
+    arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
-  cloneRecursive,
+    cloneRecursive,
 } from '@doars/staark-common/src/clone.js'
 import {
-  equalRecursive,
+    equalRecursive,
 } from '@doars/staark-common/src/compare.js'
 import {
-  childrenToNodes,
+    childrenToNodes,
 } from '@doars/staark-common/src/element.js'
 import {
-  proxify,
+    proxify,
 } from './proxy.js'
 
 /**
@@ -207,6 +207,7 @@ export const mount = (
     element,
     newChildAbstracts,
     oldChildAbstracts,
+    inSvg,
   ) => {
     let newIndex = 0
     let newCount = 0
@@ -218,6 +219,7 @@ export const mount = (
           let match = oldMemoMap.get(
             newAbstract.r,
           )
+          console.log('checking for memo')
           if (
             !match
             || !equalRecursive(match.m, newAbstract.m)
@@ -291,6 +293,7 @@ export const mount = (
                   element.childNodes[newIndex],
                   newAbstract.c,
                   oldAbstract.c,
+                  inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg',
                 )
               } else if (oldAbstract !== newAbstract) {
                 element.childNodes[newIndex].textContent = newAbstract
@@ -303,16 +306,28 @@ export const mount = (
         if (!matched) {
           let newNode
           if (newAbstract.t) {
-            newNode = document.createElement(
-              newAbstract.t,
-            )
+            const _inSvg = inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg'
+            if (_inSvg) {
+              newNode = document.createElementNS(
+                'http://www.w3.org/2000/svg',
+                newAbstract.t
+              )
+            } else {
+              newNode = document.createElement(
+                newAbstract.t,
+              )
+            }
             updateAttributes(
               newNode,
               newAbstract.a,
+              undefined,
+              _inSvg,
             )
             updateChildren(
               newNode,
               newAbstract.c,
+              undefined,
+              _inSvg,
             )
           } else {
             newNode = document.createTextNode(

@@ -55,6 +55,6 @@ export const node = (
     _: marker,
     a: attributesOrContents,
     c: arrayifyOrUndefined(contents),
-    t: type.toUpperCase(),
+    t: type,
   }
 }

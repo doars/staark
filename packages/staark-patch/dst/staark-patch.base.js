@@ -14,7 +14,7 @@ var node = (type, attributesOrContents, contents) => {
     _: marker,
     a: attributesOrContents,
     c: arrayifyOrUndefined(contents),
-    t: type.toUpperCase()
+    t: type
   };
 };
 
@@ -141,7 +141,7 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
     }
   }
 };
-var updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
+var updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
   let newIndex = 0;
   let newCount = 0;
   if (newChildAbstracts) {
@@ -176,7 +176,8 @@ var updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
               updateChildren(
                 element.childNodes[newIndex],
                 newAbstract.c,
-                oldAbstract.c
+                oldAbstract.c,
+                inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
               );
             } else if (oldAbstract !== newAbstract) {
               element.childNodes[newIndex].textContent = newAbstract;
@@ -188,16 +189,26 @@ var updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
       if (!matched) {
         let newNode;
         if (newAbstract.t) {
-          newNode = document.createElement(
-            newAbstract.t
-          );
+          let _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
+          if (_inSvg) {
+            newNode = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              newAbstract.t
+            );
+          } else {
+            newNode = document.createElement(
+              newAbstract.t
+            );
+          }
           updateAttributes(
             newNode,
             newAbstract.a
           );
           updateChildren(
             newNode,
-            newAbstract.c
+            newAbstract.c,
+            void 0,
+            _inSvg
           );
         } else {
           newNode = document.createTextNode(

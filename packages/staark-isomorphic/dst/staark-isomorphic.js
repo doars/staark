@@ -24,7 +24,7 @@ var node = (type, attributesOrContents, contents) => {
     _: marker,
     a: attributesOrContents,
     c: arrayifyOrUndefined(contents),
-    t: type.toUpperCase()
+    t: type
   };
 };
 
@@ -39,10 +39,10 @@ var factory = /* @__PURE__ */ new Proxy({}, {
     if (target[type]) {
       return target[type];
     }
-    const typeConverted = (type[0] + type.substring(1).replace(
+    const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
       /([A-Z])/g,
-      (capital) => "-" + capital
-    )).toUpperCase();
+      (capital) => "-" + capital.toLowerCase()
+    );
     return target[type] = (attributesOrContents, contents) => node(
       typeConverted,
       attributesOrContents,
@@ -183,10 +183,10 @@ var fctory = /* @__PURE__ */ new Proxy({}, {
     if (target[type]) {
       return target[type];
     }
-    const typeConverted = (type[0] + type.substring(1).replace(
+    const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
       /([A-Z])/g,
-      (capital) => "-" + capital
-    )).toUpperCase();
+      (capital) => "-" + capital.toLowerCase()
+    );
     return target[type] = (selector, contents) => {
       let attributes;
       if (selector) {
@@ -234,7 +234,7 @@ var nde = (selector, contents) => {
     _: marker,
     a: attributes,
     c: arrayifyOrUndefined(contents),
-    t: type.toUpperCase()
+    t: type
   };
 };
 

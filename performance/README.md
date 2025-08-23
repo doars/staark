@@ -66,14 +66,14 @@ Min+gzip           5.10KB    37.82%
 Min+brotli         4.60KB    34.13%
 
 staark
-Minified           3.51KB
-Min+gzip           1.64KB    46.79%
-Min+brotli         1.50KB    42.64%
+Minified           3.65KB
+Min+gzip           1.71KB    46.88%
+Min+brotli         1.56KB    42.67%
 
 staark-patch
-Minified           2.28KB
-Min+gzip           1.09KB    47.80%
-Min+brotli         0.97KB    42.58%
+Minified           2.41KB
+Min+gzip           1.15KB    47.81%
+Min+brotli         1.02KB    42.54%
 
 superfine
 Minified           2.80KB

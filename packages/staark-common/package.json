@@ -6,7 +6,7 @@
   "name": "@doars/staark-common",
   "description": "",
   "keywords": [],
-  "version": "1.5.7",
+  "version": "1.5.8",
   "license": "MIT",
   "type": "module",
   "main": "src/index.js",

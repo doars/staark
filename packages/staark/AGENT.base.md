@@ -1,0 +1,182 @@
+# staark
+
+## Types
+
+```TypeScript
+export type NodeContent =
+  string |
+  MemoAbstract |
+  NodeAbstract
+
+type ResolveFunction = () => NodeAbstract[] | NodeAbstract | null | undefined
+```
+
+## Base functions
+
+### `mount`
+
+Signature:
+```TypeScript
+mount(
+  rootNode: Element | string,
+  renderView: (state: any) => NodeContent[] | NodeContent,
+  initialState?: any,
+  oldAbstractTree?: NodeContent[] | NodeContent | string,
+): [update: () => void, unmount: () => void, state?: any]
+```
+
+Behaviour: Attaches the application to a given DOM node.
+
+Parameters:
+- `rootNode` the element to attach he application to, if a string is used it will be used as a query selector.
+- `renderView` a function which receives the current state and returns an abstract node tree.
+- `initialState` can be an object or a recursive proxy; if a proxy is used, manual triggering of re-renders via the update function is expected.
+- `oldAbstractTree` is in combination with isomorphic / server-side rendering. If provided as a string, it will be parsed as JSON.
+
+Returns a tuple:
+  1. update: Function to force a re-render.
+  2. unmount: Function to remove the application from the DOM.
+  3. state: The state proxy used within the app.
+
+### `node` (Common alias: n)
+
+Signature:
+```TypeScript
+node(
+  type: string,
+  attributes?: { [key: string]: any },
+  children?: (NodeContent | string)[] | NodeContent | string,
+): NodeAbstract
+```
+
+Behaviour: Creates an abstract representation of a DOM node.
+
+Parameters:
+- type: A string indicating the node type (e.g., 'div', 'span').
+- attributes: An object containing attributes. Special handling:
+  - Functions: Added as event listeners.
+  - `class`: A string, list or object with class names.
+  - `style`: A string or an object with style properties.
+- children: Child nodes or primitive values such as a string.
+
+Returns: An abstract node used for subsequent diffing and DOM rendering.
+
+#### `attributes` explained
+
+Event listeners:
+- When an attribute's value is a function, it is automatically registered as an event listener.
+- For consistent behaviour, define event listener functions outside of the view function to avoid identity changes between renders.
+
+`class` attribute:
+- Can be a string.
+- Can also be provided as an array of class names.
+- Can also be provided as an object, keys with truthy values are concatenated.
+
+`style` attribute:
+- Can be a string.
+- Can be provided as an object with CSS properties.
+- Keys in camelCase are automatically converted to kebab-case.
+- The object is converted into a valid inline CSS string.
+
+### `memo` (Common alias: m)
+
+Signature:
+```TypeScript
+memo(
+  view: (state: any) => NodeContent[] | NodeContent,
+  condition: any,
+): MemoAbstract
+```
+
+Behaviour: Memoizes the result of a view function based on a condition. The memoized view is recalculated only when the condition value changes.
+
+Parameters:
+- The `view` function receives the current state and returns an abstract node tree (using node or its variants).
+- `condition` any value that if changed will cause the view function to be called again.
+
+Return: A memo abstract used for subsequent diffing and DOM rendering.
+
+Note:
+- Define the memoized view function outside of the parent view function to maintain a stable identity.
+- Nested use of memo is discouraged due to cache clearing after updates.
+
+## Example
+
+```JavaScript
+import {
+  mount,
+  node as n,
+} from '@doars/staark'
+
+const calculateBMI = (
+  state,
+) => {
+  const weight = parseFloat(state.weight)
+  const height = parseFloat(state.height) / 100
+  if (
+    weight
+    && height
+  ) {
+    state.bmi = (weight / (height * height)).toFixed(2)
+  }
+}
+
+const onWeightInput = (
+  event,
+  state,
+) => {
+  state.weight = event.target.value
+  calculateBMI(state)
+}
+
+const onHeightInput = (
+  event,
+  state,
+) => {
+  state.height = event.target.value
+  calculateBMI(state)
+}
+
+mount('#app', (state) =>
+  n('div', {
+    style: {
+      maxWidth: '256px',
+    }
+  }, [
+    n('p', 'BMI calculator'),
+
+    n('input', {
+      type: 'number',
+      placeholder: 'Weight (kg)',
+      value: state.weight,
+      input: onWeightInput,
+      style: {
+        marginBottom: '8px',
+        padding: '4px',
+        width: '100%',
+      },
+    }),
+
+    n('input', {
+      type: 'number',
+      placeholder: 'Height (cm)',
+      value: state.height,
+      input: onHeightInput,
+      style: {
+        marginBottom: '8px',
+        padding: '4px',
+        width: '100%',
+      },
+    }),
+
+    n('div', {
+      style: {
+        marginTop: '8px',
+      },
+    }, 'BMI: ' + state.bmi),
+  ]), {
+  weight: '',
+  height: '',
+  bmi: 0,
+}
+```

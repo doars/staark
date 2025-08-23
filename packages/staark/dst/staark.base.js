@@ -21,7 +21,7 @@ var node = (type, attributesOrContents, contents) => {
     _: marker,
     a: attributesOrContents,
     c: arrayifyOrUndefined(contents),
-    t: type.toUpperCase()
+    t: type
   };
 };
 
@@ -253,7 +253,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   };
   let oldMemoMap = /* @__PURE__ */ new WeakMap();
   let newMemoMap = /* @__PURE__ */ new WeakMap();
-  const updateChildren = (element, newChildAbstracts, oldChildAbstracts) => {
+  const updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
@@ -263,6 +263,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           let match = oldMemoMap.get(
             newAbstract.r
           );
+          console.log("checking for memo");
           if (!match || !equalRecursive(match.m, newAbstract.m)) {
             match = {
               c: arrayifyOrUndefined(
@@ -315,7 +316,8 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
                 updateChildren(
                   element.childNodes[newIndex],
                   newAbstract.c,
-                  oldAbstract.c
+                  oldAbstract.c,
+                  inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
                 );
               } else if (oldAbstract !== newAbstract) {
                 element.childNodes[newIndex].textContent = newAbstract;
@@ -327,16 +329,28 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         if (!matched) {
           let newNode;
           if (newAbstract.t) {
-            newNode = document.createElement(
-              newAbstract.t
-            );
+            const _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
+            if (_inSvg) {
+              newNode = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                newAbstract.t
+              );
+            } else {
+              newNode = document.createElement(
+                newAbstract.t
+              );
+            }
             updateAttributes(
               newNode,
-              newAbstract.a
+              newAbstract.a,
+              void 0,
+              _inSvg
             );
             updateChildren(
               newNode,
-              newAbstract.c
+              newAbstract.c,
+              void 0,
+              _inSvg
             );
           } else {
             newNode = document.createTextNode(

@@ -1,8 +1,8 @@
 import {
-  arrayifyOrUndefined,
+    arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
-  childrenToNodes,
+    childrenToNodes,
 } from '@doars/staark-common/src/element.js'
 
 /**
@@ -151,6 +151,7 @@ const updateChildren = (
   element,
   newChildAbstracts,
   oldChildAbstracts,
+  inSvg,
 ) => {
   let newIndex = 0
   let newCount = 0
@@ -202,6 +203,7 @@ const updateChildren = (
                 element.childNodes[newIndex],
                 newAbstract.c,
                 oldAbstract.c,
+                inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg',
               )
             } else if (oldAbstract !== newAbstract) {
               element.childNodes[newIndex].textContent = newAbstract
@@ -214,9 +216,17 @@ const updateChildren = (
       if (!matched) {
         let newNode
         if (newAbstract.t) {
-          newNode = document.createElement(
-            newAbstract.t,
-          )
+          let _inSvg = inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg'
+          if (_inSvg) {
+            newNode = document.createElementNS(
+              'http://www.w3.org/2000/svg',
+              newAbstract.t,
+            )
+          } else {
+            newNode = document.createElement(
+              newAbstract.t,
+            )
+          }
           updateAttributes(
             newNode,
             newAbstract.a,
@@ -224,6 +234,8 @@ const updateChildren = (
           updateChildren(
             newNode,
             newAbstract.c,
+            undefined,
+            _inSvg,
           )
         } else {
           newNode = document.createTextNode(
