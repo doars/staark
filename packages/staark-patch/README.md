@@ -5,7 +5,6 @@ A teeny-tiny stateless framework for building web apps.
 - Minimal amount of concepts to learn in order to get going, meaning the system becomes incredibly **easy to reason with**.
 - Comes in at **a kilobyte** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has an **efficient diffing algorithm**. This ensures the node tree is morphed quickly from the old to the new with minimal overhead.
-- Written in TypeScript.
 
 > Looking for one with a state management solution checkout out [staark](https://github.com/doars/staark/tree/main/packages/staark#readme).
 

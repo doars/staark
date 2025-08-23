@@ -5,7 +5,6 @@ A teensy-tiny library for managing network requests.
 - Comes in at **a kilobyte and half** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has features like **throttling, debouncing, delays, retries, and more**, making it easier to manage and control network traffic.
 - Designed to be used with front-end frameworks such as [`@doars/staark`](https://github.com/doars/staark/tree/main/packages/staark#readme).
-- Written in TypeScript.
 
 The heart of _vroagn_ is the `create` function, it helps you set up a reusable request configuration. Think of it like setting the table before a big feast—you get everything ready, and then just dig in whenever you're hungry (or in our case, need to make a request).
 

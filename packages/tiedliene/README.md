@@ -6,7 +6,6 @@ tiedliene is a teensy-tiny yet powerful state management utility designed to kee
 - Comes in at **half a kilobyte** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Uses an **naive diffing algorithm** to ensure that state changes are applied in full.
 - Allows you to not only revert state changes but also provides built-in **undo and redo** capabilities.
-- Written in TypeScript.
 
 To start using tiedliene, you need to understand the core functions: `determineDiff`, `applyDiff`, `revertDiff`. These functions allow you to calculate the differences between states, apply those changes, revert to previous states.
 
