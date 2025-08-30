@@ -599,7 +599,15 @@
               publicData: typeof _publicData === "function" ? _publicData() : _publicData,
               publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
               publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-              publicSignKey: bufferToBase64(_myPublicSignKey)
+              publicSignKey: bufferToBase64(_myPublicSignKey),
+              // Explicitly add signature manually.
+              signature: bufferToBase64(
+                await crypto.subtle.sign(
+                  USER_SIGNATURE_ALGORITHM,
+                  _mySignKeys.privateKey,
+                  myPublicExchangeKey
+                )
+              )
             }, {
               allowUnencrypted: true,
               receiver: _creatorId

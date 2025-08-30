@@ -37,9 +37,6 @@ const {
   // Additional functions and events are also exported.
 } = createServerConnector({
   // Configuration options.
-
-  // We don't want to rate limit ourselves whilst testing.
-  rateLimitDuration: 0,
 })
 
 // Log events so we can see what is happening.

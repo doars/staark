@@ -6,7 +6,7 @@
   "name": "@doars/roupn",
   "description": "",
   "keywords": [],
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "type": "module",
   "main": "src/all.js",
@@ -38,6 +38,7 @@
     "@doars/tiedliene": "^1.2.0"
   },
   "devDependencies": {
-    "@doars/staark": "x"
+    "@doars/staark": "x",
+    "ws": "^8.18.3"
   }
 }

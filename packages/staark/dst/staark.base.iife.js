@@ -156,7 +156,7 @@
       }
       return updatePromise;
     };
-    let state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
+    const state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
       initialState,
       triggerUpdate
     );

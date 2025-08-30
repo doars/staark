@@ -57,7 +57,7 @@ export const mount = (
     }
     return updatePromise
   }
-  let state = (
+  const state = (
     Object.getPrototypeOf(initialState) === Proxy.prototype
       ? initialState
       : proxify(
