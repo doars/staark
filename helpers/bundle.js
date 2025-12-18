@@ -3,44 +3,34 @@ import fs from 'fs'
 import path from 'path'
 
 const isProduction = process.env.NODE_ENV === 'production'
-const workingDirectory = process.cwd()
 
-const size = async (
-  filePath,
+const performBuilds = async (
+  builds,
 ) => {
-  let size
-  try {
-    size = await fileSize(filePath)
-  } catch (error) {
-    // console.log('Unable to determine file size of ' + path.basename(filePath), error)
-    return
-  }
+  return Promise.all(
+    builds.map(
+      async (options) => {
+        try {
+          const result = await Bun.build(options)
+          if (!result.success) {
+            console.warn('Build failed', result.logs)
+            return
+          }
 
-  size = (size / 1024).toFixed(2) + 'KB'
-  console.log(size + ' is ' + path.basename(filePath) + ' when brotli compressed.')
-}
-
-const performBuild = async (
-  options,
-) => {
-  try {
-    const result = await Bun.build(options)
-    if (!result.success) {
-      console.warn('Build failed', result.logs)
-      return
-    }
-
-    if (
-      isProduction
-      && options.minify
-    ) {
-      await size(
-        path.join(workingDirectory, options.outfile),
-      )
-    }
-  } catch (error) {
-    console.warn('Error encountered during building.', error)
-  }
+          if (
+            isProduction
+            && options.minify
+          ) {
+            let size = await fileSize(options.outfile)
+            size = (size / 1024).toFixed(2) + 'KB'
+            console.log(size + ' is ' + path.basename(options.outfile) + ' when brotli compressed.')
+          }
+        } catch (error) {
+          console.error('Rebuild failed for', options.outfile, error)
+        }
+      },
+    ),
+  )
 }
 
 const bundle = async (
@@ -112,11 +102,8 @@ const bundle = async (
     }
   }
 
-  await Promise.all(
-    builds.map(
-      options => performBuild(options),
-    ),
-  )
+  performBuilds(builds)
+  console.log('Bundles build')
 
   if (!isProduction) {
     for (const watchDirectory of watchedDirectories) {
@@ -129,19 +116,9 @@ const bundle = async (
         ) {
           return
         }
-        console.log('Rebuilding bundles. File changed:', filename)
 
-        await Promise.all(
-          builds.map(
-            options => {
-              try {
-                return performBuild(options)
-              } catch (error) {
-                console.error('Rebuild failed for', options.outfile, error)
-              }
-            },
-          ),
-        )
+        console.log('Rebuilding bundles. File changed:', filename)
+        await performBuilds(builds)
         console.log('Bundles rebuild')
       })
       console.log('Watching for file changes in:', watchDirectory)
