@@ -102,7 +102,7 @@ Note:
 
 ## Helper functions
 
-The helper functions are not included in the base library, only in the full library.
+The helper functions are not included in the base library, only in the full library. If imported from a CDN the base library is specified by a `.base.js` or `.base.min.js` suffix instead of the simple `.js` and `.min.js` suffixes. If imported from `node_modules` the unused helpers will automatically be removed via treeshaking.
 
 ### `conditional` (Common alias: c)
 

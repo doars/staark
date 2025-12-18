@@ -7,16 +7,16 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "bun --filter \"*\" build",
     "serve": "node ./scripts/srv.js ./",
-    "test:runtime": "npm run test:runtime --workspaces",
-    "upgrade": "npm-check-updates --upgrade --target minor && npm run upgrade --workspaces && npm install"
+    "test:runtime": "bun --filter \"*\" test:runtime",
+    "upgrade": "npm-check-updates --upgrade --target minor && bun --filter \"*\" upgrade && bun install"
   },
   "devDependencies": {
     "brotli-size": "^4.0.0",
     "detective-es6": "^5.0.1",
-    "chokidar": "^4.0.3",
-    "esbuild": "^0.25.9",
-    "npm-check-updates": "^18.0.3"
+    "chokidar": "^5.0.0",
+    "esbuild": "^0.27.2",
+    "npm-check-updates": "^19.2.0"
   }
 }

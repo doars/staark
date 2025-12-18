@@ -30,8 +30,7 @@
   "files": [
     "dst",
     "src",
-    "AGENT.md",
-    "AGENT.base.md",
+    "AI.md",
     "CHANGELOG.md",
     "README.md"
   ],

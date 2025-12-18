@@ -1,9 +1,6 @@
 # Macos files
 .DS_Store
 
-# Visual studio code directory
-.vscode/
-
 # Node files
 # Logs
 logs

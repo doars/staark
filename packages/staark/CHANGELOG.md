@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.15
+
+- Switch to `AI.md` for providing library context to LLM's.
+
 ## 1.7.14
 
 - Added SVG support.

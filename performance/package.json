@@ -19,15 +19,15 @@
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "devDependencies": {
-    "puppeteer": "^24.17.1"
+    "puppeteer": "^24.33.1"
   },
   "dependencies": {
     "@doars/staark-patch": "x",
     "@doars/staark": "x",
     "hyperapp": "^2.0.22",
     "incremental-dom": "^0.7.0",
-    "mithril": "^2.3.5",
-    "snabbdom": "^3.6.2",
+    "mithril": "^2.3.8",
+    "snabbdom": "^3.6.3",
     "superfine": "^8.2.0"
   }
 }
