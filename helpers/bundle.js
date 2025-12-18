@@ -1,20 +1,18 @@
-import brotliSize from 'brotli-size'
-import {
-  build,
-  context,
-} from 'esbuild'
+import { file as fileSize } from 'brotli-size'
+import fs from 'fs'
 import path from 'path'
 
 const isProduction = process.env.NODE_ENV === 'production'
+const workingDirectory = process.cwd()
 
 const size = async (
   filePath,
 ) => {
   let size
   try {
-    size = await brotliSize.file(filePath)
+    size = await fileSize(filePath)
   } catch (error) {
-    console.log('Unable to determine file size of ' + path.basename(filePath))
+    // console.log('Unable to determine file size of ' + path.basename(filePath), error)
     return
   }
 
@@ -22,7 +20,30 @@ const size = async (
   console.log(size + ' is ' + path.basename(filePath) + ' when brotli compressed.')
 }
 
-const bundle = (
+const performBuild = async (
+  options,
+) => {
+  try {
+    const result = await Bun.build(options)
+    if (!result.success) {
+      console.warn('Build failed', result.logs)
+      return
+    }
+
+    if (
+      isProduction
+      && options.minify
+    ) {
+      await size(
+        path.join(workingDirectory, options.outfile),
+      )
+    }
+  } catch (error) {
+    console.warn('Error encountered during building.', error)
+  }
+}
+
+const bundle = async (
   ...builds
 ) => {
   // For production add additional builds.
@@ -38,15 +59,7 @@ const bundle = (
           'debugger',
         ],
         minify: true,
-        sourcemap: false,
-        target: [
-          // Smaller size // Proxy object
-          'chrome51', // 49
-          'edge20', // 12
-          'firefox53', // 39
-          'ios11', // 10.2
-          'safari11', // 10
-        ],
+        sourcemap: 'none',
       })
 
       // Append min suffix to file name for minified builds.
@@ -62,55 +75,90 @@ const bundle = (
     }
   }
 
-  return Promise.all(
-    builds.map(options => {
-      if (
-        !options.entryPoints
-        || !options.outfile
-      ) {
-        console.warn('Bundle options are missing entryPoints or outfile properties.')
-        return
-      }
+  const watchedDirectories = new Set()
 
-      options = Object.assign({
-        bundle: true,
-        format: 'esm',
-        minify: false,
-        platform: 'browser',
-        sourcemap: true,
-      }, options)
+  for (let i = builds.length - 1; i >= 0; i--) {
+    let options = builds[i]
 
-      if (!Array.isArray(options.entryPoints)) {
-        options.entryPoints = [options.entryPoints,]
-      }
+    if (
+      !options.entrypoints
+      || !options.outfile
+    ) {
+      console.warn('Bundle options are missing entrypoints or outfile properties.')
+      // Remove from list.
+      builds.splice(i, 1)
+      continue
+    }
 
-      try {
-        if (isProduction) {
-          return build(options)
-            .then(() => {
-              if (options.minify) {
-                return size(options.outfile)
-              }
-            })
-        } else {
-          return context(options)
-            .then(context => context.watch())
-        }
-      } catch (error) {
-        console.warn('Error encountered during building.', error)
-      }
-    })
+    const outfile = path.parse(options.outfile)
+    builds[i] = options = Object.assign({
+      format: 'esm',
+      minify: false,
+      naming: "[dir]/" + outfile.base,
+      outdir: outfile.dir,
+      sourcemap: 'external',
+      target: 'browser',
+    }, options)
+
+    if (!Array.isArray(options.entrypoints)) {
+      options.entrypoints = [
+        options.entrypoints,
+      ]
+    }
+
+    if (!isProduction) {
+      watchedDirectories.add(
+        path.dirname(options.entrypoints[0]),
+      )
+    }
+  }
+
+  await Promise.all(
+    builds.map(
+      options => performBuild(options),
+    ),
   )
+
+  if (!isProduction) {
+    for (const watchDirectory of watchedDirectories) {
+      fs.watch(watchDirectory, {
+        recursive: true,
+      }, async (_eventType, filename) => {
+        if (
+          !filename
+          || !filename.endsWith('.js')
+        ) {
+          return
+        }
+        console.log('Rebuilding bundles. File changed:', filename)
+
+        await Promise.all(
+          builds.map(
+            options => {
+              try {
+                return performBuild(options)
+              } catch (error) {
+                console.error('Rebuild failed for', options.outfile, error)
+              }
+            },
+          ),
+        )
+        console.log('Bundles rebuild')
+      })
+      console.log('Watching for file changes in:', watchDirectory)
+    }
+  }
 }
 
 export default async (
   files,
 ) => {
-  if (Array.isArray(files)) {
-    for (const file of files) {
-      await bundle(file)
-    }
+  if (!Array.isArray(files)) {
+    files = [
+      files,
+    ]
   } else {
-    await bundle(files)
+    files = files.flat()
   }
+  await bundle(...files)
 }

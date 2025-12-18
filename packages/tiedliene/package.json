@@ -22,9 +22,9 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "NODE_ENV=development node config.bundle.js",
-    "build": "NODE_ENV=production node config.bundle.js",
-    "test:runtime": "node ../../scripts/tst.js tst/runtime/",
+    "develop": "NODE_ENV=development bun config.bundle.js",
+    "build": "NODE_ENV=production bun config.bundle.js",
+    "test:runtime": "bun ../../scripts/tst.js tst/runtime/",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
   "files": [

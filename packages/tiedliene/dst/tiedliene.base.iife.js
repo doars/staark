@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -26,7 +26,7 @@
   // src/library/diff.js
   var setValueAtPath = (record, path, value) => {
     let current = record;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       const key = path[i];
       if (!(key in current)) {
         current[key] = {};
@@ -37,7 +37,7 @@
   };
   var deleteValueAtPath = (record, path) => {
     let current = record;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       current = current[path[i]];
       if (!current) {
         return;
@@ -60,9 +60,7 @@
           old: cloneRecursive(before[key])
         });
       } else if (typeof before[key] === "object" && typeof after[key] === "object") {
-        changes.unshift(
-          ...determineDiff(before[key], after[key], currentPath)
-        );
+        changes.unshift(...determineDiff(before[key], after[key], currentPath));
       } else if (before[key] !== after[key]) {
         changes.unshift({
           type: "set",
@@ -96,7 +94,7 @@
   var revertDiff = (state, diff) => {
     for (const change of diff) {
       if (change.type === "set") {
-        if (change.old === void 0) {
+        if (change.old === undefined) {
           deleteValueAtPath(state, change.path);
         } else {
           setValueAtPath(state, change.path, change.old);
@@ -117,4 +115,5 @@
     revertDiff
   });
 })();
-//# sourceMappingURL=tiedliene.base.iife.js.map
+
+//# debugId=8C1056C93087E64764756E2164756E21

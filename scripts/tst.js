@@ -3,14 +3,14 @@
 import fs from 'fs'
 import path from 'path'
 import {
-  runTests,
+    runTests,
 } from '../helpers/test.js'
 
 const targetDirectory = process.argv[2]
 if (!targetDirectory) {
   console.log('Error: No directory specified.')
-  console.log('Usage: node tst.js <directory-to-explore>')
-  console.log('Example: node tst.js tst/runtime/')
+  console.log('Usage: bun tst.js <directory-to-explore>')
+  console.log('Example: bun tst.js tst/runtime/')
   process.exit(1)
 }
 

@@ -13,9 +13,7 @@ var cloneRecursive = (value) => {
 // src/utilities/delay.js
 var delay = async (time) => {
   if (time > 0) {
-    return new Promise(
-      (resolve) => setTimeout(resolve, time)
-    );
+    return new Promise((resolve) => setTimeout(resolve, time));
   }
   return null;
 };
@@ -78,7 +76,7 @@ var create = (initialOptions) => {
     });
   };
   const sendRequest = async (options) => {
-    if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
+    if (options.maxRequests !== undefined && totalRequests >= options.maxRequests) {
       return [new Error("Maximum request limit reached"), null, null];
     }
     totalRequests++;
@@ -89,14 +87,14 @@ var create = (initialOptions) => {
       method: options.method,
       mode: options.mode,
       redirect: options.redirect,
-      body: options.body ? JSON.stringify(options.body) : void 0
+      body: options.body ? JSON.stringify(options.body) : undefined
     };
     let url = (options.domain || "") + (options.path || "");
     if (options.queryParams) {
       url += "?" + new URLSearchParams(options.queryParams).toString();
     }
     if (options.timeout) {
-      const controller = options.abort || new AbortController();
+      const controller = options.abort || new AbortController;
       config.signal = controller.signal;
       setTimeout(() => controller.abort(), options.timeout);
     }
@@ -190,7 +188,7 @@ var create = (initialOptions) => {
         if (retryAfter) {
           const retryAfterSeconds = parseInt(retryAfter, 10);
           if (!isNaN(retryAfterSeconds)) {
-            delayTime = Math.max(delayTime, retryAfterSeconds * 1e3);
+            delayTime = Math.max(delayTime, retryAfterSeconds * 1000);
           } else {
             const retryAfterDate = new Date(retryAfter).getTime();
             if (!isNaN(retryAfterDate)) {
@@ -254,4 +252,5 @@ var create = (initialOptions) => {
 export {
   create
 };
-//# sourceMappingURL=vroagn.base.js.map
+
+//# debugId=395EAC4DEAA236F164756E2164756E21

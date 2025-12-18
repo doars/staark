@@ -13,7 +13,7 @@ var cloneRecursive = (value) => {
 // src/library/diff.js
 var setValueAtPath = (record, path, value) => {
   let current = record;
-  for (let i = 0; i < path.length - 1; i++) {
+  for (let i = 0;i < path.length - 1; i++) {
     const key = path[i];
     if (!(key in current)) {
       current[key] = {};
@@ -24,7 +24,7 @@ var setValueAtPath = (record, path, value) => {
 };
 var deleteValueAtPath = (record, path) => {
   let current = record;
-  for (let i = 0; i < path.length - 1; i++) {
+  for (let i = 0;i < path.length - 1; i++) {
     current = current[path[i]];
     if (!current) {
       return;
@@ -47,9 +47,7 @@ var determineDiff = (before, after, path = []) => {
         old: cloneRecursive(before[key])
       });
     } else if (typeof before[key] === "object" && typeof after[key] === "object") {
-      changes.unshift(
-        ...determineDiff(before[key], after[key], currentPath)
-      );
+      changes.unshift(...determineDiff(before[key], after[key], currentPath));
     } else if (before[key] !== after[key]) {
       changes.unshift({
         type: "set",
@@ -83,7 +81,7 @@ var applyDiff = (state, diff) => {
 var revertDiff = (state, diff) => {
   for (const change of diff) {
     if (change.type === "set") {
-      if (change.old === void 0) {
+      if (change.old === undefined) {
         deleteValueAtPath(state, change.path);
       } else {
         setValueAtPath(state, change.path, change.old);
@@ -95,8 +93,9 @@ var revertDiff = (state, diff) => {
   return state;
 };
 export {
-  applyDiff,
+  revertDiff,
   determineDiff,
-  revertDiff
+  applyDiff
 };
-//# sourceMappingURL=tiedliene.base.js.map
+
+//# debugId=E973DA924B790B3B64756E2164756E21

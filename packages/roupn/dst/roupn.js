@@ -23,12 +23,8 @@ var ALPHANUMERIC_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVW
 var IDENTIFIABLE_CHARACTERS = "ABCDEFGHKMNPQRSTUVWXYZ23456789";
 var generateCode = (length = 24, characters = ALPHANUMERIC_CHARACTERS) => {
   let code = "";
-  for (let i = 0; i < length; i++) {
-    code += characters.charAt(
-      Math.floor(
-        Math.random() * characters.length
-      )
-    );
+  for (let i = 0;i < length; i++) {
+    code += characters.charAt(Math.floor(Math.random() * characters.length));
   }
   return code;
 };
@@ -36,29 +32,21 @@ var generateCode = (length = 24, characters = ALPHANUMERIC_CHARACTERS) => {
 // src/utilities/encoding-client.js
 var base64ToBuffer = (base64) => {
   const binary = atob(base64);
-  return Uint8Array.from(
-    binary,
-    (character) => character.charCodeAt(0)
-  ).buffer;
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0)).buffer;
 };
 var base64ToString = (base64) => {
   const binary = atob(base64);
-  const bytes = Uint8Array.from(
-    binary,
-    (character) => character.charCodeAt(0)
-  );
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
   return new TextDecoder().decode(bytes);
 };
 var stringToBase64 = (string) => {
   const bytes = new TextEncoder().encode(string);
   if (bytes.length < 65536) {
-    return btoa(
-      String.fromCharCode(...bytes)
-    );
+    return btoa(String.fromCharCode(...bytes));
   }
   let binary = "";
   const chunkSize = 65536;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
+  for (let i = 0;i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
     binary += String.fromCharCode(...chunk);
   }
@@ -67,13 +55,11 @@ var stringToBase64 = (string) => {
 var bufferToBase64 = (buffer) => {
   const bytes = new Uint8Array(buffer);
   if (bytes.length < 65536) {
-    return btoa(
-      String.fromCharCode(...bytes)
-    );
+    return btoa(String.fromCharCode(...bytes));
   }
   let binary = "";
   const chunkSize = 65536;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
+  for (let i = 0;i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
     binary += String.fromCharCode(...chunk);
   }
@@ -82,29 +68,16 @@ var bufferToBase64 = (buffer) => {
 
 // src/utilities/event.js
 var createEvent = () => {
-  const listeners = /* @__PURE__ */ new Map();
+  const listeners = new Map;
   return {
-    /**
-     * Adds a listener callback for the event.
-     * @param {EventListenerCallback} callback - The listener function to add.
-     * @param {EventListenerOptions} [options] - Optional options for the listener (e.g., { once: true }).
-     */
     addListener: (callback, options) => {
       if (!listeners.has(callback)) {
         listeners.set(callback, options);
       }
     },
-    /**
-     * Removes a listener callback from the event.
-     * @param {EventListenerCallback} callback - The listener function to remove.
-     */
     removeListener: (callback) => {
       listeners.delete(callback);
     },
-    /**
-     * Dispatches the event to all registered listeners.
-     * @param {any} data - Data to pass to each listener callback.
-     */
     dispatch: (data) => {
       for (const [listener, options] of listeners.entries()) {
         listener(data);
@@ -123,12 +96,8 @@ var encode = (parts, stringToBase642) => {
   const segments = [];
   for (const key in parts) {
     const value = parts[key];
-    if (value !== null && value !== void 0) {
-      segments.push(
-        key + INFIX + stringToBase642(
-          String(value)
-        )
-      );
+    if (value !== null && value !== undefined) {
+      segments.push(key + INFIX + stringToBase642(String(value)));
     }
   }
   return segments.join(DELIMITER);
@@ -208,14 +177,8 @@ var USER_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
     myExchangeKeys
   ]) => {
     Promise.all([
-      crypto.subtle.exportKey(
-        "spki",
-        myEncryptKeys.publicKey
-      ),
-      crypto.subtle.exportKey(
-        "spki",
-        mySignKeys.publicKey
-      )
+      crypto.subtle.exportKey("spki", myEncryptKeys.publicKey),
+      crypto.subtle.exportKey("spki", mySignKeys.publicKey)
     ]).then(([
       myPublicEncryptKey,
       myPublicSignKey
@@ -281,19 +244,15 @@ var createClientConnector = (options = {}) => {
     httpUrl = "http://localhost:3000",
     wsUrl = "http://localhost:3000",
     messageBufferMaxCount = 50,
-    messageBufferMaxDuration = 60 * 1e3
+    messageBufferMaxDuration = 60 * 1000
   } = options;
-  let _connectionState = CONNECTION_DISCONNECTED, _creatorId, _generatedKeys, _keyGenerationPromise, _myEncryptKeys, _myExchangeKeys, _myId, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _privateData, _privateDataVerify, _publicData, _publicDataVerify, _roomCode, _sharedKey, _sharedMessagesBuffer = [], _socket, _userDerivedKeys = /* @__PURE__ */ new Map(), _userEncryptKeys = /* @__PURE__ */ new Map(), _userSignKeys = /* @__PURE__ */ new Map(), _userVerification = /* @__PURE__ */ new Map(), _userVerified = /* @__PURE__ */ new Map();
+  let _connectionState = CONNECTION_DISCONNECTED, _creatorId, _generatedKeys, _keyGenerationPromise, _myEncryptKeys, _myExchangeKeys, _myId, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _privateData, _privateDataVerify, _publicData, _publicDataVerify, _roomCode, _sharedKey, _sharedMessagesBuffer = [], _socket, _userDerivedKeys = new Map, _userEncryptKeys = new Map, _userSignKeys = new Map, _userVerification = new Map, _userVerified = new Map;
   const _generateMyKeys = () => {
     if (!_generatedKeys && !_keyGenerationPromise) {
       _keyGenerationPromise = new Promise((resolve, reject) => {
-        const worker = new Worker(
-          URL.createObjectURL(
-            new Blob([USER_KEY_GENERATOR], {
-              type: "text/javascript"
-            })
-          )
-        );
+        const worker = new Worker(URL.createObjectURL(new Blob([USER_KEY_GENERATOR], {
+          type: "text/javascript"
+        })));
         worker.addEventListener("message", (event) => {
           if (event.data.success) {
             _myEncryptKeys = event.data.myEncryptKeys;
@@ -350,24 +309,7 @@ var createClientConnector = (options = {}) => {
     if (!derivedKey) {
       return;
     }
-    _userVerification.set(
-      userId,
-      Array.from(
-        new Uint8Array(
-          await crypto.subtle.digest(
-            HASH_ALGORITHM,
-            new TextEncoder().encode(
-              _roomCode + bufferToBase64(
-                await crypto.subtle.exportKey(
-                  "raw",
-                  derivedKey
-                )
-              )
-            )
-          )
-        )
-      )
-    );
+    _userVerification.set(userId, Array.from(new Uint8Array(await crypto.subtle.digest(HASH_ALGORITHM, new TextEncoder().encode(_roomCode + bufferToBase64(await crypto.subtle.exportKey("raw", derivedKey)))))));
     onUserVerificationCode.dispatch({
       userId,
       code: getVerificationCode(userId)
@@ -400,22 +342,12 @@ var createClientConnector = (options = {}) => {
     }
     _setConnectionState(CONNECTION_CONNECTING);
     _roomCode = roomCode;
-    const url = new URL(
-      wsUrl + joinRoomEndpoint
-    );
-    url.searchParams.append(
-      "code",
-      _roomCode
-    );
+    const url = new URL(wsUrl + joinRoomEndpoint);
+    url.searchParams.append("code", _roomCode);
     if (creatorSecret) {
-      url.searchParams.append(
-        "creator",
-        creatorSecret
-      );
+      url.searchParams.append("creator", creatorSecret);
     }
-    _socket = new WebSocket(
-      url.toString()
-    );
+    _socket = new WebSocket(url.toString());
     _socket.addEventListener("close", (event) => {
       onRoomLeave.dispatch({
         event
@@ -429,13 +361,7 @@ var createClientConnector = (options = {}) => {
       leaveRoom();
     });
     _socket.addEventListener("message", async (event) => {
-      _processMessage(
-        decode(
-          event.data,
-          base64ToString
-        ),
-        event.data
-      );
+      _processMessage(decode(event.data, base64ToString), event.data);
     });
   };
   const _processMessage = async (parts, raw, isBuffered = false) => {
@@ -472,19 +398,13 @@ var createClientConnector = (options = {}) => {
         return;
       }
       if (!sharedEncryptionIv) {
-        onError.dispatch(
-          new Error("Missing IV to decrypt message")
-        );
+        onError.dispatch(new Error("Missing IV to decrypt message"));
         return;
       }
-      data = await crypto.subtle.decrypt(
-        {
-          iv: base64ToBuffer(sharedEncryptionIv),
-          name: SHARED_ENCRYPTION_ALGORITHM
-        },
-        _sharedKey,
-        base64ToBuffer(sharedEncryptionPayload)
-      );
+      data = await crypto.subtle.decrypt({
+        iv: base64ToBuffer(sharedEncryptionIv),
+        name: SHARED_ENCRYPTION_ALGORITHM
+      }, _sharedKey, base64ToBuffer(sharedEncryptionPayload));
       data = new TextDecoder().decode(data);
       wasEncrypted = true;
     } else if (userEncryptionPayload) {
@@ -498,32 +418,14 @@ var createClientConnector = (options = {}) => {
         await _generateMyKeys();
       }
       const encryptedPayload = base64ToBuffer(userEncryptionPayload);
-      const payloadData = deserializeMessage(
-        new TextDecoder().decode(
-          await crypto.subtle.decrypt(
-            {
-              iv: base64ToBuffer(userEncryptionIv),
-              name: SHARED_ENCRYPTION_ALGORITHM
-            },
-            await crypto.subtle.importKey(
-              "raw",
-              await crypto.subtle.decrypt(
-                {
-                  name: USER_ENCRYPTION_ALGORITHM
-                },
-                _myEncryptKeys.privateKey,
-                base64ToBuffer(userEncryptionKey)
-              ),
-              {
-                name: SHARED_ENCRYPTION_ALGORITHM
-              },
-              true,
-              ["encrypt", "decrypt"]
-            ),
-            encryptedPayload
-          )
-        )
-      );
+      const payloadData = deserializeMessage(new TextDecoder().decode(await crypto.subtle.decrypt({
+        iv: base64ToBuffer(userEncryptionIv),
+        name: SHARED_ENCRYPTION_ALGORITHM
+      }, await crypto.subtle.importKey("raw", await crypto.subtle.decrypt({
+        name: USER_ENCRYPTION_ALGORITHM
+      }, _myEncryptKeys.privateKey, base64ToBuffer(userEncryptionKey)), {
+        name: SHARED_ENCRYPTION_ALGORITHM
+      }, true, ["encrypt", "decrypt"]), encryptedPayload)));
       wasEncrypted = true;
       if (payloadData.type === EXCHANGE_1) {
         deserializedData = payloadData;
@@ -542,12 +444,7 @@ var createClientConnector = (options = {}) => {
           });
           return;
         }
-        if (!await crypto.subtle.verify(
-          USER_SIGNATURE_ALGORITHM,
-          senderPublicKey,
-          base64ToBuffer(userEncryptionSignature),
-          encryptedPayload
-        )) {
+        if (!await crypto.subtle.verify(USER_SIGNATURE_ALGORITHM, senderPublicKey, base64ToBuffer(userEncryptionSignature), encryptedPayload)) {
           onError.dispatch({
             error: new Error("Invalid signature from " + senderId)
           });
@@ -591,24 +488,14 @@ var createClientConnector = (options = {}) => {
           if (!_generatedKeys) {
             await _generateMyKeys();
           }
-          const myPublicExchangeKey = await crypto.subtle.exportKey(
-            DIFFIE_HELLMAN_EXPORT_FORMAT,
-            _myExchangeKeys.publicKey
-          );
+          const myPublicExchangeKey = await crypto.subtle.exportKey(DIFFIE_HELLMAN_EXPORT_FORMAT, _myExchangeKeys.publicKey);
           _message({
             type: EXCHANGE_0,
             publicData: typeof _publicData === "function" ? _publicData() : _publicData,
             publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
             publicExchangeKey: bufferToBase64(myPublicExchangeKey),
             publicSignKey: bufferToBase64(_myPublicSignKey),
-            // Explicitly add signature manually.
-            signature: bufferToBase64(
-              await crypto.subtle.sign(
-                USER_SIGNATURE_ALGORITHM,
-                _mySignKeys.privateKey,
-                myPublicExchangeKey
-              )
-            )
+            signature: bufferToBase64(await crypto.subtle.sign(USER_SIGNATURE_ALGORITHM, _mySignKeys.privateKey, myPublicExchangeKey))
           }, {
             allowUnencrypted: true,
             receiver: _creatorId
@@ -625,38 +512,16 @@ var createClientConnector = (options = {}) => {
             kickUser(newUserId);
             return;
           }
-          _userEncryptKeys.set(
-            newUserId,
-            await crypto.subtle.importKey(
-              PUBLIC_KEY_EXPORT_FORMAT,
-              base64ToBuffer(data.publicEncryptKey),
-              {
-                hash: HASH_ALGORITHM,
-                name: USER_ENCRYPTION_ALGORITHM
-              },
-              true,
-              ["encrypt"]
-            )
-          );
-          const publicSignKey = await crypto.subtle.importKey(
-            PUBLIC_KEY_EXPORT_FORMAT,
-            base64ToBuffer(data.publicSignKey),
-            {
-              hash: HASH_ALGORITHM,
-              name: USER_SIGNATURE_ALGORITHM
-            },
-            true,
-            ["verify"]
-          );
-          const publicExchangeKeyData = base64ToBuffer(
-            data.publicExchangeKey
-          );
-          if (!await crypto.subtle.verify(
-            USER_SIGNATURE_ALGORITHM,
-            publicSignKey,
-            base64ToBuffer(data.signature),
-            publicExchangeKeyData
-          )) {
+          _userEncryptKeys.set(newUserId, await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicEncryptKey), {
+            hash: HASH_ALGORITHM,
+            name: USER_ENCRYPTION_ALGORITHM
+          }, true, ["encrypt"]));
+          const publicSignKey = await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicSignKey), {
+            hash: HASH_ALGORITHM,
+            name: USER_SIGNATURE_ALGORITHM
+          }, true, ["verify"]);
+          const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey);
+          if (!await crypto.subtle.verify(USER_SIGNATURE_ALGORITHM, publicSignKey, base64ToBuffer(data.signature), publicExchangeKeyData)) {
             onError.dispatch({
               error: new Error("Invalid signature for exchange from " + newUserId)
             });
@@ -666,35 +531,17 @@ var createClientConnector = (options = {}) => {
           if (!_generatedKeys) {
             await _generateMyKeys();
           }
-          _userDerivedKeys.set(
-            newUserId,
-            await crypto.subtle.deriveKey(
-              {
-                name: DIFFIE_HELLMAN_ALGORITHM,
-                public: await crypto.subtle.importKey(
-                  DIFFIE_HELLMAN_EXPORT_FORMAT,
-                  publicExchangeKeyData,
-                  {
-                    name: DIFFIE_HELLMAN_ALGORITHM,
-                    namedCurve: DIFFIE_HELLMAN_CURVE
-                  },
-                  true,
-                  []
-                )
-              },
-              _myExchangeKeys.privateKey,
-              {
-                length: SHARED_KEY_LENGTH,
-                name: SHARED_ENCRYPTION_ALGORITHM
-              },
-              true,
-              ["encrypt", "decrypt"]
-            )
-          );
-          const myPublicExchangeKey = await crypto.subtle.exportKey(
-            DIFFIE_HELLMAN_EXPORT_FORMAT,
-            _myExchangeKeys.publicKey
-          );
+          _userDerivedKeys.set(newUserId, await crypto.subtle.deriveKey({
+            name: DIFFIE_HELLMAN_ALGORITHM,
+            public: await crypto.subtle.importKey(DIFFIE_HELLMAN_EXPORT_FORMAT, publicExchangeKeyData, {
+              name: DIFFIE_HELLMAN_ALGORITHM,
+              namedCurve: DIFFIE_HELLMAN_CURVE
+            }, true, [])
+          }, _myExchangeKeys.privateKey, {
+            length: SHARED_KEY_LENGTH,
+            name: SHARED_ENCRYPTION_ALGORITHM
+          }, true, ["encrypt", "decrypt"]));
+          const myPublicExchangeKey = await crypto.subtle.exportKey(DIFFIE_HELLMAN_EXPORT_FORMAT, _myExchangeKeys.publicKey);
           _message({
             type: EXCHANGE_1,
             publicData: typeof _publicData === "function" ? _publicData() : _publicData,
@@ -716,23 +563,12 @@ var createClientConnector = (options = {}) => {
             leaveRoom();
             return;
           }
-          const hostPublicSignKey = await crypto.subtle.importKey(
-            PUBLIC_KEY_EXPORT_FORMAT,
-            base64ToBuffer(data.publicSignKey),
-            {
-              hash: HASH_ALGORITHM,
-              name: USER_SIGNATURE_ALGORITHM
-            },
-            true,
-            ["verify"]
-          );
+          const hostPublicSignKey = await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicSignKey), {
+            hash: HASH_ALGORITHM,
+            name: USER_SIGNATURE_ALGORITHM
+          }, true, ["verify"]);
           if (data.publicExchangeKey && data.signature) {
-            if (!await crypto.subtle.verify(
-              USER_SIGNATURE_ALGORITHM,
-              hostPublicSignKey,
-              base64ToBuffer(data.signature),
-              base64ToBuffer(data.publicExchangeKey)
-            )) {
+            if (!await crypto.subtle.verify(USER_SIGNATURE_ALGORITHM, hostPublicSignKey, base64ToBuffer(data.signature), base64ToBuffer(data.publicExchangeKey))) {
               onError.dispatch({
                 error: new Error("Invalid signature for exchange from " + _creatorId)
               });
@@ -740,51 +576,24 @@ var createClientConnector = (options = {}) => {
               return;
             }
           }
-          _userSignKeys.set(
-            _creatorId,
-            hostPublicSignKey
-          );
-          _userEncryptKeys.set(
-            _creatorId,
-            await crypto.subtle.importKey(
-              PUBLIC_KEY_EXPORT_FORMAT,
-              base64ToBuffer(data.publicEncryptKey),
-              {
-                hash: HASH_ALGORITHM,
-                name: USER_ENCRYPTION_ALGORITHM
-              },
-              true,
-              ["encrypt"]
-            )
-          );
+          _userSignKeys.set(_creatorId, hostPublicSignKey);
+          _userEncryptKeys.set(_creatorId, await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicEncryptKey), {
+            hash: HASH_ALGORITHM,
+            name: USER_ENCRYPTION_ALGORITHM
+          }, true, ["encrypt"]));
           if (!_generatedKeys) {
             await _generateMyKeys();
           }
-          _userDerivedKeys.set(
-            _creatorId,
-            await crypto.subtle.deriveKey(
-              {
-                name: DIFFIE_HELLMAN_ALGORITHM,
-                public: await crypto.subtle.importKey(
-                  DIFFIE_HELLMAN_EXPORT_FORMAT,
-                  base64ToBuffer(data.publicExchangeKey),
-                  {
-                    name: DIFFIE_HELLMAN_ALGORITHM,
-                    namedCurve: DIFFIE_HELLMAN_CURVE
-                  },
-                  true,
-                  []
-                )
-              },
-              _myExchangeKeys.privateKey,
-              {
-                length: SHARED_KEY_LENGTH,
-                name: SHARED_ENCRYPTION_ALGORITHM
-              },
-              true,
-              ["encrypt", "decrypt"]
-            )
-          );
+          _userDerivedKeys.set(_creatorId, await crypto.subtle.deriveKey({
+            name: DIFFIE_HELLMAN_ALGORITHM,
+            public: await crypto.subtle.importKey(DIFFIE_HELLMAN_EXPORT_FORMAT, base64ToBuffer(data.publicExchangeKey), {
+              name: DIFFIE_HELLMAN_ALGORITHM,
+              namedCurve: DIFFIE_HELLMAN_CURVE
+            }, true, [])
+          }, _myExchangeKeys.privateKey, {
+            length: SHARED_KEY_LENGTH,
+            name: SHARED_ENCRYPTION_ALGORITHM
+          }, true, ["encrypt", "decrypt"]));
           _generateVerificationCode(_creatorId);
         }
         break;
@@ -836,12 +645,7 @@ var createClientConnector = (options = {}) => {
           }
           _message({
             type: EXCHANGE_4,
-            sharedKey: bufferToBase64(
-              await crypto.subtle.exportKey(
-                "raw",
-                _sharedKey
-              )
-            )
+            sharedKey: bufferToBase64(await crypto.subtle.exportKey("raw", _sharedKey))
           }, {
             receiver: userId
           });
@@ -862,17 +666,9 @@ var createClientConnector = (options = {}) => {
             });
             return;
           }
-          _sharedKey = await crypto.subtle.importKey(
-            "raw",
-            base64ToBuffer(
-              data.sharedKey
-            ),
-            {
-              name: SHARED_ENCRYPTION_ALGORITHM
-            },
-            true,
-            ["encrypt", "decrypt"]
-          );
+          _sharedKey = await crypto.subtle.importKey("raw", base64ToBuffer(data.sharedKey), {
+            name: SHARED_ENCRYPTION_ALGORITHM
+          }, true, ["encrypt", "decrypt"]);
           onUserVerified.dispatch({
             userId: _myId
           });
@@ -884,11 +680,7 @@ var createClientConnector = (options = {}) => {
                 parts: parts2,
                 raw: raw2
               } = _sharedMessagesBuffer.shift();
-              _processMessage(
-                parts2,
-                raw2,
-                true
-              );
+              _processMessage(parts2, raw2, true);
             }
           }
           _setConnectionState(CONNECTION_CONNECTED);
@@ -921,10 +713,7 @@ var createClientConnector = (options = {}) => {
         }
         onMessage.dispatch({
           data,
-          time: calculateTime(
-            serverTime,
-            data?.senderTime
-          )
+          time: calculateTime(serverTime, data?.senderTime)
         });
         break;
     }
@@ -946,49 +735,24 @@ var createClientConnector = (options = {}) => {
     if (receiver) {
       const receiverPublicKey = _userEncryptKeys.get(receiver);
       if (receiverPublicKey) {
-        const tempKey = await crypto.subtle.generateKey(
-          {
-            name: SHARED_ENCRYPTION_ALGORITHM,
-            length: 256
-          },
-          true,
-          ["encrypt", "decrypt"]
-        );
-        const iv = crypto.getRandomValues(
-          new Uint8Array(12)
-        );
-        const encryptedPayload = await crypto.subtle.encrypt(
-          {
-            iv,
-            name: SHARED_ENCRYPTION_ALGORITHM
-          },
-          tempKey,
-          new TextEncoder().encode(message)
-        );
+        const tempKey = await crypto.subtle.generateKey({
+          name: SHARED_ENCRYPTION_ALGORITHM,
+          length: 256
+        }, true, ["encrypt", "decrypt"]);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encryptedPayload = await crypto.subtle.encrypt({
+          iv,
+          name: SHARED_ENCRYPTION_ALGORITHM
+        }, tempKey, new TextEncoder().encode(message));
         if (!_generatedKeys) {
           await _generateMyKeys();
         }
         parts[USER_ENCRYPTION_IV] = bufferToBase64(iv);
-        parts[USER_ENCRYPTION_KEY] = bufferToBase64(
-          await crypto.subtle.encrypt(
-            {
-              name: USER_ENCRYPTION_ALGORITHM
-            },
-            receiverPublicKey,
-            await crypto.subtle.exportKey(
-              "raw",
-              tempKey
-            )
-          )
-        );
+        parts[USER_ENCRYPTION_KEY] = bufferToBase64(await crypto.subtle.encrypt({
+          name: USER_ENCRYPTION_ALGORITHM
+        }, receiverPublicKey, await crypto.subtle.exportKey("raw", tempKey)));
         parts[USER_ENCRYPTION_PAYLOAD] = bufferToBase64(encryptedPayload);
-        parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(
-          await crypto.subtle.sign(
-            USER_SIGNATURE_ALGORITHM,
-            _mySignKeys.privateKey,
-            encryptedPayload
-          )
-        );
+        parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(await crypto.subtle.sign(USER_SIGNATURE_ALGORITHM, _mySignKeys.privateKey, encryptedPayload));
       } else if (!options2.allowUnencrypted) {
         onError.dispatch({
           error: new Error("No public key for " + receiver)
@@ -1001,32 +765,17 @@ var createClientConnector = (options = {}) => {
     } else if (options2.server) {
       parts[SERVER_PAYLOAD] = message;
     } else if (_sharedKey) {
-      const iv = crypto.getRandomValues(
-        new Uint8Array(12)
-      );
+      const iv = crypto.getRandomValues(new Uint8Array(12));
       parts[SHARED_ENCRYPTION_IV] = bufferToBase64(iv);
-      parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(
-        await crypto.subtle.encrypt(
-          {
-            iv,
-            name: SHARED_ENCRYPTION_ALGORITHM
-          },
-          _sharedKey,
-          new TextEncoder().encode(message)
-        )
-      );
+      parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(await crypto.subtle.encrypt({
+        iv,
+        name: SHARED_ENCRYPTION_ALGORITHM
+      }, _sharedKey, new TextEncoder().encode(message)));
     } else {
-      onError.dispatch(
-        new Error("Trying to send without valid destination")
-      );
+      onError.dispatch(new Error("Trying to send without valid destination"));
       return false;
     }
-    _socket.send(
-      encode(
-        parts,
-        stringToBase64
-      )
-    );
+    _socket.send(encode(parts, stringToBase64));
     return true;
   };
   const messageServer = (data) => _myId && _myId === _creatorId && _message(data, {
@@ -1041,7 +790,7 @@ var createClientConnector = (options = {}) => {
     }
     const hashArray = _userVerification.get(userId);
     let code = "";
-    for (let i = 0; i < codeLength; i++) {
+    for (let i = 0;i < codeLength; i++) {
       const index = hashArray[i] % IDENTIFIABLE_CHARACTERS.length;
       code += IDENTIFIABLE_CHARACTERS[index];
     }
@@ -1076,21 +825,15 @@ var createClientConnector = (options = {}) => {
       }
       try {
         await new Promise((resolve, reject) => {
-          const worker = new Worker(
-            URL.createObjectURL(
-              new Blob([SHARED_KEY_GENERATOR], {
-                type: "text/javascript"
-              })
-            )
-          );
+          const worker = new Worker(URL.createObjectURL(new Blob([SHARED_KEY_GENERATOR], {
+            type: "text/javascript"
+          })));
           worker.addEventListener("message", (event) => {
             if (event.data.success) {
               _sharedKey = event.data.sharedKey;
               resolve();
             } else {
-              reject(
-                new Error(event.data.error)
-              );
+              reject(new Error(event.data.error));
             }
             worker.terminate();
           });
@@ -1109,14 +852,9 @@ var createClientConnector = (options = {}) => {
         });
         return;
       }
-      const url = new URL(
-        httpUrl + createRoomEndpoint
-      );
+      const url = new URL(httpUrl + createRoomEndpoint);
       if (options2.limit) {
-        url.searchParams.append(
-          "limit",
-          options2.limit
-        );
+        url.searchParams.append("limit", options2.limit);
       }
       const response = await fetch(url.toString(), {
         method: "GET",
@@ -1130,10 +868,7 @@ var createClientConnector = (options = {}) => {
       let data = await response.text();
       data = deserializeMessage(data);
       _myId = data.userId;
-      _joinRoom(
-        data.roomCode,
-        data.creatorSecret
-      );
+      _joinRoom(data.roomCode, data.creatorSecret);
       return data;
     },
     joinRoom: (roomCode, options2 = {}) => {
@@ -1143,9 +878,7 @@ var createClientConnector = (options = {}) => {
       if (options2.verifyPublicData) {
         _publicDataVerify = options2.verifyPublicData;
       }
-      _joinRoom(
-        roomCode
-      );
+      _joinRoom(roomCode);
     },
     leaveRoom,
     kickUser,
@@ -1154,10 +887,7 @@ var createClientConnector = (options = {}) => {
       if (_myId !== _creatorId || !code) {
         return false;
       }
-      const expectedCode = getVerificationCode(
-        userId,
-        code.length
-      );
+      const expectedCode = getVerificationCode(userId, code.length);
       if (!expectedCode || !code || expectedCode !== code) {
         return false;
       }
@@ -1176,7 +906,6 @@ var createClientConnector = (options = {}) => {
     }
   };
 };
-
 // ../tiedliene/src/utilities/clone.js
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
@@ -1188,11 +917,10 @@ var cloneRecursive = (value) => {
   }
   return value;
 };
-
 // ../tiedliene/src/library/diff.js
 var setValueAtPath = (record, path, value) => {
   let current = record;
-  for (let i = 0; i < path.length - 1; i++) {
+  for (let i = 0;i < path.length - 1; i++) {
     const key = path[i];
     if (!(key in current)) {
       current[key] = {};
@@ -1203,7 +931,7 @@ var setValueAtPath = (record, path, value) => {
 };
 var deleteValueAtPath = (record, path) => {
   let current = record;
-  for (let i = 0; i < path.length - 1; i++) {
+  for (let i = 0;i < path.length - 1; i++) {
     current = current[path[i]];
     if (!current) {
       return;
@@ -1226,9 +954,7 @@ var determineDiff = (before, after, path = []) => {
         old: cloneRecursive(before[key])
       });
     } else if (typeof before[key] === "object" && typeof after[key] === "object") {
-      changes.unshift(
-        ...determineDiff(before[key], after[key], currentPath)
-      );
+      changes.unshift(...determineDiff(before[key], after[key], currentPath));
     } else if (before[key] !== after[key]) {
       changes.unshift({
         type: "set",
@@ -1262,7 +988,7 @@ var applyDiff = (state, diff) => {
 var revertDiff = (state, diff) => {
   for (const change of diff) {
     if (change.type === "set") {
-      if (change.old === void 0) {
+      if (change.old === undefined) {
         deleteValueAtPath(state, change.path);
       } else {
         setValueAtPath(state, change.path, change.old);
@@ -1273,7 +999,6 @@ var revertDiff = (state, diff) => {
   }
   return state;
 };
-
 // src/library/client-synchronizer.js
 var createClientSynchronizer = (options = {}, privateState = {}, publicState = {}) => {
   const connector = createClientConnector(options);
@@ -1282,7 +1007,7 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
   } = connector;
   const {
     windowPerUser = 16,
-    synchronisationInterval = 60 * 1e3
+    synchronisationInterval = 60 * 1000
   } = options;
   const _stateUpdates = [];
   let _synchronisationIntervalId, _messageDelay = 0, _messageOffset = 0, _stateUpdatesWindow = windowPerUser;
@@ -1299,9 +1024,7 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
       }
     });
     if (_stateUpdates.length > _stateUpdatesWindow) {
-      _stateUpdates.splice(
-        _stateUpdatesWindow
-      );
+      _stateUpdates.splice(_stateUpdatesWindow);
     }
     messageRoom({
       identifier,
@@ -1313,14 +1036,9 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
   };
   const sendUpdate = () => {
     if (privateState.previousState) {
-      const stateDelta = determineDiff(
-        privateState.previousState,
-        publicState
-      );
+      const stateDelta = determineDiff(privateState.previousState, publicState);
       if (stateDelta.length > 0) {
-        _sendDelta(
-          stateDelta
-        );
+        _sendDelta(stateDelta);
       }
     }
   };
@@ -1328,16 +1046,12 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
     if (privateState.users.length > 1) {
       messageRoom({
         type: STATE_SYNCH,
-        state: cloneRecursive(
-          publicState
-        )
+        state: cloneRecursive(publicState)
       });
     }
   };
   const _updatePreviousState = () => {
-    privateState.previousState = cloneRecursive(
-      publicState
-    );
+    privateState.previousState = cloneRecursive(publicState);
   };
   connector.onMessage.addListener(({
     data,
@@ -1350,7 +1064,7 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
     _messageOffset = (_messageOffset + time.offset) / 2;
     if (data.type === STATE_SYNCH) {
       let index = 0;
-      for (; index < _stateUpdates.length; index++) {
+      for (;index < _stateUpdates.length; index++) {
         const previousUpdate = _stateUpdates[index];
         if (previousUpdate.time.adjusted >= time.adjusted) {
           break;
@@ -1363,22 +1077,15 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
       for (const key in data.state) {
         publicState[key] = data.state[key];
       }
-      for (let index2 = 0; index2 < _stateUpdates.length; index2++) {
-        applyDiff(
-          publicState,
-          _stateUpdates[index2].stateDelta
-        );
+      for (let index2 = 0;index2 < _stateUpdates.length; index2++) {
+        applyDiff(publicState, _stateUpdates[index2].stateDelta);
       }
       _updatePreviousState();
     } else if (data.type === STATE_UPDATE) {
       let failedToInsert = true;
-      for (let index = 0; index < _stateUpdates.length; index++) {
+      for (let index = 0;index < _stateUpdates.length; index++) {
         const previousUpdate = _stateUpdates[index];
-        if (
-          // If the update's identifier matches the data's previous, we can insert it here.
-          previousUpdate.identifier === data.previous || // If the previous updates are the same. If the time of this update is newer than the previous one, we can insert it before the previous one.
-          previousUpdate.previous === data.previous && previousUpdate.time.adjusted < time.adjusted
-        ) {
+        if (previousUpdate.identifier === data.previous || previousUpdate.previous === data.previous && previousUpdate.time.adjusted < time.adjusted) {
           _stateUpdates.splice(index, 0, {
             ...data,
             time
@@ -1393,22 +1100,16 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
           time
         });
       }
-      for (let index = 0; index < _stateUpdates.length; index++) {
+      for (let index = 0;index < _stateUpdates.length; index++) {
         const update = _stateUpdates[index];
         if (update.identifier === data.identifier) {
           break;
         }
-        revertDiff(
-          publicState,
-          update.stateDelta
-        );
+        revertDiff(publicState, update.stateDelta);
       }
-      for (let index = 0; index < _stateUpdates.length; index++) {
+      for (let index = 0;index < _stateUpdates.length; index++) {
         const update = _stateUpdates[index];
-        applyDiff(
-          publicState,
-          update.stateDelta
-        );
+        applyDiff(publicState, update.stateDelta);
         if (update.identifier === data.identifier) {
           break;
         }
@@ -1417,9 +1118,9 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
     }
   });
   connector.onConnection.addListener(({
-    state
+    state: state2
   }) => {
-    privateState.connectionState = state;
+    privateState.connectionState = state2;
   });
   connector.onRoomJoin.addListener(({
     creatorId,
@@ -1432,15 +1133,10 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
     privateState.userId = userId;
     privateState.users = users;
     privateState.verifiedUsers = [];
-    privateState.previousState = cloneRecursive(
-      publicState
-    );
+    privateState.previousState = cloneRecursive(publicState);
     if (userId === creatorId) {
       privateState.verifiedUsers.push(userId);
-      _synchronisationIntervalId = setInterval(
-        _synchroniseState,
-        synchronisationInterval
-      );
+      _synchronisationIntervalId = setInterval(_synchroniseState, synchronisationInterval);
     }
   });
   connector.onRoomLeave.addListener(() => {
@@ -1454,9 +1150,7 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
   connector.onUserJoin.addListener(({
     userId
   }) => {
-    privateState.users.push(
-      userId
-    );
+    privateState.users.push(userId);
     _stateUpdatesWindow = windowPerUser + windowPerUser * privateState.users.length;
   });
   connector.onUserVerificationCode.addListener((event) => {
@@ -1467,9 +1161,7 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
   connector.onUserVerified.addListener(({
     userId
   }) => {
-    privateState.verifiedUsers.push(
-      userId
-    );
+    privateState.verifiedUsers.push(userId);
     _stateUpdatesWindow = windowPerUser + windowPerUser * privateState.users.length;
     if (privateState.userId === privateState.creatorId) {
       _synchroniseState();
@@ -1478,13 +1170,13 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
   connector.onUserLeave.addListener(({
     userId
   }) => {
-    for (let index = 0; index < privateState.users.length; index++) {
+    for (let index = 0;index < privateState.users.length; index++) {
       if (privateState.users[index] === userId) {
         privateState.users.splice(index, 1);
         break;
       }
     }
-    for (let index = 0; index < privateState.verifiedUsers.length; index++) {
+    for (let index = 0;index < privateState.verifiedUsers.length; index++) {
       if (privateState.verifiedUsers[index] === userId) {
         privateState.verifiedUsers.splice(index, 1);
         break;
@@ -1499,7 +1191,8 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
   }, connector);
 };
 export {
-  createClientConnector,
-  createClientSynchronizer
+  createClientSynchronizer,
+  createClientConnector
 };
-//# sourceMappingURL=roupn.js.map
+
+//# debugId=F99A8017AB9AFA8D64756E2164756E21

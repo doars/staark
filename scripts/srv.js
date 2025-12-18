@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import http from 'http'
 import fs from 'fs'
+import http from 'http'
 import path from 'path'
 
 // Configuration
@@ -32,8 +32,8 @@ const logError = (...args) => {
 const targetDirectory = process.argv[2]
 if (!targetDirectory) {
   logInfo('Error: No directory specified.')
-  logInfo('Usage: node srv.js <directory-to-serve>')
-  logInfo('Example: node srv.js ./examples')
+  logInfo('Usage: bun srv.js <directory-to-serve>')
+  logInfo('Example: bun srv.js ./examples')
   process.exit(1)
 }
 

@@ -11,10 +11,10 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "benchmark": "node src/index.js",
-    "build": "NODE_ENV=production node config.bundle.js",
-    "profile": "node src/index.js --profile --iterations=1",
-    "sizes": "node src/index.js --minified --sizes --iterations=0",
+    "benchmark": "bun src/index.js",
+    "build": "NODE_ENV=production bun config.bundle.js",
+    "profile": "bun src/index.js --profile --iterations=1",
+    "sizes": "bun src/index.js --minified --sizes --iterations=0",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },

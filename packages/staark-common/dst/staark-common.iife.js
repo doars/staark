@@ -2,13 +2,18 @@
   var __defProp = Object.defineProperty;
   var __export = (target, all) => {
     for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+      __defProp(target, name, {
+        get: all[name],
+        enumerable: true,
+        configurable: true,
+        set: (newValue) => all[name] = () => newValue
+      });
   };
 
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -18,17 +23,17 @@
   };
 
   // src/array.js
-  var array_exports = {};
-  __export(array_exports, {
-    arrayify: () => arrayify,
-    arrayifyOrUndefined: () => arrayifyOrUndefined
+  var exports_array = {};
+  __export(exports_array, {
+    arrayifyOrUndefined: () => arrayifyOrUndefined,
+    arrayify: () => arrayify
   });
   var arrayify = (data) => arrayifyOrUndefined(data) || [];
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
 
   // src/attribute.js
-  var attribute_exports = {};
-  __export(attribute_exports, {
+  var exports_attribute = {};
+  __export(exports_attribute, {
     suffixNameIfMultiple: () => suffixNameIfMultiple
   });
   var SUFFIX_MULTIPLE = "[]";
@@ -39,8 +44,8 @@
   };
 
   // src/clone.js
-  var clone_exports = {};
-  __export(clone_exports, {
+  var exports_clone = {};
+  __export(exports_clone, {
     cloneRecursive: () => cloneRecursive
   });
   var cloneRecursive = (value) => {
@@ -55,8 +60,8 @@
   };
 
   // src/compare.js
-  var compare_exports = {};
-  __export(compare_exports, {
+  var exports_compare = {};
+  __export(exports_compare, {
     equalRecursive: () => equalRecursive
   });
   var equalRecursive = (valueA, valueB) => {
@@ -74,8 +79,8 @@
   };
 
   // src/conditional.js
-  var conditional_exports = {};
-  __export(conditional_exports, {
+  var exports_conditional = {};
+  __export(exports_conditional, {
     conditional: () => conditional
   });
   var conditional = (condition, onTruth, onFalse) => {
@@ -87,20 +92,20 @@
   };
 
   // src/element.js
-  var element_exports = {};
-  __export(element_exports, {
+  var exports_element = {};
+  __export(exports_element, {
     childrenToNodes: () => childrenToNodes
   });
 
   // src/node.js
-  var node_exports = {};
-  __export(node_exports, {
+  var exports_node = {};
+  __export(exports_node, {
     node: () => node
   });
 
   // src/marker.js
-  var marker_exports = {};
-  __export(marker_exports, {
+  var exports_marker = {};
+  __export(exports_marker, {
     marker: () => marker
   });
   var marker = "n";
@@ -109,7 +114,7 @@
   var node = (type, attributesOrContents, contents) => {
     if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
-      attributesOrContents = void 0;
+      attributesOrContents = undefined;
     }
     return {
       _: marker,
@@ -124,56 +129,36 @@
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
-        abstractChildNodes.push(
-          childNode.textContent ?? ""
-        );
+        abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
         for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
-        abstractChildNodes.push(
-          node(
-            childNode.nodeName,
-            attributes,
-            childrenToNodes(childNode)
-          )
-        );
+        abstractChildNodes.push(node(childNode.nodeName, attributes, childrenToNodes(childNode)));
       }
     }
     return abstractChildNodes;
   };
 
   // src/factory.js
-  var factory_exports = {};
-  __export(factory_exports, {
+  var exports_factory = {};
+  __export(exports_factory, {
     factory: () => factory
   });
   var factory = /* @__PURE__ */ new Proxy({}, {
-    /**
-     * @param {FactoryCache} target Factory cache.
-     * @param {string} type Type of the nodes to generate.
-     * @returns {Factory} Function that generates the a node with the given type.
-     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
-        /([A-Z])/g,
-        (capital) => "-" + capital.toLowerCase()
-      );
-      return target[type] = (attributesOrContents, contents) => node(
-        typeConverted,
-        attributesOrContents,
-        contents
-      );
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
+      return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
     }
   });
 
   // src/fctory.js
-  var fctory_exports = {};
-  __export(fctory_exports, {
+  var exports_fctory = {};
+  __export(exports_fctory, {
     fctory: () => fctory
   });
 
@@ -300,45 +285,33 @@
 
   // src/fctory.js
   var fctory = /* @__PURE__ */ new Proxy({}, {
-    /**
-     * @param {FctoryCache} target Factory cache.
-     * @param {string} type Type of the nodes to generate.
-     * @returns {Fctory} Function that generates the a node with the given type.
-     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
-        /([A-Z])/g,
-        (capital) => "-" + capital.toLowerCase()
-      );
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
       return target[type] = (selector, contents) => {
         let attributes;
         if (selector) {
           const [_, _attributes] = selectorToTokenizer(selector);
           attributes = _attributes;
         }
-        return node(
-          typeConverted,
-          attributes,
-          contents
-        );
+        return node(typeConverted, attributes, contents);
       };
     }
   });
 
   // src/identifier.js
-  var identifier_exports = {};
-  __export(identifier_exports, {
+  var exports_identifier = {};
+  __export(exports_identifier, {
     identifier: () => identifier
   });
   var identifierCount = 0;
   var identifier = (prefix) => prefix + "-" + identifierCount++;
 
   // src/match.js
-  var match_exports = {};
-  __export(match_exports, {
+  var exports_match = {};
+  __export(exports_match, {
     match: () => match
   });
   var match = (key, lookup, fallback) => {
@@ -355,8 +328,8 @@
   };
 
   // src/memo.js
-  var memo_exports = {};
-  __export(memo_exports, {
+  var exports_memo = {};
+  __export(exports_memo, {
     memo: () => memo
   });
   var memo = (render, memory) => ({
@@ -366,8 +339,8 @@
   });
 
   // src/nde.js
-  var nde_exports = {};
-  __export(nde_exports, {
+  var exports_nde = {};
+  __export(exports_nde, {
     nde: () => nde
   });
   var nde = (selector, contents) => {
@@ -385,20 +358,21 @@
     "staark",
     "common"
   ], {
-    array: array_exports,
-    attribute: attribute_exports,
-    clone: clone_exports,
-    compare: compare_exports,
-    conditional: conditional_exports,
-    element: element_exports,
-    factory: factory_exports,
-    fctory: fctory_exports,
-    identifier: identifier_exports,
-    marker: marker_exports,
-    match: match_exports,
-    memo: memo_exports,
-    nde: nde_exports,
-    node: node_exports
+    array: exports_array,
+    attribute: exports_attribute,
+    clone: exports_clone,
+    compare: exports_compare,
+    conditional: exports_conditional,
+    element: exports_element,
+    factory: exports_factory,
+    fctory: exports_fctory,
+    identifier: exports_identifier,
+    marker: exports_marker,
+    match: exports_match,
+    memo: exports_memo,
+    nde: exports_nde,
+    node: exports_node
   });
 })();
-//# sourceMappingURL=staark-common.iife.js.map
+
+//# debugId=D31B19F09E976E9964756E2164756E21

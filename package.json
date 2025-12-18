@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "bun --filter \"*\" build",
-    "serve": "node ./scripts/srv.js ./",
+    "serve": "bun ./scripts/srv.js ./",
     "test:runtime": "bun --filter \"*\" test:runtime",
     "upgrade": "npm-check-updates --upgrade --target minor && bun --filter \"*\" upgrade && bun install"
   },
@@ -16,7 +16,6 @@
     "brotli-size": "^4.0.0",
     "detective-es6": "^5.0.1",
     "chokidar": "^5.0.0",
-    "esbuild": "^0.27.2",
     "npm-check-updates": "^19.2.0"
   }
 }

@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -26,9 +26,7 @@
   // src/utilities/delay.js
   var delay = async (time) => {
     if (time > 0) {
-      return new Promise(
-        (resolve) => setTimeout(resolve, time)
-      );
+      return new Promise((resolve) => setTimeout(resolve, time));
     }
     return null;
   };
@@ -91,7 +89,7 @@
       });
     };
     const sendRequest = async (options) => {
-      if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
+      if (options.maxRequests !== undefined && totalRequests >= options.maxRequests) {
         return [new Error("Maximum request limit reached"), null, null];
       }
       totalRequests++;
@@ -102,14 +100,14 @@
         method: options.method,
         mode: options.mode,
         redirect: options.redirect,
-        body: options.body ? JSON.stringify(options.body) : void 0
+        body: options.body ? JSON.stringify(options.body) : undefined
       };
       let url = (options.domain || "") + (options.path || "");
       if (options.queryParams) {
         url += "?" + new URLSearchParams(options.queryParams).toString();
       }
       if (options.timeout) {
-        const controller = options.abort || new AbortController();
+        const controller = options.abort || new AbortController;
         config.signal = controller.signal;
         setTimeout(() => controller.abort(), options.timeout);
       }
@@ -203,7 +201,7 @@
           if (retryAfter) {
             const retryAfterSeconds = parseInt(retryAfter, 10);
             if (!isNaN(retryAfterSeconds)) {
-              delayTime = Math.max(delayTime, retryAfterSeconds * 1e3);
+              delayTime = Math.max(delayTime, retryAfterSeconds * 1000);
             } else {
               const retryAfterDate = new Date(retryAfter).getTime();
               if (!isNaN(retryAfterDate)) {
@@ -272,4 +270,5 @@
     create
   });
 })();
-//# sourceMappingURL=vroagn.base.iife.js.map
+
+//# debugId=2BC33C896393CC7E64756E2164756E21

@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -26,9 +26,7 @@
   // src/utilities/delay.js
   var delay = async (time) => {
     if (time > 0) {
-      return new Promise(
-        (resolve) => setTimeout(resolve, time)
-      );
+      return new Promise((resolve) => setTimeout(resolve, time));
     }
     return null;
   };
@@ -91,7 +89,7 @@
       });
     };
     const sendRequest = async (options) => {
-      if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
+      if (options.maxRequests !== undefined && totalRequests >= options.maxRequests) {
         return [new Error("Maximum request limit reached"), null, null];
       }
       totalRequests++;
@@ -102,14 +100,14 @@
         method: options.method,
         mode: options.mode,
         redirect: options.redirect,
-        body: options.body ? JSON.stringify(options.body) : void 0
+        body: options.body ? JSON.stringify(options.body) : undefined
       };
       let url = (options.domain || "") + (options.path || "");
       if (options.queryParams) {
         url += "?" + new URLSearchParams(options.queryParams).toString();
       }
       if (options.timeout) {
-        const controller = options.abort || new AbortController();
+        const controller = options.abort || new AbortController;
         config.signal = controller.signal;
         setTimeout(() => controller.abort(), options.timeout);
       }
@@ -203,7 +201,7 @@
           if (retryAfter) {
             const retryAfterSeconds = parseInt(retryAfter, 10);
             if (!isNaN(retryAfterSeconds)) {
-              delayTime = Math.max(delayTime, retryAfterSeconds * 1e3);
+              delayTime = Math.max(delayTime, retryAfterSeconds * 1000);
             } else {
               const retryAfterDate = new Date(retryAfter).getTime();
               if (!isNaN(retryAfterDate)) {
@@ -277,18 +275,11 @@
         "text/csv",
         ...tsvTypes
       ],
-      /**
-       * Parse the response as CSV.
-       *
-       * @param {Response} response The response to parse.
-       * @param {RequestOptions} requestOptions The request options.
-       * @param {string} type The MIME type of the response.
-       * @returns {Promise<any>} The parsed response.
-       */
       parser: async (response, requestOptions, type) => {
         const optionsTemp = {
-          columnDelimiter: tsvTypes.includes(type) ? "	" : ",",
-          rowDelimiter: "\n",
+          columnDelimiter: tsvTypes.includes(type) ? "\t" : ",",
+          rowDelimiter: `
+`,
           escapeCharacter: '"',
           ...options
         };
@@ -297,7 +288,7 @@
         let currentRow = [];
         let currentField = "";
         let insideQuotes = false;
-        for (let i = 0; i < string.length; i++) {
+        for (let i = 0;i < string.length; i++) {
           const character = string[i];
           const nextCharacter = string[i + 1];
           if (character === optionsTemp.escapeCharacter) {
@@ -308,14 +299,10 @@
               insideQuotes = !insideQuotes;
             }
           } else if (character === optionsTemp.columnDelimiter && !insideQuotes) {
-            currentRow.push(
-              currentField
-            );
+            currentRow.push(currentField);
             currentField = "";
           } else if (character === optionsTemp.rowDelimiter && !insideQuotes) {
-            currentRow.push(
-              currentField
-            );
+            currentRow.push(currentField);
             currentField = "";
             rows.push(currentRow);
             currentRow = [];
@@ -324,9 +311,7 @@
           }
         }
         if (currentField) {
-          currentRow.push(
-            currentField
-          );
+          currentRow.push(currentField);
           currentField = "";
         }
         if (currentRow.length > 0) {
@@ -350,14 +335,6 @@
   var iniParser = (options = {}) => {
     return {
       types: options.types || ["ini"],
-      /**
-       * Parse the response as an INI object.
-       *
-       * @param {Response} response The response to parse.
-       * @param {RequestOptions} requestOptions The request options.
-       * @param {string} type The MIME type of the response.
-       * @returns {Promise<IniObject>} The parsed INI object.
-       */
       parser: async (response, requestOptions, type) => {
         const text = await response.text();
         const result = {};
@@ -416,7 +393,7 @@
     let inQuotes = false;
     let quoteChar = "";
     let inValue = false;
-    for (let i = 1; i < tableString.length - 1; i++) {
+    for (let i = 1;i < tableString.length - 1; i++) {
       const character = tableString[i];
       if (!inQuotes && (character === '"' || character === "'")) {
         inQuotes = true;
@@ -439,9 +416,7 @@
       }
     }
     if (key) {
-      result[key.trim()] = parseTomlValue(
-        value.trim()
-      );
+      result[key.trim()] = parseTomlValue(value.trim());
     }
     return result;
   };
@@ -451,14 +426,6 @@
         "toml",
         "application/toml"
       ],
-      /**
-       * Parse the response as a TOML object.
-       *
-       * @param {Response} response The response to parse.
-       * @param {RequestOptions} requestOptions The options for the request.
-       * @param {string} type The MIME type of the response.
-       * @returns {Promise<TomlObject>} The parsed TOML object.
-       */
       parser: async (response, requestOptions, type) => {
         const text = await response.text();
         const result = {};
@@ -467,7 +434,7 @@
         let multilineString = null;
         let multilineStringDelimiter = null;
         const lines = text.split(/\r?\n/);
-        for (let i = 0; i < lines.length; i++) {
+        for (let i = 0;i < lines.length; i++) {
           let line = lines[i].trim();
           if (line === "" || line.startsWith("#")) {
             continue;
@@ -479,7 +446,8 @@
               multilineString = null;
               multilineStringDelimiter = null;
             } else {
-              multilineString += line + "\n";
+              multilineString += line + `
+`;
             }
             continue;
           }
@@ -488,7 +456,8 @@
             currentTable = result;
             const parts = tableName.split(".");
             for (const part of parts) {
-              if (!currentTable[part]) currentTable[part] = {};
+              if (!currentTable[part])
+                currentTable[part] = {};
               currentTable = currentTable[part];
             }
             currentArray = null;
@@ -496,12 +465,14 @@
             const arrayName = line.slice(2, -2).trim();
             const parts = arrayName.split(".");
             let parent = result;
-            for (let i2 = 0; i2 < parts.length - 1; i2++) {
-              if (!parent[parts[i2]]) parent[parts[i2]] = {};
+            for (let i2 = 0;i2 < parts.length - 1; i2++) {
+              if (!parent[parts[i2]])
+                parent[parts[i2]] = {};
               parent = parent[parts[i2]];
             }
             const lastPart = parts[parts.length - 1];
-            if (!parent[lastPart]) parent[lastPart] = [];
+            if (!parent[lastPart])
+              parent[lastPart] = [];
             const newTable = {};
             parent[lastPart].push(newTable);
             currentTable = newTable;
@@ -593,16 +564,9 @@
         "application/yaml",
         "text/yaml"
       ],
-      /**
-       * Parse the response as a YAML object.
-       *
-       * @param {Response} response The response to parse.
-       * @param {RequestOptions} requestOptions The request options.
-       * @param {string} type The MIME type of the response.
-       * @returns {Promise<YamlObject>} The parsed YAML object.
-       */
       parser: async (response, requestOptions, type) => {
-        const lines = (await response.text()).split("\n");
+        const lines = (await response.text()).split(`
+`);
         const result = {};
         let currentObject = result;
         let indentStack = [result];
@@ -610,7 +574,7 @@
         let multilineKey = null;
         let multilineValue = [];
         const anchors = {};
-        for (let i = 0; i < lines.length; i++) {
+        for (let i = 0;i < lines.length; i++) {
           let line = lines[i].trimEnd();
           if (line.trim().startsWith("#")) {
             continue;
@@ -621,7 +585,8 @@
               multilineValue.push(line.trim());
               continue;
             } else {
-              currentObject[multilineKey] = multilineValue.join("\n");
+              currentObject[multilineKey] = multilineValue.join(`
+`);
               multilineKey = null;
               multilineValue = [];
             }
@@ -687,4 +652,5 @@
     yamlParser
   });
 })();
-//# sourceMappingURL=vroagn.iife.js.map
+
+//# debugId=80E5AEFED6238C2F64756E2164756E21

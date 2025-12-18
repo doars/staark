@@ -1,7 +1,6 @@
 // src/array.js
 var arrayify = (data) => arrayifyOrUndefined(data) || [];
-var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
-
+var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
 // src/attribute.js
 var SUFFIX_MULTIPLE = "[]";
 var suffixNameIfMultiple = (attributes) => {
@@ -9,7 +8,6 @@ var suffixNameIfMultiple = (attributes) => {
     attributes.name += SUFFIX_MULTIPLE;
   }
 };
-
 // src/clone.js
 var cloneRecursive = (value) => {
   if (typeof value === "object") {
@@ -21,7 +19,6 @@ var cloneRecursive = (value) => {
   }
   return value;
 };
-
 // src/compare.js
 var equalRecursive = (valueA, valueB) => {
   if (valueA === valueB) {
@@ -36,7 +33,6 @@ var equalRecursive = (valueA, valueB) => {
   const keys = Object.keys(valueA);
   return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
 };
-
 // src/conditional.js
 var conditional = (condition, onTruth, onFalse) => {
   let result = condition ? onTruth : onFalse;
@@ -45,7 +41,6 @@ var conditional = (condition, onTruth, onFalse) => {
   }
   return arrayify(result);
 };
-
 // src/marker.js
 var marker = "n";
 
@@ -53,7 +48,7 @@ var marker = "n";
 var node = (type, attributesOrContents, contents) => {
   if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
     contents = attributesOrContents;
-    attributesOrContents = void 0;
+    attributesOrContents = undefined;
   }
   return {
     _: marker,
@@ -68,49 +63,27 @@ var childrenToNodes = (element) => {
   const abstractChildNodes = [];
   for (const childNode of element.childNodes) {
     if (childNode instanceof Text) {
-      abstractChildNodes.push(
-        childNode.textContent ?? ""
-      );
+      abstractChildNodes.push(childNode.textContent ?? "");
     } else {
       const attributes = {};
       for (const attribute of childNode.attributes) {
         attributes[attribute.name] = attribute.value;
       }
-      abstractChildNodes.push(
-        node(
-          childNode.nodeName,
-          attributes,
-          childrenToNodes(childNode)
-        )
-      );
+      abstractChildNodes.push(node(childNode.nodeName, attributes, childrenToNodes(childNode)));
     }
   }
   return abstractChildNodes;
 };
-
 // src/factory.js
 var factory = /* @__PURE__ */ new Proxy({}, {
-  /**
-   * @param {FactoryCache} target Factory cache.
-   * @param {string} type Type of the nodes to generate.
-   * @returns {Factory} Function that generates the a node with the given type.
-   */
   get: (target, type) => {
     if (target[type]) {
       return target[type];
     }
-    const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
-      /([A-Z])/g,
-      (capital) => "-" + capital.toLowerCase()
-    );
-    return target[type] = (attributesOrContents, contents) => node(
-      typeConverted,
-      attributesOrContents,
-      contents
-    );
+    const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
+    return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
   }
 });
-
 // src/selector.js
 var BRACKET_CLOSE = "]";
 var BRACKET_OPEN = "[";
@@ -234,38 +207,24 @@ var selectorToTokenizer = (selector) => {
 
 // src/fctory.js
 var fctory = /* @__PURE__ */ new Proxy({}, {
-  /**
-   * @param {FctoryCache} target Factory cache.
-   * @param {string} type Type of the nodes to generate.
-   * @returns {Fctory} Function that generates the a node with the given type.
-   */
   get: (target, type) => {
     if (target[type]) {
       return target[type];
     }
-    const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
-      /([A-Z])/g,
-      (capital) => "-" + capital.toLowerCase()
-    );
+    const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
     return target[type] = (selector, contents) => {
       let attributes;
       if (selector) {
         const [_, _attributes] = selectorToTokenizer(selector);
         attributes = _attributes;
       }
-      return node(
-        typeConverted,
-        attributes,
-        contents
-      );
+      return node(typeConverted, attributes, contents);
     };
   }
 });
-
 // src/identifier.js
 var identifierCount = 0;
 var identifier = (prefix) => prefix + "-" + identifierCount++;
-
 // src/match.js
 var match = (key, lookup, fallback) => {
   let result;
@@ -279,14 +238,12 @@ var match = (key, lookup, fallback) => {
   }
   return arrayify(result);
 };
-
 // src/memo.js
 var memo = (render, memory) => ({
   _: marker,
   r: render,
   m: memory
 });
-
 // src/nde.js
 var nde = (selector, contents) => {
   const [type, attributes] = selectorToTokenizer(selector);
@@ -298,20 +255,21 @@ var nde = (selector, contents) => {
   };
 };
 export {
-  arrayify,
-  arrayifyOrUndefined,
-  childrenToNodes,
-  cloneRecursive,
-  conditional,
-  equalRecursive,
-  factory,
-  fctory,
-  identifier,
-  marker,
-  match,
-  memo,
-  nde,
+  suffixNameIfMultiple,
   node,
-  suffixNameIfMultiple
+  nde,
+  memo,
+  match,
+  marker,
+  identifier,
+  fctory,
+  factory,
+  equalRecursive,
+  conditional,
+  cloneRecursive,
+  childrenToNodes,
+  arrayifyOrUndefined,
+  arrayify
 };
-//# sourceMappingURL=staark-common.js.map
+
+//# debugId=47FC65A67E6C1B4464756E2164756E21

@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -22,13 +22,13 @@
   });
 
   // ../staark-common/src/array.js
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
 
   // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
     if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
-      attributesOrContents = void 0;
+      attributesOrContents = undefined;
     }
     return {
       _: marker,
@@ -70,21 +70,13 @@
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
-        abstractChildNodes.push(
-          childNode.textContent ?? ""
-        );
+        abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
         for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
-        abstractChildNodes.push(
-          node(
-            childNode.nodeName,
-            attributes,
-            childrenToNodes(childNode)
-          )
-        );
+        abstractChildNodes.push(node(childNode.nodeName, attributes, childrenToNodes(childNode)));
       }
     }
     return abstractChildNodes;
@@ -93,13 +85,6 @@
   // src/library/proxy.js
   var proxify = (root, onChange) => {
     const handler = {
-      /**
-       * Deletes a property from the target object and invokes the onChange callback if the property existed.
-       *
-       * @param {Record<string, any>} target - The target object from which the property will be deleted.
-       * @param {string} key - The key of the property to be deleted.
-       * @returns {boolean} - True if the property was deleted, otherwise false.
-       */
       deleteProperty: (target, key) => {
         if (Reflect.has(target, key)) {
           const deleted = Reflect.deleteProperty(target, key);
@@ -110,14 +95,6 @@
         }
         return true;
       },
-      /**
-       * Sets a property on the target object and invokes the onChange callback if the value has changed.
-       *
-       * @param {Record<string, any>} target - The target object on which the property will be set.
-       * @param {string} key - The key of the property to be set.
-       * @param {any} value - The value to be set.
-       * @returns {boolean} - True if the property was set, otherwise false.
-       */
       set: (target, key, value) => {
         const existingValue = target[key];
         if (existingValue !== value) {
@@ -156,10 +133,7 @@
       }
       return updatePromise;
     };
-    const state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(
-      initialState,
-      triggerUpdate
-    );
+    const state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(initialState, triggerUpdate);
     const updateAttributes = (element, newAttributes, oldAttributes) => {
       if (newAttributes) {
         for (const name in newAttributes) {
@@ -172,18 +146,12 @@
                 newAttributes[name] = oldValue;
               } else {
                 if (oldValue) {
-                  element.removeEventListener(
-                    name,
-                    oldValue
-                  );
+                  element.removeEventListener(name, oldValue);
                 }
                 const listener = newAttributes[name] = (event) => {
                   value(event, state);
                 };
-                element.addEventListener(
-                  name,
-                  listener
-                );
+                element.addEventListener(name, listener);
                 listener.f = value;
               }
             } else {
@@ -206,10 +174,7 @@
                 for (let styleName in value) {
                   let styleValue = value[styleName];
                   if (styleName.includes("-", 1)) {
-                    element.style.setProperty(
-                      styleName,
-                      styleValue
-                    );
+                    element.style.setProperty(styleName, styleValue);
                   } else {
                     element.style[styleName] = styleValue;
                   }
@@ -218,9 +183,7 @@
                   for (let styleName in oldAttributes[name]) {
                     if (!value[styleName]) {
                       if (styleName.includes("-", 1)) {
-                        element.style.removeProperty(
-                          styleName
-                        );
+                        element.style.removeProperty(styleName);
                       } else {
                         element.style[styleName] = null;
                       }
@@ -247,10 +210,7 @@
           const value = oldAttributes[name];
           if (!newAttributes || !newAttributes[name]) {
             if (typeof value === "function") {
-              element.removeEventListener(
-                name,
-                oldAttributes[name]
-              );
+              element.removeEventListener(name, oldAttributes[name]);
             } else if (name === "class") {
               element.className = "";
             } else if (name === "style") {
@@ -264,74 +224,42 @@
         }
       }
     };
-    let oldMemoMap = /* @__PURE__ */ new WeakMap();
-    let newMemoMap = /* @__PURE__ */ new WeakMap();
+    let oldMemoMap = new WeakMap;
+    let newMemoMap = new WeakMap;
     const updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
       let newIndex = 0;
       let newCount = 0;
       if (newChildAbstracts) {
-        for (; newIndex < newChildAbstracts.length; newIndex++) {
+        for (;newIndex < newChildAbstracts.length; newIndex++) {
           const newAbstract = newChildAbstracts[newIndex];
           if (newAbstract.r) {
-            let match = oldMemoMap.get(
-              newAbstract.r
-            );
+            let match = oldMemoMap.get(newAbstract.r);
             console.log("checking for memo");
             if (!match || !equalRecursive(match.m, newAbstract.m)) {
               match = {
-                c: arrayifyOrUndefined(
-                  newAbstract.r(
-                    state,
-                    newAbstract.m
-                  )
-                ),
+                c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
                 m: newAbstract.m,
                 r: newAbstract.r
               };
             }
             newMemoMap.set(newAbstract.r, match);
-            newChildAbstracts.splice(
-              newIndex,
-              1,
-              ...cloneRecursive(
-                match.c
-              )
-            );
+            newChildAbstracts.splice(newIndex, 1, ...cloneRecursive(match.c));
             newIndex--;
             continue;
           }
           let matched = false;
           if (oldChildAbstracts) {
-            for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
+            for (let oldIndex = newIndex - newCount;oldIndex < oldChildAbstracts.length; oldIndex++) {
               const oldAbstract = oldChildAbstracts[oldIndex];
               if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
                 matched = true;
                 if (newIndex !== oldIndex + newCount) {
-                  element.insertBefore(
-                    element.childNodes[oldIndex + newCount],
-                    element.childNodes[newIndex]
-                  );
-                  oldChildAbstracts.splice(
-                    newIndex - newCount,
-                    0,
-                    oldChildAbstracts.splice(
-                      oldIndex,
-                      1
-                    )[0]
-                  );
+                  element.insertBefore(element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                  oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
                 }
                 if (newAbstract.t) {
-                  updateAttributes(
-                    element.childNodes[newIndex],
-                    newAbstract.a,
-                    oldAbstract.a
-                  );
-                  updateChildren(
-                    element.childNodes[newIndex],
-                    newAbstract.c,
-                    oldAbstract.c,
-                    inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
-                  );
+                  updateAttributes(element.childNodes[newIndex], newAbstract.a, oldAbstract.a);
+                  updateChildren(element.childNodes[newIndex], newAbstract.c, oldAbstract.c, inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg");
                 } else if (oldAbstract !== newAbstract) {
                   element.childNodes[newIndex].textContent = newAbstract;
                 }
@@ -344,36 +272,16 @@
             if (newAbstract.t) {
               const _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
               if (_inSvg) {
-                newNode = document.createElementNS(
-                  "http://www.w3.org/2000/svg",
-                  newAbstract.t
-                );
+                newNode = document.createElementNS("http://www.w3.org/2000/svg", newAbstract.t);
               } else {
-                newNode = document.createElement(
-                  newAbstract.t
-                );
+                newNode = document.createElement(newAbstract.t);
               }
-              updateAttributes(
-                newNode,
-                newAbstract.a,
-                void 0,
-                _inSvg
-              );
-              updateChildren(
-                newNode,
-                newAbstract.c,
-                void 0,
-                _inSvg
-              );
+              updateAttributes(newNode, newAbstract.a, undefined, _inSvg);
+              updateChildren(newNode, newAbstract.c, undefined, _inSvg);
             } else {
-              newNode = document.createTextNode(
-                newAbstract
-              );
+              newNode = document.createTextNode(newAbstract);
             }
-            element.insertBefore(
-              newNode,
-              element.childNodes[newIndex]
-            );
+            element.insertBefore(newNode, element.childNodes[newIndex]);
             newCount++;
           }
         }
@@ -381,15 +289,13 @@
       if (oldChildAbstracts) {
         const elementLength = oldChildAbstracts.length + newCount;
         if (elementLength >= newIndex) {
-          for (let i = elementLength - 1; i >= newIndex; i--) {
+          for (let i = elementLength - 1;i >= newIndex; i--) {
             element.childNodes[i].remove();
           }
         }
       }
     };
-    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(
-      document.createElement("div")
-    ) : rootElement;
+    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
     if (typeof oldAbstractTree === "string") {
       try {
         oldAbstractTree = JSON.parse(oldAbstractTree);
@@ -405,17 +311,11 @@
       if (active && !updating && updatePromise) {
         updating = true;
         updatePromise = null;
-        let newAbstractTree = arrayifyOrUndefined(
-          renderView(state)
-        );
-        updateChildren(
-          _rootElement,
-          newAbstractTree,
-          oldAbstractTree
-        );
+        let newAbstractTree = arrayifyOrUndefined(renderView(state));
+        updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
         oldAbstractTree = newAbstractTree;
         oldMemoMap = newMemoMap;
-        newMemoMap = /* @__PURE__ */ new WeakMap();
+        newMemoMap = new WeakMap;
         updating = false;
       }
     };
@@ -426,7 +326,7 @@
       () => {
         if (active) {
           active = false;
-          for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
+          for (let i = _rootElement.childNodes.length - 1;i >= 0; i--) {
             _rootElement.childNodes[i].remove();
           }
         }
@@ -444,4 +344,5 @@
     node
   });
 })();
-//# sourceMappingURL=staark.base.iife.js.map
+
+//# debugId=E962BE86F8800C4664756E2164756E21

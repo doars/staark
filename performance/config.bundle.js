@@ -1,24 +1,24 @@
 import bundle from '../helpers/bundle.js'
 
 bundle([{
-  entryPoints: 'src/libraries/hyperapp.js',
+  entrypoints: 'src/libraries/hyperapp.js',
   outfile: 'dst/hyperapp.js',
 }, {
-  entryPoints: 'src/libraries/incremental-dom.js',
+  entrypoints: 'src/libraries/incremental-dom.js',
   outfile: 'dst/incremental-dom.js',
 }, {
-  entryPoints: 'src/libraries/mithril.js',
+  entrypoints: 'src/libraries/mithril.js',
   outfile: 'dst/mithril.js',
 }, {
-  entryPoints: 'src/libraries/snabbdom.js',
+  entrypoints: 'src/libraries/snabbdom.js',
   outfile: 'dst/snabbdom.js',
 }, {
-  entryPoints: 'src/libraries/staark-patch.js',
+  entrypoints: 'src/libraries/staark-patch.js',
   outfile: 'dst/staark-patch.js',
 }, {
-  entryPoints: 'src/libraries/staark.js',
+  entrypoints: 'src/libraries/staark.js',
   outfile: 'dst/staark.js',
 }, {
-  entryPoints: 'src/libraries/superfine.js',
+  entrypoints: 'src/libraries/superfine.js',
   outfile: 'dst/superfine.js',
 }])

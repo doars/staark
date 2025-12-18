@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -13,7 +13,7 @@
 
   // ../staark-common/src/array.js
   var arrayify = (data) => arrayifyOrUndefined(data) || [];
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
 
   // ../staark-common/src/conditional.js
   var conditional = (condition, onTruth, onFalse) => {
@@ -31,7 +31,7 @@
   var node = (type, attributesOrContents, contents) => {
     if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
-      attributesOrContents = void 0;
+      attributesOrContents = undefined;
     }
     return {
       _: marker,
@@ -43,24 +43,12 @@
 
   // ../staark-common/src/factory.js
   var factory = /* @__PURE__ */ new Proxy({}, {
-    /**
-     * @param {FactoryCache} target Factory cache.
-     * @param {string} type Type of the nodes to generate.
-     * @returns {Factory} Function that generates the a node with the given type.
-     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
-        /([A-Z])/g,
-        (capital) => "-" + capital.toLowerCase()
-      );
-      return target[type] = (attributesOrContents, contents) => node(
-        typeConverted,
-        attributesOrContents,
-        contents
-      );
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
+      return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
     }
   });
 
@@ -187,30 +175,18 @@
 
   // ../staark-common/src/fctory.js
   var fctory = /* @__PURE__ */ new Proxy({}, {
-    /**
-     * @param {FctoryCache} target Factory cache.
-     * @param {string} type Type of the nodes to generate.
-     * @returns {Fctory} Function that generates the a node with the given type.
-     */
     get: (target, type) => {
       if (target[type]) {
         return target[type];
       }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(
-        /([A-Z])/g,
-        (capital) => "-" + capital.toLowerCase()
-      );
+      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
       return target[type] = (selector, contents) => {
         let attributes;
         if (selector) {
           const [_, _attributes] = selectorToTokenizer(selector);
           attributes = _attributes;
         }
-        return node(
-          typeConverted,
-          attributes,
-          contents
-        );
+        return node(typeConverted, attributes, contents);
       };
     }
   });
@@ -270,7 +246,7 @@
     if (attributes) {
       for (const name in attributes) {
         let value = attributes[name];
-        if (value !== null && value !== void 0) {
+        if (value !== null && value !== undefined) {
           const type = typeof value;
           if (type === "boolean") {
             value = value ? "true" : "false";
@@ -357,11 +333,7 @@
         for (const abstract of abstracts) {
           if (abstract) {
             if (abstract.m) {
-              rendered += renderElements2(
-                arrayifyOrUndefined(
-                  abstract.r(initialState, abstract.m)
-                )
-              );
+              rendered += renderElements2(arrayifyOrUndefined(abstract.r(initialState, abstract.m)));
             } else if (abstract.t) {
               rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
               if (SELF_CLOSING.includes(abstract.t)) {
@@ -392,12 +364,10 @@
       return String(data);
     }
     if (typeof data === "string") {
-      return '"' + data.replace(/"/g, '\\"') + '"';
+      return '"' + data.replace(/"/g, "\\\"") + '"';
     }
     if (Array.isArray(data)) {
-      return "[" + data.map(
-        (item) => customStringify(item)
-      ).join(",") + "]";
+      return "[" + data.map((item) => customStringify(item)).join(",") + "]";
     }
     if (typeof data === "object") {
       const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
@@ -446,4 +416,5 @@
     stringifyPatchFull
   });
 })();
-//# sourceMappingURL=staark-isomorphic.iife.js.map
+
+//# debugId=1C00C479C4CA6B3C64756E2164756E21

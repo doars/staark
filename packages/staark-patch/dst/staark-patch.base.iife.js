@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
+    for (let i = 0;i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -12,7 +12,7 @@
   };
 
   // ../staark-common/src/array.js
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
 
   // ../staark-common/src/marker.js
   var marker = "n";
@@ -21,7 +21,7 @@
   var node = (type, attributesOrContents, contents) => {
     if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
-      attributesOrContents = void 0;
+      attributesOrContents = undefined;
     }
     return {
       _: marker,
@@ -36,21 +36,13 @@
     const abstractChildNodes = [];
     for (const childNode of element.childNodes) {
       if (childNode instanceof Text) {
-        abstractChildNodes.push(
-          childNode.textContent ?? ""
-        );
+        abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
         for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
-        abstractChildNodes.push(
-          node(
-            childNode.nodeName,
-            attributes,
-            childrenToNodes(childNode)
-          )
-        );
+        abstractChildNodes.push(node(childNode.nodeName, attributes, childrenToNodes(childNode)));
       }
     }
     return abstractChildNodes;
@@ -67,15 +59,9 @@
             const oldValue = oldAttributes?.[name];
             if (oldValue !== value) {
               if (oldValue) {
-                element.removeEventListener(
-                  name,
-                  oldValue
-                );
+                element.removeEventListener(name, oldValue);
               }
-              element.addEventListener(
-                name,
-                value
-              );
+              element.addEventListener(name, value);
             }
           } else {
             if (name === "class") {
@@ -97,10 +83,7 @@
               for (let styleName in value) {
                 let styleValue = value[styleName];
                 if (styleName.includes("-", 1)) {
-                  element.style.setProperty(
-                    styleName,
-                    styleValue
-                  );
+                  element.style.setProperty(styleName, styleValue);
                 } else {
                   element.style[styleName] = styleValue;
                 }
@@ -109,9 +92,7 @@
                 for (let styleName in oldAttributes[name]) {
                   if (!value[styleName]) {
                     if (styleName.includes("-", 1)) {
-                      element.style.removeProperty(
-                        styleName
-                      );
+                      element.style.removeProperty(styleName);
                     } else {
                       element.style[styleName] = null;
                     }
@@ -137,10 +118,7 @@
       for (const name in oldAttributes) {
         if (!newAttributes || !newAttributes[name]) {
           if (typeof oldAttributes[name] === "function") {
-            element.removeEventListener(
-              name,
-              oldAttributes[name]
-            );
+            element.removeEventListener(name, oldAttributes[name]);
           } else if (name === "class") {
             element.className = "";
           } else if (name === "style") {
@@ -158,40 +136,21 @@
     let newIndex = 0;
     let newCount = 0;
     if (newChildAbstracts) {
-      for (; newIndex < newChildAbstracts.length; newIndex++) {
+      for (;newIndex < newChildAbstracts.length; newIndex++) {
         const newAbstract = newChildAbstracts[newIndex];
         let matched = false;
         if (oldChildAbstracts) {
-          for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
+          for (let oldIndex = newIndex - newCount;oldIndex < oldChildAbstracts.length; oldIndex++) {
             const oldAbstract = oldChildAbstracts[oldIndex];
             if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
               matched = true;
               if (newIndex !== oldIndex + newCount) {
-                element.insertBefore(
-                  element.childNodes[oldIndex + newCount],
-                  element.childNodes[newIndex]
-                );
-                oldChildAbstracts.splice(
-                  newIndex - newCount,
-                  0,
-                  oldChildAbstracts.splice(
-                    oldIndex,
-                    1
-                  )[0]
-                );
+                element.insertBefore(element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
               }
               if (newAbstract.t) {
-                updateAttributes(
-                  element.childNodes[newIndex],
-                  newAbstract.a,
-                  oldAbstract.a
-                );
-                updateChildren(
-                  element.childNodes[newIndex],
-                  newAbstract.c,
-                  oldAbstract.c,
-                  inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
-                );
+                updateAttributes(element.childNodes[newIndex], newAbstract.a, oldAbstract.a);
+                updateChildren(element.childNodes[newIndex], newAbstract.c, oldAbstract.c, inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg");
               } else if (oldAbstract !== newAbstract) {
                 element.childNodes[newIndex].textContent = newAbstract;
               }
@@ -204,34 +163,16 @@
           if (newAbstract.t) {
             let _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
             if (_inSvg) {
-              newNode = document.createElementNS(
-                "http://www.w3.org/2000/svg",
-                newAbstract.t
-              );
+              newNode = document.createElementNS("http://www.w3.org/2000/svg", newAbstract.t);
             } else {
-              newNode = document.createElement(
-                newAbstract.t
-              );
+              newNode = document.createElement(newAbstract.t);
             }
-            updateAttributes(
-              newNode,
-              newAbstract.a
-            );
-            updateChildren(
-              newNode,
-              newAbstract.c,
-              void 0,
-              _inSvg
-            );
+            updateAttributes(newNode, newAbstract.a);
+            updateChildren(newNode, newAbstract.c, undefined, _inSvg);
           } else {
-            newNode = document.createTextNode(
-              newAbstract
-            );
+            newNode = document.createTextNode(newAbstract);
           }
-          element.insertBefore(
-            newNode,
-            element.childNodes[newIndex]
-          );
+          element.insertBefore(newNode, element.childNodes[newIndex]);
           newCount++;
         }
       }
@@ -239,16 +180,14 @@
     if (oldChildAbstracts) {
       const elementLength = oldChildAbstracts.length + newCount;
       if (elementLength >= newIndex) {
-        for (let i = elementLength - 1; i >= newIndex; i--) {
+        for (let i = elementLength - 1;i >= newIndex; i--) {
           element.childNodes[i].remove();
         }
       }
     }
   };
   var prepare = (rootElement, oldAbstractTree) => {
-    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(
-      document.createElement("div")
-    ) : rootElement;
+    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
     if (typeof oldAbstractTree === "string") {
       try {
         oldAbstractTree = JSON.parse(oldAbstractTree);
@@ -261,11 +200,7 @@
     }
     return (newAbstractTree) => {
       newAbstractTree = arrayifyOrUndefined(newAbstractTree);
-      updateChildren(
-        _rootElement,
-        newAbstractTree,
-        oldAbstractTree
-      );
+      updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
       oldAbstractTree = newAbstractTree;
     };
   };
@@ -278,4 +213,5 @@
     prepare
   });
 })();
-//# sourceMappingURL=staark-patch.base.iife.js.map
+
+//# debugId=EC91D5E223E5C41764756E2164756E21

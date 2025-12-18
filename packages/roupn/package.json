@@ -22,9 +22,9 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "NODE_ENV=development node config.bundle.js",
-    "build": "NODE_ENV=production node config.bundle.js",
-    "start:example": "node ../../scripts/mon.js ./exm/server.js",
+    "develop": "NODE_ENV=development bun config.bundle.js",
+    "build": "NODE_ENV=production bun config.bundle.js",
+    "start:example": "bun --watch ./exm/server.js",
     "test:runtime": "echo 'no runtime tests'",
     "upgrade": "npm-check-updates --upgrade --target minor"
   },
