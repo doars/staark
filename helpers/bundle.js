@@ -59,7 +59,6 @@ const bundle = async (
           'debugger',
         ],
         minify: true,
-        sourcemap: 'none',
       })
 
       // Append min suffix to file name for minified builds.
