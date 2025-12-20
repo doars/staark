@@ -1,65 +1,61 @@
 import {
-  assert,
   describe,
   it,
-} from '../../../../helpers/test.js'
+  expect,
+} from 'bun:test'
 
 import {
-  determineDiff,
+  applyDiff,
 } from '../../dst/tiedliene.js'
 
-describe('Determine diff', () => [
-  it('shallow object same', () => {
-    const actual = determineDiff({
+describe('Apply diff', () => {
+  it('shallow object none', () => {
+    const actual = applyDiff({
       hello: 'there',
       general: 'kenobi',
-    }, {
+    }, [])
+    const expected = {
       hello: 'there',
       general: 'kenobi',
-    })
-    const expected = []
-    assert.deepEqual(actual, expected)
-  }),
+    }
+    expect(actual).toEqual(expected)
+  })
 
   it('shallow object delete', () => {
-    const actual = determineDiff({
+    const actual = applyDiff({
       hello: 'there',
       general: 'kenobi',
-    }, {
-      hello: 'there',
-    })
-    const expected = [{
+    }, [{
       type: 'delete',
       path: ['general',],
       old: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+    }])
+    const expected = {
+      hello: 'there',
+    }
+    expect(actual).toEqual(expected)
+  })
 
   it('shallow object add', () => {
-    const actual = determineDiff({
+    const actual = applyDiff({
       hello: 'there',
-    }, {
-      hello: 'there',
-      general: 'kenobi',
-    })
-    const expected = [{
+    }, [{
       type: 'set',
       path: ['general',],
       new: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
-
-  it('shallow object set', () => {
-    const actual = determineDiff({
+    }])
+    const expected = {
       hello: 'there',
       general: 'kenobi',
-    }, {
-      hello: 'kenobi',
-      general: 'there',
-    })
-    const expected = [{
+    }
+    expect(actual).toEqual(expected)
+  })
+
+  it('shallow object set', () => {
+    const actual = applyDiff({
+      hello: 'there',
+      general: 'kenobi',
+    }, [{
       type: 'set',
       path: ['general',],
       old: 'kenobi',
@@ -69,61 +65,61 @@ describe('Determine diff', () => [
       path: ['hello',],
       old: 'there',
       new: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+    }])
+    const expected = {
+      hello: 'kenobi',
+      general: 'there',
+    }
+    expect(actual).toEqual(expected)
+  })
 
-  it('shallow array same', () => {
-    const actual = determineDiff([
+  it('shallow array none', () => {
+    const actual = applyDiff([
       'hello',
       'there',
       'general',
       'kenobi',
-    ], [
+    ], [])
+    const expected = [
       'hello',
       'there',
       'general',
       'kenobi',
-    ])
-    const expected = []
-    assert.deepEqual(actual, expected)
-  }),
+    ]
+    expect(actual).toEqual(expected)
+  })
 
   it('shallow array delete', () => {
-    const actual = determineDiff([
+    const actual = applyDiff([
       'hello',
       'there',
       'general',
       'kenobi',
-    ], [
-      'hello',
-      'there',
-      'kenobi',
-    ])
-    const expected = [{
+    ], [{
       type: 'delete',
       path: ['3',],
       old: 'kenobi',
     }, {
       type: 'set',
       path: ['2',],
-      new: 'kenobi',
       old: 'general',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+      new: 'kenobi',
+    }])
+    const expected = [
+      'hello',
+      'there',
+      'kenobi',
+    ]
+    expect(actual).toEqual(expected)
+  })
 
   it('shallow array delete multiple', () => {
-    const actual = determineDiff([
+    const actual = applyDiff([
       'hello',
       'there',
       'general',
       'kenobi',
-    ], [
-      'general',
-      'kenobi',
-    ])
-    const expected = [{
+    ], [{
       type: 'delete',
       path: ['3',],
       old: 'kenobi',
@@ -134,108 +130,106 @@ describe('Determine diff', () => [
     }, {
       type: 'set',
       path: ['1',],
-      new: 'kenobi',
       old: 'there',
+      new: 'kenobi',
     }, {
       type: 'set',
       path: ['0',],
       old: 'hello',
       new: 'general',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
-
-  it('shallow array add', () => {
-    const actual = determineDiff([
-      'hello',
-      'there',
-      'kenobi',
-    ], [
-      'hello',
-      'there',
+    }])
+    const expected = [
       'general',
       'kenobi',
-    ])
-    const expected = [{
+    ]
+    expect(actual).toEqual(expected)
+  })
+
+  it('shallow array add', () => {
+    const actual = applyDiff([
+      'hello',
+      'there',
+      'kenobi',
+    ], [{
       type: 'set',
       path: ['3',],
       new: 'kenobi',
     }, {
       type: 'set',
       path: ['2',],
-      new: 'general',
       old: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+      new: 'general',
+    }])
+    const expected = [
+      'hello',
+      'there',
+      'general',
+      'kenobi',
+    ]
+    expect(actual).toEqual(expected)
+  })
 
-  it('nested object same', () => {
-    const actual = determineDiff({
+  it('nested object none', () => {
+    const actual = applyDiff({
       hello: {
         hello: 'there',
         general: 'kenobi',
       },
-    }, {
+    }, [])
+    const expected = {
       hello: {
         hello: 'there',
         general: 'kenobi',
       },
-    })
-    const expected = []
-    assert.deepEqual(actual, expected)
-  }),
+    }
+    expect(actual).toEqual(expected)
+  })
 
   it('nested object delete', () => {
-    const actual = determineDiff({
+    const actual = applyDiff({
       hello: {
         hello: 'there',
         general: 'kenobi',
       },
-    }, {
-      hello: {
-        hello: 'there',
-      },
-    })
-    const expected = [{
+    }, [{
       type: 'delete',
       path: ['hello', 'general',],
       old: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+    }])
+    const expected = {
+      hello: {
+        hello: 'there',
+      },
+    }
+    expect(actual).toEqual(expected)
+  })
 
   it('nested object add', () => {
-    const actual = determineDiff({
+    const actual = applyDiff({
       hello: {
         hello: 'there',
       },
-    }, {
-      hello: {
-        hello: 'there',
-        general: 'kenobi',
-      },
-    })
-    const expected = [{
+    }, [{
       type: 'set',
       path: ['hello', 'general',],
       new: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
-
-  it('nested object set', () => {
-    const actual = determineDiff({
+    }])
+    const expected = {
       hello: {
         hello: 'there',
         general: 'kenobi',
       },
-    }, {
+    }
+    expect(actual).toEqual(expected)
+  })
+
+  it('nested object set', () => {
+    const actual = applyDiff({
       hello: {
-        hello: 'kenobi',
-        general: 'there',
+        hello: 'there',
+        general: 'kenobi',
       },
-    })
-    const expected = [{
+    }, [{
       type: 'set',
       path: ['hello', 'general',],
       old: 'kenobi',
@@ -245,12 +239,18 @@ describe('Determine diff', () => [
       path: ['hello', 'hello',],
       old: 'there',
       new: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+    }])
+    const expected = {
+      hello: {
+        hello: 'kenobi',
+        general: 'there',
+      },
+    }
+    expect(actual).toEqual(expected)
+  })
 
-  it('nested object and array same', () => {
-    const actual = determineDiff({
+  it('nested object and array none', () => {
+    const actual = applyDiff({
       hello: {
         hello: 'there',
       },
@@ -258,7 +258,8 @@ describe('Determine diff', () => [
         'general',
         'kenobi',
       ],
-    }, {
+    }, [])
+    const expected = {
       hello: {
         hello: 'there',
       },
@@ -266,62 +267,57 @@ describe('Determine diff', () => [
         'general',
         'kenobi',
       ],
-    })
-    const expected = []
-    assert.deepEqual(actual, expected)
-  }),
+    }
+    expect(actual).toEqual(expected)
+  })
 
-  it('shallow proxy same', () => {
-    const actual = determineDiff(new Proxy({
+  it('shallow proxy none', () => {
+    const actual = applyDiff(new Proxy({
       hello: 'there',
       general: 'kenobi',
-    }, {}), {
+    }, {}), [])
+    const expected = {
       hello: 'there',
       general: 'kenobi',
-    })
-    const expected = []
-    assert.deepEqual(actual, expected)
-  }),
+    }
+    expect(actual).toEqual(expected)
+  })
 
   it('shallow proxy delete', () => {
-    const actual = determineDiff(new Proxy({
+    const actual = applyDiff(new Proxy({
       hello: 'there',
       general: 'kenobi',
-    }, {}), {
-      hello: 'there',
-    })
-    const expected = [{
+    }, {}), [{
       type: 'delete',
       path: ['general',],
       old: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
+    }])
+    const expected = {
+      hello: 'there',
+    }
+    expect(actual).toEqual(expected)
+  })
 
   it('shallow proxy add', () => {
-    const actual = determineDiff(new Proxy({
+    const actual = applyDiff(new Proxy({
       hello: 'there',
-    }, {}), {
-      hello: 'there',
-      general: 'kenobi',
-    })
-    const expected = [{
+    }, {}), [{
       type: 'set',
       path: ['general',],
       new: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
-
-  it('shallow proxy set', () => {
-    const actual = determineDiff(new Proxy({
+    }])
+    const expected = {
       hello: 'there',
       general: 'kenobi',
-    }, {}), {
-      hello: 'kenobi',
-      general: 'there',
-    })
-    const expected = [{
+    }
+    expect(actual).toEqual(expected)
+  })
+
+  it('shallow proxy set', () => {
+    const actual = applyDiff(new Proxy({
+      hello: 'there',
+      general: 'kenobi',
+    }, {}), [{
       type: 'set',
       path: ['general',],
       old: 'kenobi',
@@ -331,7 +327,11 @@ describe('Determine diff', () => [
       path: ['hello',],
       old: 'there',
       new: 'kenobi',
-    }]
-    assert.deepEqual(actual, expected)
-  }),
-])
+    }])
+    const expected = {
+      hello: 'kenobi',
+      general: 'there',
+    }
+    expect(actual).toEqual(expected)
+  })
+})
