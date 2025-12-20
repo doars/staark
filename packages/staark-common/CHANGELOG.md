@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.9
+
+- Fix cloning `null` type.
+- Fix parsing content after IDs (`#`).
+
 ## 1.5.8
 
 - Removed uppercasing tag names by default.

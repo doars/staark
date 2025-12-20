@@ -10,7 +10,7 @@ var suffixNameIfMultiple = (attributes) => {
 };
 // src/clone.js
 var cloneRecursive = (value) => {
-  if (typeof value === "object") {
+  if (value && typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
     for (const key in value) {
       clone[key] = cloneRecursive(value[key]);
@@ -202,6 +202,7 @@ var selectorToTokenizer = (selector) => {
     }
     tokenA += character;
   }
+  storeToken();
   return [type, attributes];
 };
 
@@ -272,4 +273,4 @@ export {
   arrayify
 };
 
-//# debugId=47FC65A67E6C1B4464756E2164756E21
+//# debugId=B239FA965141389164756E2164756E21

@@ -29,6 +29,7 @@ AGENTS.md
 packages/roupn/exm/client.iife.js
 packages/roupn/exm/client.iife.js.map
 packages/roupn/exm/client.iife.min.js
+packages/roupn/exm/client.iife.min.js.map
 
 # Performance builds and data
 performance/dst/

@@ -1,16 +1,16 @@
-import brotliSize from 'brotli-size'
+import { sync as brotliSizeSync } from 'brotli-size'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
 import path from 'path'
 import puppeteer from 'puppeteer'
 import {
-  fileURLToPath,
+    fileURLToPath,
 } from 'url'
 import {
-  promisify,
+    promisify,
 } from 'util'
 import {
-  gzip,
+    gzip,
 } from 'zlib'
 
 const gzipAsync = promisify(gzip)
@@ -289,7 +289,7 @@ async function runBenchmarks () {
       libraryCode = lines.join('\n')
 
       if (options.minified) {
-        libraryBrotliSize = await brotliSize.sync(libraryCode)
+        libraryBrotliSize = brotliSizeSync(libraryCode)
         libraryGzipSize = (await gzipAsync(libraryCode)).length
       }
 

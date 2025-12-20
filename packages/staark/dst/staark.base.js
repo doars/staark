@@ -25,7 +25,7 @@ var node = (type, attributesOrContents, contents) => {
 };
 // ../staark-common/src/clone.js
 var cloneRecursive = (value) => {
-  if (typeof value === "object") {
+  if (value && typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
     for (const key in value) {
       clone[key] = cloneRecursive(value[key]);
@@ -219,7 +219,6 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         const newAbstract = newChildAbstracts[newIndex];
         if (newAbstract.r) {
           let match = oldMemoMap.get(newAbstract.r);
-          console.log("checking for memo");
           if (!match || !equalRecursive(match.m, newAbstract.m)) {
             match = {
               c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
@@ -325,4 +324,4 @@ export {
   memo
 };
 
-//# debugId=30F072556201827E64756E2164756E21
+//# debugId=2D1D9E1C3D86D00D64756E2164756E21

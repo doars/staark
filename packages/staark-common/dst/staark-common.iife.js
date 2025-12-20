@@ -49,7 +49,7 @@
     cloneRecursive: () => cloneRecursive
   });
   var cloneRecursive = (value) => {
-    if (typeof value === "object") {
+    if (value && typeof value === "object") {
       const clone = Array.isArray(value) ? [] : {};
       for (const key in value) {
         clone[key] = cloneRecursive(value[key]);
@@ -280,6 +280,7 @@
       }
       tokenA += character;
     }
+    storeToken();
     return [type, attributes];
   };
 
@@ -375,4 +376,4 @@
   });
 })();
 
-//# debugId=D31B19F09E976E9964756E2164756E21
+//# debugId=E8BC01771B95967364756E2164756E21

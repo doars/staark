@@ -180,5 +180,7 @@ export const selectorToTokenizer = (
     tokenA += character
   }
 
+  storeToken()
+
   return [type, attributes]
 }

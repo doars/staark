@@ -5,9 +5,7 @@
   },
   "name": "@doars/staark-benchmarks",
   "private": true,
-  "description": "",
-  "keywords": [],
-  "version": "1.0.0",
+  "version": "0.0.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -15,8 +13,7 @@
     "build": "NODE_ENV=production bun config.bundle.js",
     "profile": "bun src/index.js --profile --iterations=1",
     "sizes": "bun src/index.js --minified --sizes --iterations=0",
-    "test:runtime": "echo 'no runtime tests'",
-    "upgrade": "npm-check-updates --upgrade --target minor"
+    "test:runtime": "echo 'no runtime tests'"
   },
   "devDependencies": {
     "puppeteer": "^24.33.1"

@@ -25,8 +25,7 @@
     "develop": "NODE_ENV=development bun config.bundle.js",
     "build": "NODE_ENV=production bun config.bundle.js",
     "start:example": "bun --watch ./exm/server.js",
-    "test:runtime": "echo 'no runtime tests'",
-    "upgrade": "npm-check-updates --upgrade --target minor"
+    "test:runtime": "echo 'no runtime tests'"
   },
   "files": [
     "dst",

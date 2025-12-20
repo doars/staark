@@ -1,12 +1,12 @@
 import {
-  describe,
-  it,
-  expect,
+    describe,
+    expect,
+    it,
 } from 'bun:test'
 
 import {
-  determineDiff,
-} from '../../dst/tiedliene.js'
+    determineDiff,
+} from '../../src/index.js'
 
 describe('Determine diff', () => {
   it('shallow object same', () => {

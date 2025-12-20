@@ -9,11 +9,10 @@
   "scripts": {
     "build": "bun --filter \"*\" build",
     "serve": "bun ./scripts/srv.js ./",
-    "test:runtime": "bun --filter \"*\" test:runtime",
-    "upgrade": "npm-check-updates --upgrade --target minor && bun --filter \"*\" upgrade && bun install"
+    "test:runtime": "bun --filter \"*\" test:runtime"
   },
   "devDependencies": {
     "brotli-size": "^4.0.0",
-    "npm-check-updates": "^19.2.0"
+    "happy-dom": "^20.0.11"
   }
 }

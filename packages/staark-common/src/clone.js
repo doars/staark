@@ -7,7 +7,10 @@
 export const cloneRecursive = (
   value,
 ) => {
-  if (typeof (value) === 'object') {
+  if (
+    value
+    && typeof (value) === 'object'
+  ) {
     const clone = (
       Array.isArray(value)
         ? []

@@ -155,6 +155,7 @@ var selectorToTokenizer = (selector) => {
     }
     tokenA += character;
   }
+  storeToken();
   return [type, attributes];
 };
 
@@ -209,7 +210,7 @@ var nde = (selector, contents) => {
 };
 // ../staark-common/src/clone.js
 var cloneRecursive = (value) => {
-  if (typeof value === "object") {
+  if (value && typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
     for (const key in value) {
       clone[key] = cloneRecursive(value[key]);
@@ -403,7 +404,6 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         const newAbstract = newChildAbstracts[newIndex];
         if (newAbstract.r) {
           let match2 = oldMemoMap.get(newAbstract.r);
-          console.log("checking for memo");
           if (!match2 || !equalRecursive(match2.m, newAbstract.m)) {
             match2 = {
               c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
@@ -515,4 +515,4 @@ export {
   conditional
 };
 
-//# debugId=9B42BAD4EB0770A764756E2164756E21
+//# debugId=67E863F252B6581564756E2164756E21

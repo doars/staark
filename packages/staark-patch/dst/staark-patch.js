@@ -157,6 +157,7 @@ var selectorToTokenizer = (selector) => {
     }
     tokenA += character;
   }
+  storeToken();
   return [type, attributes];
 };
 
@@ -391,4 +392,4 @@ export {
   conditional
 };
 
-//# debugId=011483B4E5BA847C64756E2164756E21
+//# debugId=6C0732A6C5F44C8064756E2164756E21

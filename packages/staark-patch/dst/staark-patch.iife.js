@@ -170,6 +170,7 @@
       }
       tokenA += character;
     }
+    storeToken();
     return [type, attributes];
   };
 
@@ -409,4 +410,4 @@
   });
 })();
 
-//# debugId=57C183B844AE3A9264756E2164756E21
+//# debugId=85FE43CD32E3012E64756E2164756E21

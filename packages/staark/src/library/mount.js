@@ -219,7 +219,6 @@ export const mount = (
           let match = oldMemoMap.get(
             newAbstract.r,
           )
-          console.log('checking for memo')
           if (
             !match
             || !equalRecursive(match.m, newAbstract.m)

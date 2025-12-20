@@ -1,12 +1,12 @@
 import {
-  describe,
-  it,
-  expect,
+    describe,
+    expect,
+    it,
 } from 'bun:test'
 
 import {
-  revertDiff,
-} from '../../dst/tiedliene.js'
+    revertDiff,
+} from '../../src/index.js'
 
 describe('Revert diff', () => {
   it('shallow object none', () => {

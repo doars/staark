@@ -170,6 +170,7 @@
       }
       tokenA += character;
     }
+    storeToken();
     return [type, attributes];
   };
 
@@ -229,7 +230,7 @@
 
   // ../staark-common/src/clone.js
   var cloneRecursive = (value) => {
-    if (typeof value === "object") {
+    if (value && typeof value === "object") {
       const clone = Array.isArray(value) ? [] : {};
       for (const key in value) {
         clone[key] = cloneRecursive(value[key]);
@@ -423,7 +424,6 @@
           const newAbstract = newChildAbstracts[newIndex];
           if (newAbstract.r) {
             let match2 = oldMemoMap.get(newAbstract.r);
-            console.log("checking for memo");
             if (!match2 || !equalRecursive(match2.m, newAbstract.m)) {
               match2 = {
                 c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
@@ -540,4 +540,4 @@
   });
 })();
 
-//# debugId=CA69709231EFEEA664756E2164756E21
+//# debugId=29FE80542BDDBD5F64756E2164756E21
