@@ -5,22 +5,22 @@ import {
     csvParser,
 } from '../../src/index.js'
 
-describe('CSV Request', () => {
+describe('TSV Request', () => {
   let originalFetch
 
   beforeAll(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('Lorem,Dolor\nipsum,sit\n')))
+    globalThis.fetch = mock(() => Promise.resolve(new Response('Lorem\tDolor\nipsum\tsit\n')))
   })
 
   afterAll(() => {
     globalThis.fetch = originalFetch
   })
 
-  it('should parse CSV response', async () => {
+  it('should parse TSV response', async () => {
     const request = create({
       domain: 'http://localhost:3000',
-      path: '/packages/vroagn/tst/data/csv.csv',
+      path: '/packages/vroagn/tst/data/tsv.tsv',
       parsers: [
         csvParser(),
       ],

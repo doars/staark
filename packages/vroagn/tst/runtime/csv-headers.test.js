@@ -5,7 +5,7 @@ import {
     csvParser,
 } from '../../src/index.js'
 
-describe('CSV Request', () => {
+describe('CSV Headers Request', () => {
   let originalFetch
 
   beforeAll(() => {
@@ -17,17 +17,19 @@ describe('CSV Request', () => {
     globalThis.fetch = originalFetch
   })
 
-  it('should parse CSV response', async () => {
+  it('should parse CSV with headers', async () => {
     const request = create({
       domain: 'http://localhost:3000',
       path: '/packages/vroagn/tst/data/csv.csv',
       parsers: [
-        csvParser(),
+        csvParser({
+          hasHeaders: true,
+        }),
       ],
     })
 
     const [error, _response, result] = await request()
     expect(error).toBe(null)
-    expect(result).toEqual([['Lorem','Dolor'],['ipsum','sit']])
+    expect(result).toEqual([{ Lorem: 'ipsum', Dolor: 'sit' }])
   })
 })

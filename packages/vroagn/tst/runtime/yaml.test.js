@@ -26,7 +26,7 @@ describe('YAML Request', () => {
       ],
     })
 
-    const [error, response, result] = await request()
+    const [error, _response, result] = await request()
     expect(error).toBe(null)
     expect(result).toEqual({ Lorem: 'ipsum', Dolor: 'sit' })
   })

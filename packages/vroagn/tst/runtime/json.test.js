@@ -22,7 +22,7 @@ describe('JSON Request', () => {
       path: '/packages/vroagn/tst/data/json.json',
     })
 
-    const [error, response, result] = await request()
+    const [error, _response, result] = await request()
     expect(error).toBe(null)
     expect(result).toEqual({ Lorem: 'ipsum', Dolor: 'sit' })
   })
