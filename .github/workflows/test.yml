@@ -1,0 +1,12 @@
+name: Test
+on:
+  push:
+    branches: [main]  # Only runs on pushes to main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1  # Installs Bun
+      - run: bun install  # Install dependencies
+      - run: bun test  # Runs .test.js files across the workspace
