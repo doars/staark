@@ -24,8 +24,7 @@
   "scripts": {
     "develop": "NODE_ENV=development bun config.bundle.js",
     "build": "NODE_ENV=production bun config.bundle.js",
-    "start:example": "bun --watch ./exm/server.js",
-    "test:runtime": "echo 'no runtime tests'"
+    "start:example": "bun --watch ./exm/server.js"
   },
   "files": [
     "dst",

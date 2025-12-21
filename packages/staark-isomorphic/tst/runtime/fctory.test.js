@@ -4,10 +4,10 @@ import {
     fctory,
 } from '../../src/index.js'
 
-describe('Factory', () => {
-  it('should create a factory function for a type', () => {
-    const aFactory = fctory.a
-    expect(typeof aFactory).toBe('function')
+describe('Fctory', () => {
+  it('should create a fctory function for a type', () => {
+    const aFctory = fctory.a
+    expect(typeof aFctory).toBe('function')
   })
 
   it('should create a node with selector attributes and content', () => {

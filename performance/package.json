@@ -12,8 +12,7 @@
     "benchmark": "bun src/index.js",
     "build": "NODE_ENV=production bun config.bundle.js",
     "profile": "bun src/index.js --profile --iterations=1",
-    "sizes": "bun src/index.js --minified --sizes --iterations=0",
-    "test:runtime": "echo 'no runtime tests'"
+    "sizes": "bun src/index.js --minified --sizes --iterations=0"
   },
   "devDependencies": {
     "puppeteer": "^24.33.1"

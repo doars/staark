@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
-    nde,
+  nde,
 } from '../../src/index.js'
 
-describe('Node', () => {
+describe('Nde', () => {
   it('should create a node from a complex selector', () => {
     const result = nde('a.nav-link[href="/next-page/"][target=_blank][data-active]', 'next page')
     expect(result.t).toBe('a')

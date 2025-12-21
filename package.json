@@ -8,8 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "bun --filter \"*\" build",
-    "serve": "bun ./scripts/srv.js ./",
-    "test:runtime": "bun --filter \"*\" test:runtime"
+    "serve": "bun ./scripts/srv.js ./"
   },
   "devDependencies": {
     "brotli-size": "^4.0.0",

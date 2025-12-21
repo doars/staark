@@ -23,8 +23,7 @@
   },
   "scripts": {
     "develop": "NODE_ENV=development bun config.bundle.js",
-    "build": "NODE_ENV=production bun config.bundle.js",
-    "test:runtime": "bun test tst/runtime/"
+    "build": "NODE_ENV=production bun config.bundle.js"
   },
   "files": [
     "dst",
