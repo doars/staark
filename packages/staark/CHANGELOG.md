@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.15
+## 1.7.15 (unreleased)
 
 - Switch to `AI.md` for providing library context to LLM's.
 

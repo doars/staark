@@ -2,7 +2,7 @@
 
 ## 1.6.8
 
-- Upgrade dependecy.
+- Upgrade dependency.
 
 ## 1.6.7
 

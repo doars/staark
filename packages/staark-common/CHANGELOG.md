@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.9
+## 1.5.9 (unreleased)
 
 - Fix cloning `null` type.
 - Fix parsing content after IDs (`#`).
