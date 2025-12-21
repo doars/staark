@@ -30,8 +30,7 @@ describe('Patch', () => {
       ]),
     )
 
-    expect(div.innerHTML).toContain('<ul>')
-    expect(div.innerHTML).toContain('item 1')
+    expect(div.innerHTML).toBe('<div id="first-id"><ul><li>item 1</li><li>item 2</li><li>item 3</li></ul></div>')
 
     patch(
       node('div', {
@@ -45,6 +44,6 @@ describe('Patch', () => {
       ]),
     )
 
-    expect(div.innerHTML).toContain('item 4')
+    expect(div.innerHTML).toBe('<div id="second-id"><ul><li>item 2</li><li>item 3</li><li>item 4</li></ul></div>')
   })
 })
