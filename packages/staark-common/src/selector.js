@@ -39,6 +39,9 @@ export const selectorToTokenizer = (
   let tokenA = ''
   let tokenB = true
   let tokenType = TokenTypes.type
+  /**
+   * Stores the current token based on its type into the attributes or type.
+   */
   const storeToken = () => {
     if (tokenA) {
       switch (tokenType) {
@@ -74,6 +77,9 @@ export const selectorToTokenizer = (
   let character
 
   let attributeBracketCount
+  /**
+   * Parses an attribute from the selector string, including its value if present.
+   */
   const parseAttribute = () => {
     attributeBracketCount = 0
 

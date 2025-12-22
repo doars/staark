@@ -1,3 +1,9 @@
+/**
+ * Converts a base64-encoded string to an ArrayBuffer.
+ *
+ * @param {string} base64 - The base64-encoded string to convert.
+ * @returns {ArrayBuffer} The decoded ArrayBuffer.
+ */
 export const base64ToBuffer = (
   base64,
 ) => {
@@ -8,6 +14,12 @@ export const base64ToBuffer = (
   ).buffer
 }
 
+/**
+ * Converts a base64-encoded string to a UTF-8 string.
+ *
+ * @param {string} base64 - The base64-encoded string to convert.
+ * @returns {string} The decoded UTF-8 string.
+ */
 export const base64ToString = (
   base64,
 ) => {
@@ -19,6 +31,12 @@ export const base64ToString = (
   return new TextDecoder().decode(bytes)
 }
 
+/**
+ * Converts a UTF-8 string to a base64-encoded string.
+ *
+ * @param {string} string - The UTF-8 string to encode.
+ * @returns {string} The base64-encoded string.
+ */
 export const stringToBase64 = (
   string,
 ) => {
@@ -39,6 +57,12 @@ export const stringToBase64 = (
   return btoa(binary)
 }
 
+/**
+ * Converts an ArrayBuffer to a base64-encoded string.
+ *
+ * @param {ArrayBuffer} buffer - The ArrayBuffer to encode.
+ * @returns {string} The base64-encoded string.
+ */
 export const bufferToBase64 = (
   buffer,
 ) => {

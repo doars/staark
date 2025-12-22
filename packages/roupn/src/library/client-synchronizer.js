@@ -105,6 +105,11 @@ export const createClientSynchronizer = (
     _messageOffset = 0,
     _stateUpdatesWindow = windowPerUser
 
+  /**
+   * Sends the state delta to other users in the room.
+   *
+   * @param {Array} stateDelta - The array of state changes to send.
+   */
   const _sendDelta = (
     stateDelta,
   ) => {
@@ -143,6 +148,9 @@ export const createClientSynchronizer = (
 
     _updatePreviousState()
   }
+  /**
+   * Sends the current state delta to other users if the state has changed.
+   */
   const sendUpdate = (
   ) => {
     if (privateState.previousState) {
@@ -158,6 +166,9 @@ export const createClientSynchronizer = (
     }
   }
 
+  /**
+   * Synchronizes the full current state with other users in the room.
+   */
   const _synchroniseState = (
   ) => {
     if (privateState.users.length > 1) {
@@ -170,6 +181,9 @@ export const createClientSynchronizer = (
     }
   }
 
+  /**
+   * Updates the previous state to match the current public state.
+   */
   const _updatePreviousState = (
   ) => {
     privateState.previousState = cloneRecursive(

@@ -28,6 +28,13 @@ const SELF_CLOSING = [
  */
 
 const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g
+/**
+ * Converts a string part to hyphenated form based on offset.
+ *
+ * @param {string} part - The part to hyphenate.
+ * @param {number} offset - The offset position.
+ * @returns {string} The hyphenated part.
+ */
 const HYPHENATE = (part, offset) => (offset ? '-' : '') + part
 
 /**

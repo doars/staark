@@ -41,13 +41,20 @@ export const factory = /*#__PURE__*/ new Proxy({}, {
         )
     )
 
-    return target[type] = (
-      attributesOrContents,
-      contents,
-    ) => node(
-      typeConverted,
-      attributesOrContents,
-      contents,
-    )
+     /**
+      * Generates a node with the given type.
+      *
+      * @param {NodeAttributes | NodeContent[] | NodeContent} [attributesOrContents] Attributes or contents.
+      * @param {NodeContent[] | NodeContent} [contents] Contents.
+      * @returns {NodeAbstract} The node abstract.
+      */
+     return target[type] = (
+       attributesOrContents,
+       contents,
+     ) => node(
+       typeConverted,
+       attributesOrContents,
+       contents,
+     )
   },
 })

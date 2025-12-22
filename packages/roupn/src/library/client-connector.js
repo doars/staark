@@ -161,6 +161,11 @@ export const createClientConnector = (
     _userSignKeys = new Map(),
     _userVerification = new Map(),
     _userVerified = new Map()
+  /**
+   * Generates cryptographic keys for the user using a Web Worker if not already generated.
+   *
+   * @returns {Promise<void>|null} A promise that resolves when keys are generated, or null if already generated.
+   */
   const _generateMyKeys = (
   ) => {
     if (
@@ -232,6 +237,11 @@ export const createClientConnector = (
   const onUserVerificationCode = createEvent()
   const onConnection = createEvent()
 
+  /**
+   * Sets the current connection state and dispatches a connection event if the state has changed.
+   *
+   * @param {number} state - The new connection state.
+   */
   const _setConnectionState = (
     state,
   ) => {
@@ -243,6 +253,11 @@ export const createClientConnector = (
     }
   }
 
+  /**
+   * Generates a verification code for the specified user ID using the room code and derived key.
+   *
+   * @param {string} userId - The ID of the user to generate the code for.
+   */
   const _generateVerificationCode = async (
     userId,
   ) => {
@@ -306,6 +321,12 @@ export const createClientConnector = (
 
     _setConnectionState(CONNECTION_DISCONNECTED)
   }
+  /**
+   * Sends a message to kick the specified user from the room. Only allowed by the room creator.
+   *
+   * @param {string} userId - The ID of the user to kick.
+   * @returns {boolean} True if the message was sent successfully, false otherwise.
+   */
   const kickUser = (
     userId,
   ) => messageServer({
@@ -385,6 +406,13 @@ export const createClientConnector = (
     })
   }
 
+  /**
+   * Processes an incoming message, decrypts it if necessary, and handles the message based on its type.
+   *
+   * @param {Object<string, any>} parts - The parsed message parts.
+   * @param {string} raw - The raw message string.
+   * @param {boolean} [isBuffered=false] - Whether this message was buffered.
+   */
   const _processMessage = async (
     parts,
     raw,
@@ -997,6 +1025,13 @@ export const createClientConnector = (
     }
   }
 
+  /**
+   * Sends a message to the server or a specific user, encrypting the message if necessary.
+   *
+   * @param {Object<string, any>} data - The message data to send.
+   * @param {Object<string, any>} [options={}] - Options for the message, such as receiver or server flag.
+   * @returns {boolean} True if the message was sent successfully, false otherwise.
+   */
   const _message = async (
     data,
     options = {},
@@ -1112,6 +1147,12 @@ export const createClientConnector = (
     return true
   }
 
+  /**
+   * Sends a message to the server if the current user is the room creator.
+   *
+   * @param {Object<string, any>} data - The message data to send.
+   * @returns {boolean} True if the message was sent successfully, false otherwise.
+   */
   const messageServer = (
     data,
   ) => (
@@ -1121,6 +1162,13 @@ export const createClientConnector = (
       server: true,
     })
   )
+  /**
+   * Sends a message to a specific user.
+   *
+   * @param {Object<string, any>} data - The message data to send.
+   * @param {string} userId - The ID of the user to send the message to.
+   * @returns {boolean} True if the message was sent successfully, false otherwise.
+   */
   const messageUser = (
     data,
     userId,
@@ -1131,6 +1179,13 @@ export const createClientConnector = (
     })
   )
 
+  /**
+   * Generates a verification code string from the stored hash for the specified user.
+   *
+   * @param {string} userId - The ID of the user.
+   * @param {number} [codeLength=6] - The length of the verification code.
+   * @returns {string|boolean} The verification code string or false if no hash is stored.
+   */
   const getVerificationCode = (
     userId,
     codeLength = 6,
@@ -1170,6 +1225,12 @@ export const createClientConnector = (
     ) => messageServer({
       type: ROOM_CLOSED,
     }),
+    /**
+     * Creates a new room and joins it.
+     *
+     * @param {Object<string, any>} [options={}] - Options for creating the room.
+     * @returns {Object<string, any>|undefined} Room creation data or undefined if failed.
+     */
     createRoom: async (
       options = {},
     ) => {
@@ -1267,6 +1328,12 @@ export const createClientConnector = (
 
       return data
     },
+    /**
+     * Joins an existing room.
+     *
+     * @param {string} roomCode - The code of the room to join.
+     * @param {Object<string, any>} [options={}] - Options for joining the room.
+     */
     joinRoom: (
       roomCode,
       options = {},
@@ -1285,6 +1352,13 @@ export const createClientConnector = (
     kickUser,
 
     getVerificationCode,
+    /**
+     * Verifies a user with the provided verification code.
+     *
+     * @param {string} userId - The ID of the user to verify.
+     * @param {string} code - The verification code.
+     * @returns {boolean} True if the verification was successful, false otherwise.
+     */
     verifyUser: async (
       userId,
       code,

@@ -413,11 +413,17 @@ export const createServerConnector = (
       _rooms.delete(roomCode)
       onRoomRemove.dispatch({ roomCode })
     }
-  }
+   }
 
-  const removeRoom = function (
-    roomCode,
-  ) {
+   /**
+    * Removes a room and disconnects all users.
+    *
+    * @param {string} roomCode - The code of the room to remove.
+    * @returns {[boolean, Object]} Success status and result object.
+    */
+   const removeRoom = function (
+     roomCode,
+   ) {
     const room = _rooms.get(roomCode)
     if (!room) {
       return [false, {
@@ -562,6 +568,13 @@ export const createServerConnector = (
     getRoomCodes: () => Array.from(_rooms.keys()),
     getRoomCount: () => _rooms.size,
 
+    /**
+     * Handles HTTP requests for room creation.
+     *
+     * @param {Object} request - The HTTP request object.
+     * @param {Object} response - The HTTP response object.
+     * @returns {boolean} True if the request was handled.
+     */
     handleHttpRequest: (
       request,
       response,
@@ -598,6 +611,14 @@ export const createServerConnector = (
       return false
     },
 
+    /**
+     * Handles WebSocket upgrade requests for joining rooms.
+     *
+     * @param {Object} request - The upgrade request object.
+     * @param {Object} socket - The socket object.
+     * @param {Buffer} head - The head buffer.
+     * @param {Object} socketServer - The WebSocket server instance.
+     */
     handleSocketUpgrade: (
       request,
       socket,

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 (unreleased)
+
+- Fix cloning `null` type.
+
 ## 1.2.0
 
 - Added `cloneRecursive` to library exports.

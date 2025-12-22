@@ -1,6 +1,6 @@
 // src/utilities/clone.js
 var cloneRecursive = (value) => {
-  if (typeof value === "object") {
+  if (value && typeof value === "object") {
     const clone = Array.isArray(value) ? [] : {};
     for (const key in value) {
       clone[key] = cloneRecursive(value[key]);
@@ -98,4 +98,4 @@ export {
   applyDiff
 };
 
-//# debugId=E973DA924B790B3B64756E2164756E21
+//# debugId=118E922A329D338564756E2164756E21

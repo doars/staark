@@ -50,6 +50,9 @@ export const mount = (
     initialState = {}
   }
   let updatePromise = null
+  /**
+   * Triggers an update to the view by scheduling the updateAbstracts function if not already updating.
+   */
   const triggerUpdate = () => {
     if (!updatePromise) {
       updatePromise = Promise.resolve()
@@ -377,6 +380,9 @@ export const mount = (
 
   let active = true,
     updating = false
+  /**
+   * Updates the abstract tree representation of the view and applies changes to the DOM.
+   */
   const updateAbstracts = () => {
     if (
       active

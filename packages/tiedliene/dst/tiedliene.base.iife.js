@@ -13,7 +13,7 @@
 
   // src/utilities/clone.js
   var cloneRecursive = (value) => {
-    if (typeof value === "object") {
+    if (value && typeof value === "object") {
       const clone = Array.isArray(value) ? [] : {};
       for (const key in value) {
         clone[key] = cloneRecursive(value[key]);
@@ -116,4 +116,4 @@
   });
 })();
 
-//# debugId=8C1056C93087E64764756E2164756E21
+//# debugId=7040ABBD2569B73F64756E2164756E21

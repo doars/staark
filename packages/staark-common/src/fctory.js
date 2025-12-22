@@ -38,10 +38,17 @@ export const fctory = /*#__PURE__*/ new Proxy({}, {
         )
     )
 
-    return target[type] = (
-      selector,
-      contents,
-    ) => {
+     /**
+      * Generates a node with the given type and selector.
+      *
+      * @param {string} [selector] Selector string for attributes.
+      * @param {NodeContent[] | NodeContent} [contents] Contents.
+      * @returns {NodeAbstract} The node abstract.
+      */
+     return target[type] = (
+       selector,
+       contents,
+     ) => {
       let attributes
       if (selector) {
         const [_, _attributes] = selectorToTokenizer(selector)
