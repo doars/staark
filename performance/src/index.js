@@ -2,7 +2,7 @@ import { sync as brotliSizeSync } from 'brotli-size'
 import fs from 'fs'
 import fsPromises from 'fs/promises'
 import path from 'path'
-import puppeteer from 'puppeteer'
+import { chromium } from 'playwright'
 import {
     fileURLToPath,
 } from 'url'
@@ -49,7 +49,7 @@ const options = {
   profile: false,
 
   complexity: 10,
-  iterations: 10,
+  iterations: 100,
 }
 const args = process.argv.slice(2)
 args.forEach(arg => {
@@ -108,7 +108,7 @@ async function runBenchmark (
 ) {
   const page = await browser.newPage()
 
-  const client = await page.target().createCDPSession()
+  const client = await page.context().newCDPSession(page)
   await client.send('HeapProfiler.enable');
 
   await page.addScriptTag({
@@ -160,9 +160,22 @@ async function runBenchmark (
 
     await client.send('HeapProfiler.collectGarbage')
 
+    let tracingPromise
     if (traceFilePath) {
-      await page.tracing.start({
-        path: traceFilePath,
+      let traceData = []
+      let tracingCompleteResolve
+      tracingPromise = new Promise(resolve => {
+        tracingCompleteResolve = resolve
+      })
+      client.on('Tracing.dataCollected', (params) => {
+        traceData.push(...params.value)
+      })
+      client.on('Tracing.tracingComplete', () => {
+        const trace = '{"traceEvents": [' + traceData.map(event => JSON.stringify(event)).join(',') + ']}'
+        fs.writeFileSync(traceFilePath, trace)
+        tracingCompleteResolve()
+      })
+      await client.send('Tracing.start', {
         categories: [
           '-*',
           'blink',
@@ -170,11 +183,11 @@ async function runBenchmark (
           'disabled-by-default-devtools.timeline',
           'v8',
           'disabled-by-default-v8.cpu_profiler',
-        ],
+        ].join(','),
       })
     }
 
-    const runner = async (context, functionName) => {
+    const runner = async ({ context, functionName }) => {
       const startMemory = performance.memory?.usedJSHeapSize || 0
       const startTime = performance.now()
 
@@ -191,10 +204,11 @@ async function runBenchmark (
         memory: (performance.memory?.usedJSHeapSize || 0) - startMemory,
       }
     }
-    const result = await page.evaluate(runner, context, functionName)
+    const result = await page.evaluate(runner, { context, functionName })
 
-    if (profilePath) {
-      await page.tracing.stop()
+    if (traceFilePath) {
+      await client.send('Tracing.end')
+      await tracingPromise
     }
 
     return result
@@ -203,12 +217,12 @@ async function runBenchmark (
   const setupResults = await callBenchmark('setup')
   const runResults = await callBenchmark('run')
 
-  const runner = async (context) => {
+  const runner = async ({ context }) => {
     if (context.window.benchmark.cleanup) {
       context.window.benchmark.cleanup(context)
     }
   }
-  await page.evaluate(runner, context)
+  await page.evaluate(runner, { context })
 
   await client.detach()
   await page.close()
@@ -220,8 +234,8 @@ async function runBenchmark (
 }
 
 async function runBenchmarks () {
-  const browser = await puppeteer.launch({
-    headless: 'new',
+  const browser = await chromium.launch({
+    headless: true,
     args: [
       '--disable-background-timer-throttling',
       '--enable-benchmarking',

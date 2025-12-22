@@ -83,84 +83,84 @@ Min+brotli         1.19KB    44.73%
 
 ### reorder
 
-When ran with a complexity of _10_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
+When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
 
 ```
 snabbdom
 - reorder
-  Setup time     x̄4.38ms,   ∧4.10ms,   ∨5.50ms,   ±0.99%
-  Setup memory   x̄0.20MB,   ∧0.20MB,   ∨0.20MB,   ±0.03%
-  Run time       x̄2.87ms,   ∧1.80ms,   ∨3.80ms,   ±3.25%
-  Run memory     x̄0.33MB,   ∧0.08MB,   ∨1.06MB,  ±14.82%
+  Setup time     x̄5.22ms,   ∧4.10ms,  ∨10.70ms,   ±4.20%
+  Setup memory   x̄0.23MB,   ∧0.18MB,   ∨1.21MB,  ±14.70%
+  Run time       x̄3.63ms,   ∧2.00ms,  ∨17.00ms,   ±9.28%
+  Run memory     x̄0.34MB,   ∧0.08MB,   ∨0.81MB,  ±13.19%
 
 staark-patch
 - reorder
-  Setup time     x̄3.40ms,   ∧3.10ms,   ∨4.00ms,   ±1.10%
-  Setup memory   x̄0.19MB,   ∧0.19MB,   ∨0.19MB,   ±0.00%
-  Run time       x̄3.93ms,   ∧3.00ms,   ∨6.20ms,   ±4.41%
-  Run memory     x̄0.13MB,   ∧0.13MB,   ∨0.13MB,   ±0.00%
+  Setup time     x̄3.32ms,   ∧2.90ms,   ∨4.70ms,   ±1.82%
+  Setup memory   x̄0.17MB,   ∧0.16MB,   ∨0.61MB,   ±7.04%
+  Run time       x̄4.48ms,   ∧3.40ms,   ∨6.30ms,   ±2.65%
+  Run memory     x̄0.11MB,   ∧0.10MB,   ∨0.11MB,   ±0.27%
 
 superfine
 - reorder
-  Setup time     x̄3.10ms,   ∧2.80ms,   ∨3.50ms,   ±0.75%
-  Setup memory   x̄0.25MB,   ∧0.25MB,   ∨0.26MB,   ±0.04%
-  Run time       x̄2.30ms,   ∧1.90ms,   ∨3.80ms,   ±4.02%
-  Run memory     x̄0.24MB,   ∧0.23MB,   ∨0.71MB,   ±3.81%
+  Setup time     x̄3.40ms,   ∧2.90ms,   ∨5.30ms,   ±2.23%
+  Setup memory   x̄0.27MB,   ∧0.24MB,   ∨0.74MB,   ±8.37%
+  Run time       x̄3.25ms,   ∧2.10ms,   ∨8.90ms,   ±4.89%
+  Run memory     x̄0.23MB,   ∧0.19MB,   ∨0.65MB,   ±6.21%
 ```
 
 ### todo_app
 
-When ran with a complexity of _10_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
+When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
 
 ```
 hyperapp
 - todo_app
-  Setup time    x̄23.02ms,  ∧18.70ms,  ∨31.30ms,   ±2.33%
-  Setup memory   x̄1.04MB,   ∧1.02MB,   ∨1.10MB,   ±0.23%
-  Run time      x̄14.76ms,  ∧12.70ms,  ∨20.30ms,   ±1.95%
-  Run memory     x̄1.76MB,   ∧1.69MB,   ∨1.81MB,   ±0.22%
+  Setup time    x̄24.60ms,  ∧16.00ms,  ∨34.80ms,   ±3.46%
+  Setup memory   x̄0.99MB,   ∧0.97MB,   ∨1.00MB,   ±0.08%
+  Run time      x̄10.12ms,   ∧7.20ms,  ∨26.20ms,  ±10.77%
+  Run memory     x̄1.02MB,   ∧1.01MB,   ∨1.04MB,   ±0.18%
 
 incremental-dom
 - todo_app
-  Setup time    x̄20.72ms,  ∧17.20ms,  ∨32.40ms,   ±2.45%
-  Setup memory   x̄1.13MB,   ∧1.11MB,   ∨1.59MB,   ±1.10%
-  Run time       x̄6.55ms,   ∧5.40ms,  ∨15.50ms,   ±3.66%
-  Run memory     x̄0.56MB,   ∧0.06MB,   ∨0.99MB,   ±2.75%
+  Setup time    x̄21.78ms,  ∧18.60ms,  ∨26.90ms,   ±1.28%
+  Setup memory   x̄1.04MB,   ∧1.03MB,   ∨1.06MB,   ±0.13%
+  Run time       x̄5.52ms,   ∧4.80ms,   ∨8.70ms,   ±2.28%
+  Run memory     x̄0.55MB,   ∧0.53MB,   ∨0.59MB,   ±0.34%
 
 mithril
 - todo_app
-  Setup time    x̄19.37ms,  ∧18.20ms,  ∨21.50ms,   ±0.57%
-  Setup memory   x̄1.65MB,   ∧1.62MB,   ∨1.66MB,   ±0.13%
-  Run time      x̄10.00ms,   ∧8.70ms,  ∨17.40ms,   ±2.50%
-  Run memory     x̄1.16MB,   ∧1.15MB,   ∨1.18MB,   ±0.13%
+  Setup time    x̄20.92ms,  ∧18.80ms,  ∨27.30ms,   ±1.57%
+  Setup memory   x̄1.37MB,   ∧1.35MB,   ∨1.39MB,   ±0.09%
+  Run time      x̄12.30ms,   ∧6.90ms,  ∨26.90ms,  ±11.55%
+  Run memory     x̄1.05MB,   ∧1.05MB,   ∨1.05MB,   ±0.02%
 
 snabbdom
 - todo_app
-  Setup time    x̄18.12ms,  ∧17.00ms,  ∨20.80ms,   ±0.66%
-  Setup memory   x̄0.82MB,   ∧0.80MB,   ∨0.85MB,   ±0.24%
-  Run time       x̄7.47ms,   ∧6.80ms,   ∨9.90ms,   ±1.22%
-  Run memory     x̄0.75MB,   ∧0.75MB,   ∨0.77MB,   ±0.05%
+  Setup time    x̄20.30ms,  ∧18.00ms,  ∨24.40ms,   ±1.34%
+  Setup memory   x̄0.81MB,   ∧0.79MB,   ∨0.83MB,   ±0.25%
+  Run time       x̄8.50ms,   ∧6.60ms,  ∨11.30ms,   ±1.85%
+  Run memory     x̄0.75MB,   ∧0.74MB,   ∨1.11MB,   ±0.92%
 
 staark
 - todo_app
-  Setup time    x̄14.13ms,  ∧13.20ms,  ∨15.60ms,   ±0.50%
-  Setup memory   x̄1.13MB,   ∧1.11MB,   ∨1.16MB,   ±0.21%
-  Run time       x̄8.71ms,   ∧7.60ms,  ∨10.50ms,   ±0.97%
-  Run memory     x̄0.73MB,   ∧0.66MB,   ∨0.88MB,   ±0.90%
+  Setup time    x̄15.20ms,  ∧13.20ms,  ∨19.50ms,   ±1.49%
+  Setup memory   x̄1.06MB,   ∧1.05MB,   ∨1.09MB,   ±0.15%
+  Run time       x̄8.98ms,   ∧7.50ms,  ∨11.30ms,   ±1.89%
+  Run memory     x̄0.66MB,   ∧0.61MB,   ∨1.00MB,   ±1.68%
 
 staark-patch
 - todo_app
-  Setup time    x̄14.24ms,  ∧13.30ms,  ∨19.90ms,   ±1.01%
-  Setup memory   x̄0.76MB,   ∧0.75MB,   ∨0.79MB,   ±0.23%
-  Run time       x̄7.58ms,   ∧6.10ms,  ∨10.20ms,   ±1.67%
-  Run memory     x̄0.62MB,   ∧0.55MB,   ∨1.08MB,   ±3.43%
+  Setup time    x̄14.18ms,  ∧12.40ms,  ∨21.90ms,   ±1.82%
+  Setup memory   x̄0.80MB,   ∧0.76MB,   ∨0.81MB,   ±0.15%
+  Run time       x̄7.16ms,   ∧6.20ms,  ∨13.80ms,   ±2.60%
+  Run memory     x̄0.52MB,   ∧0.49MB,   ∨1.07MB,   ±2.11%
 
 superfine
 - todo_app
-  Setup time    x̄13.13ms,  ∧12.40ms,  ∨14.50ms,   ±0.65%
-  Setup memory   x̄0.99MB,   ∧0.98MB,   ∨1.01MB,   ±0.10%
-  Run time      x̄10.78ms,   ∧9.80ms,  ∨12.90ms,   ±0.92%
-  Run memory     x̄1.17MB,   ∧1.09MB,   ∨1.21MB,   ±0.26%
+  Setup time    x̄15.77ms,  ∧13.00ms,  ∨25.80ms,   ±2.64%
+  Setup memory   x̄0.98MB,   ∧0.97MB,   ∨1.02MB,   ±0.29%
+  Run time       x̄6.42ms,   ∧5.10ms,  ∨16.40ms,   ±4.66%
+  Run memory     x̄0.90MB,   ∧0.86MB,   ∨1.18MB,   ±0.65%
 ```
 
 > For staark the base build is used which does not include added functions such as `factory` and `nde` Making the comparison with Hyperapp well suited.
