@@ -97,7 +97,7 @@ window.benchmark = {
       }
     )
 
-    // First render is immediately triggered so nu manual call is required.
+    // First render is immediately triggered so no manual call is required.
   },
 
   run: async function ({

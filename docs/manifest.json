@@ -1,0 +1,29 @@
+{
+  "start_url": "index.html?utm_source=homescreen",
+  "name": "Staark",
+  "short_name": "Staark",
+  "description": "A set of teeny-tiny libraries for building web apps",
+  "dir": "ltr",
+  "lang": "en-GB",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/icons/128-round.png",
+      "type": "image/png",
+      "sizes": "128x128"
+    },
+    {
+      "src": "assets/icons/256-round.png",
+      "type": "image/png",
+      "sizes": "256x256"
+    },
+    {
+      "src": "assets/icons/512-round.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

@@ -1,0 +1,360 @@
+// ../packages/staark-common/src/array.js
+var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
+// ../packages/staark-common/src/marker.js
+var marker = "n";
+
+// ../packages/staark-common/src/node.js
+var node = (type, attributesOrContents, contents) => {
+  if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+    contents = attributesOrContents;
+    attributesOrContents = undefined;
+  }
+  return {
+    _: marker,
+    a: attributesOrContents,
+    c: arrayifyOrUndefined(contents),
+    t: type
+  };
+};
+// ../packages/staark-common/src/clone.js
+var cloneRecursive = (value) => {
+  if (value && typeof value === "object") {
+    const clone = Array.isArray(value) ? [] : {};
+    for (const key in value) {
+      clone[key] = cloneRecursive(value[key]);
+    }
+    return clone;
+  }
+  return value;
+};
+
+// ../packages/staark-common/src/compare.js
+var equalRecursive = (valueA, valueB) => {
+  if (valueA === valueB) {
+    return true;
+  }
+  if (!valueA || !valueB || typeof valueA !== "object" || typeof valueB !== "object") {
+    return valueA === valueB;
+  }
+  if (valueA instanceof Date) {
+    return valueB instanceof Date && valueA.getTime() === valueB.getTime();
+  }
+  const keys = Object.keys(valueA);
+  return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
+};
+
+// ../packages/staark-common/src/element.js
+var childrenToNodes = (element) => {
+  const abstractChildNodes = [];
+  for (const childNode of element.childNodes) {
+    if (childNode instanceof Text) {
+      abstractChildNodes.push(childNode.textContent ?? "");
+    } else {
+      const attributes = {};
+      for (const attribute of childNode.attributes) {
+        attributes[attribute.name] = attribute.value;
+      }
+      abstractChildNodes.push(node(childNode.nodeName, attributes, childrenToNodes(childNode)));
+    }
+  }
+  return abstractChildNodes;
+};
+
+// ../packages/staark/src/library/proxy.js
+var proxify = (root, onChange) => {
+  const handler = {
+    deleteProperty: (target, key) => {
+      if (Reflect.has(target, key)) {
+        const deleted = Reflect.deleteProperty(target, key);
+        if (deleted) {
+          onChange();
+        }
+        return deleted;
+      }
+      return true;
+    },
+    set: (target, key, value) => {
+      const existingValue = target[key];
+      if (existingValue !== value) {
+        if (value && typeof value === "object") {
+          value = add(value);
+        }
+        target[key] = value;
+        onChange();
+      }
+      return true;
+    }
+  };
+  const add = (target) => {
+    for (const key in target) {
+      if (target[key] && typeof target[key] === "object") {
+        target[key] = add(target[key]);
+      }
+    }
+    return new Proxy(target, handler);
+  };
+  return add(root);
+};
+
+// ../packages/staark/src/library/mount.js
+var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
+  if (typeof initialState === "string") {
+    initialState = JSON.parse(initialState);
+  }
+  if (!initialState) {
+    initialState = {};
+  }
+  let updatePromise = null;
+  const triggerUpdate = () => {
+    if (!updatePromise) {
+      updatePromise = Promise.resolve().then(updateAbstracts);
+    }
+    return updatePromise;
+  };
+  const state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(initialState, triggerUpdate);
+  const updateAttributes = (element, newAttributes, oldAttributes) => {
+    if (newAttributes) {
+      for (const name in newAttributes) {
+        let value = newAttributes[name];
+        if (value) {
+          const type = typeof value;
+          if (type === "function") {
+            const oldValue = oldAttributes?.[name];
+            if (oldValue?.f === value) {
+              newAttributes[name] = oldValue;
+            } else {
+              if (oldValue) {
+                element.removeEventListener(name, oldValue);
+              }
+              const listener = newAttributes[name] = (event) => {
+                value(event, state);
+              };
+              element.addEventListener(name, listener);
+              listener.f = value;
+            }
+          } else {
+            if (name === "class") {
+              if (typeof value === "object") {
+                if (Array.isArray(value)) {
+                  value = value.join(" ");
+                } else {
+                  let classNames = "";
+                  for (const className in value) {
+                    if (value[className]) {
+                      classNames += " " + className;
+                    }
+                  }
+                  value = classNames;
+                }
+              }
+              element.className = value;
+            } else if (name === "style" && typeof value === "object") {
+              for (let styleName in value) {
+                let styleValue = value[styleName];
+                if (styleName.includes("-", 1)) {
+                  element.style.setProperty(styleName, styleValue);
+                } else {
+                  element.style[styleName] = styleValue;
+                }
+              }
+              if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
+                for (let styleName in oldAttributes[name]) {
+                  if (!value[styleName]) {
+                    if (styleName.includes("-", 1)) {
+                      element.style.removeProperty(styleName);
+                    } else {
+                      element.style[styleName] = null;
+                    }
+                  }
+                }
+              }
+            } else {
+              if (value === true) {
+                value = "true";
+              } else if (type !== "string") {
+                value = value.toString();
+              }
+              element.setAttribute(name, value);
+              if (name === "value") {
+                element.value = value;
+              }
+            }
+          }
+        }
+      }
+    }
+    if (oldAttributes) {
+      for (const name in oldAttributes) {
+        const value = oldAttributes[name];
+        if (!newAttributes || !newAttributes[name]) {
+          if (typeof value === "function") {
+            element.removeEventListener(name, oldAttributes[name]);
+          } else if (name === "class") {
+            element.className = "";
+          } else if (name === "style") {
+            element.style.cssText = "";
+          } else if (name === "value") {
+            element.value = "";
+          } else {
+            element.removeAttribute(name);
+          }
+        }
+      }
+    }
+  };
+  let oldMemoMap = new WeakMap;
+  let newMemoMap = new WeakMap;
+  const updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
+    let newIndex = 0;
+    let newCount = 0;
+    if (newChildAbstracts) {
+      for (;newIndex < newChildAbstracts.length; newIndex++) {
+        const newAbstract = newChildAbstracts[newIndex];
+        if (newAbstract.r) {
+          let match = oldMemoMap.get(newAbstract.r);
+          if (!match || !equalRecursive(match.m, newAbstract.m)) {
+            match = {
+              c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
+              m: newAbstract.m,
+              r: newAbstract.r
+            };
+          }
+          newMemoMap.set(newAbstract.r, match);
+          newChildAbstracts.splice(newIndex, 1, ...cloneRecursive(match.c));
+          newIndex--;
+          continue;
+        }
+        let matched = false;
+        if (oldChildAbstracts) {
+          for (let oldIndex = newIndex - newCount;oldIndex < oldChildAbstracts.length; oldIndex++) {
+            const oldAbstract = oldChildAbstracts[oldIndex];
+            if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
+              matched = true;
+              if (newIndex !== oldIndex + newCount) {
+                element.insertBefore(element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
+              }
+              if (newAbstract.t) {
+                updateAttributes(element.childNodes[newIndex], newAbstract.a, oldAbstract.a);
+                updateChildren(element.childNodes[newIndex], newAbstract.c, oldAbstract.c, inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg");
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract;
+              }
+              break;
+            }
+          }
+        }
+        if (!matched) {
+          let newNode;
+          if (newAbstract.t) {
+            const _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
+            if (_inSvg) {
+              newNode = document.createElementNS("http://www.w3.org/2000/svg", newAbstract.t);
+            } else {
+              newNode = document.createElement(newAbstract.t);
+            }
+            updateAttributes(newNode, newAbstract.a, undefined, _inSvg);
+            updateChildren(newNode, newAbstract.c, undefined, _inSvg);
+          } else {
+            newNode = document.createTextNode(newAbstract);
+          }
+          element.insertBefore(newNode, element.childNodes[newIndex]);
+          newCount++;
+        }
+      }
+    }
+    if (oldChildAbstracts) {
+      const elementLength = oldChildAbstracts.length + newCount;
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1;i >= newIndex; i--) {
+          element.childNodes[i].remove();
+        }
+      }
+    }
+  };
+  const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
+  if (typeof oldAbstractTree === "string") {
+    try {
+      oldAbstractTree = JSON.parse(oldAbstractTree);
+    } catch (error) {
+      oldAbstractTree = null;
+    }
+  }
+  if (!oldAbstractTree) {
+    oldAbstractTree = childrenToNodes(_rootElement);
+  }
+  let active = true, updating = false;
+  const updateAbstracts = () => {
+    if (active && !updating && updatePromise) {
+      updating = true;
+      updatePromise = null;
+      let newAbstractTree = arrayifyOrUndefined(renderView(state));
+      updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+      oldAbstractTree = newAbstractTree;
+      oldMemoMap = newMemoMap;
+      newMemoMap = new WeakMap;
+      updating = false;
+    }
+  };
+  triggerUpdate();
+  updateAbstracts();
+  return [
+    triggerUpdate,
+    () => {
+      if (active) {
+        active = false;
+        for (let i = _rootElement.childNodes.length - 1;i >= 0; i--) {
+          _rootElement.childNodes[i].remove();
+        }
+      }
+    },
+    state
+  ];
+};
+// src/scripts/index.js
+var setup = () => {
+  mount(document.getElementById("example-app"), (state) => node("div", [
+    node("div", {
+      class: "text-2 font-900"
+    }, "List"),
+    node("ol", {
+      class: "font-500 h-12 overflow-y-scroll"
+    }, state.todos.map((todo) => node("li", {
+      class: "break-words"
+    }, todo))),
+    node("fieldset", {
+      class: "flex flex-nowrap flex-row group"
+    }, [
+      node("input", {
+        class: "flex-grow w-full flex-shrink",
+        value: state.input,
+        input: (event) => state.input = event.target.value
+      }),
+      node("button", {
+        class: "border-l-0 flex-grow-0 flex-shrink-0",
+        click: () => {
+          if (state.input.trim()) {
+            state.todos.push(state.input.trim());
+            state.input = "";
+          }
+        }
+      }, "Add")
+    ])
+  ]), { todos: ["Hello there!", "General Kenobi."], input: "" });
+};
+if (document.readyState === "complete" || document.readyState === "interactive") {
+  setup();
+} else {
+  document.addEventListener("DOMContentLoaded", setup, { once: true, passive: true });
+}
+window.copyToClipboard = (text) => {
+  const element = document.createElement("textarea");
+  element.value = text;
+  document.body.append(element);
+  element.select();
+  element.setSelectionRange(0, 999999);
+  document.execCommand("copy");
+  element.remove();
+};
+
+//# debugId=229A538ED4ABF38E64756E2164756E21
