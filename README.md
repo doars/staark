@@ -1,6 +1,6 @@
 <div align="center">
 
-![Project logo](assets/icons/256-round.png)
+![Project logo](docs-src/src/assets/icons/256-round.png)
 
 </div>
 
@@ -15,12 +15,12 @@ A set of teeny-tiny libraries for building web apps. The goal of this toolkit is
 
 This mono repository contains several packages, see the overview below:
 
-- [`@doars/roupn`](https://github.com/doars/staark/tree/main/packages/roupn#readme) synchronise application state between users in real-time via end-to-end encrypted messages.
 - [`@doars/staark`](https://github.com/doars/staark/tree/main/packages/staark#readme) a teensy-tiny library for for building web apps.
-- [`@doars/staark-isomorphic`](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) a version of staark that can used on the server for rendering a view.
 - [`@doars/staark-patch`](https://github.com/doars/staark/tree/main/packages/staark-patch#readme) a version of staark without state management where the node tree is repeatedly patched.
-- [`@doars/tiedliene`](https://github.com/doars/staark/tree/main/packages/tiedliene#readme) a teensy-tiny library for managing state diffs.
+- [`@doars/staark-isomorphic`](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) a version of staark that can used on the server for rendering a view.
 - [`@doars/vroagn`](https://github.com/doars/staark/tree/main/packages/vroagn#readme) a teensy-tiny library for managing network requests.
+- [`@doars/tiedliene`](https://github.com/doars/staark/tree/main/packages/tiedliene#readme) a teensy-tiny library for managing state diffs.
+- [`@doars/roupn`](https://github.com/doars/staark/tree/main/packages/roupn#readme) synchronise application state between users in real-time via end-to-end encrypted messages.
 
 ## Contributing
 
@@ -39,6 +39,8 @@ Curious how _staark_ compares to other similar libraries? Checkout the [performa
 
 ## Future ideas
 
+- Support for cavas elements to allow rendering to them on change.
+- Add support for moveBefore to ensure media and iframe state is preserved after morphing.
 - How can the state of the app work together with the browser's IndexedDB API?
 - Add support for `memo` nodes to `staark-patch` and `staark-isomorphic`'s patch functions.
 - Lifecycle hooks for reacting to when nodes are first created, or an attribute is updated, or removed from the DOM.
