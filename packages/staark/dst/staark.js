@@ -290,7 +290,7 @@ var proxify = (root, onChange) => {
 
 // src/library/mount.js
 var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
-  const hasMoveBefore = "moveBefore" in Element.prototype;
+  const setBefore = "moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
   if (typeof initialState === "string") {
     initialState = JSON.parse(initialState);
   }
@@ -424,7 +424,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
               matched = true;
               if (newIndex !== oldIndex + newCount) {
-                element[hasMoveBefore ? "moveBefore" : "insertBefore"](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                element[setBefore](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
                 oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
               }
               if (newAbstract.t) {
@@ -516,4 +516,4 @@ export {
   conditional
 };
 
-//# debugId=73FB63DFCB862D0A64756E2164756E21
+//# debugId=EF02DE7666F9486B64756E2164756E21

@@ -310,7 +310,7 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
   }
 };
 var prepare = (rootElement, oldAbstractTree) => {
-  const hasMoveBefore = "moveBefore" in Element.prototype;
+  const setBefore = "moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
   const updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
     let newIndex = 0;
     let newCount = 0;
@@ -324,7 +324,7 @@ var prepare = (rootElement, oldAbstractTree) => {
             if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
               matched = true;
               if (newIndex !== oldIndex + newCount) {
-                element[hasMoveBefore ? "moveBefore" : "insertBefore"](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                element[setBefore](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
                 oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
               }
               if (newAbstract.t) {
@@ -393,4 +393,4 @@ export {
   conditional
 };
 
-//# debugId=6A50D990133072E464756E2164756E21
+//# debugId=0F0CFD1B3B6DA62564756E2164756E21

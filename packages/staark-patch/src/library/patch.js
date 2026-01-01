@@ -151,7 +151,11 @@ export const prepare = (
   rootElement,
   oldAbstractTree,
 ) => {
-  const hasMoveBefore = 'moveBefore' in Element.prototype
+  const setBefore = (
+    'moveBefore' in Element.prototype
+    ? 'moveBefore'
+    : 'insertBefore'
+  )
 
   /**
    * Update the children of an element.
@@ -191,7 +195,7 @@ export const prepare = (
 
               if (newIndex !== (oldIndex + newCount)) {
                 // Move node in dom.
-                element[hasMoveBefore ? 'moveBefore' : 'insertBefore'](
+                element[setBefore](
                   element.childNodes[oldIndex + newCount],
                   element.childNodes[newIndex],
                 )

@@ -43,7 +43,11 @@ export const mount = (
   initialState,
   oldAbstractTree,
 ) => {
-  const hasMoveBefore = 'moveBefore' in Element.prototype
+  const setBefore = (
+    'moveBefore' in Element.prototype
+    ? 'moveBefore'
+    : 'insertBefore'
+  )
 
   if (typeof (initialState) === 'string') {
     initialState = JSON.parse(initialState)
@@ -273,7 +277,7 @@ export const mount = (
               matched = true
 
               if (newIndex !== (oldIndex + newCount)) {
-                element[hasMoveBefore ? 'moveBefore' : 'insertBefore'](
+                element[setBefore](
                   element.childNodes[oldIndex + newCount],
                   element.childNodes[newIndex],
                 )

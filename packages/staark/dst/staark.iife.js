@@ -310,7 +310,7 @@
 
   // src/library/mount.js
   var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
-    const hasMoveBefore = "moveBefore" in Element.prototype;
+    const setBefore = "moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
     if (typeof initialState === "string") {
       initialState = JSON.parse(initialState);
     }
@@ -444,7 +444,7 @@
               if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
                 matched = true;
                 if (newIndex !== oldIndex + newCount) {
-                  element[hasMoveBefore ? "moveBefore" : "insertBefore"](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                  element[setBefore](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
                   oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
                 }
                 if (newAbstract.t) {
@@ -541,4 +541,4 @@
   });
 })();
 
-//# debugId=533765D4DF28242D64756E2164756E21
+//# debugId=E6659AA72C2EA8EA64756E2164756E21

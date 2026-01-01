@@ -133,7 +133,7 @@
     }
   };
   var prepare = (rootElement, oldAbstractTree) => {
-    const hasMoveBefore = "moveBefore" in Element.prototype;
+    const setBefore = "moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
     const updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
       let newIndex = 0;
       let newCount = 0;
@@ -147,7 +147,7 @@
               if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
                 matched = true;
                 if (newIndex !== oldIndex + newCount) {
-                  element[hasMoveBefore ? "moveBefore" : "insertBefore"](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
+                  element[setBefore](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
                   oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
                 }
                 if (newAbstract.t) {
@@ -215,4 +215,4 @@
   });
 })();
 
-//# debugId=1B889C150C1797F564756E2164756E21
+//# debugId=6650BB8CFECF060064756E2164756E21
