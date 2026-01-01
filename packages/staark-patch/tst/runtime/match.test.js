@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
-    match,
+  match,
 } from '../../src/index.js'
 
 describe('Match', () => {

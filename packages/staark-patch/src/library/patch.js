@@ -1,8 +1,8 @@
 import {
-    arrayifyOrUndefined,
+  arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
-    childrenToNodes,
+  childrenToNodes,
 } from '@doars/staark-common/src/element.js'
 
 /**
@@ -141,129 +141,6 @@ const updateAttributes = (
 }
 
 /**
- * Update the children of an element.
- *
- * @param {Element} element The element to update.
- * @param {NodeContent[]} [newChildAbstracts] The new children to apply.
- * @param {NodeContent[]} [oldChildAbstracts] The old children to cleanup.
- */
-const updateChildren = (
-  element,
-  newChildAbstracts,
-  oldChildAbstracts,
-  inSvg,
-) => {
-  let newIndex = 0
-  let newCount = 0
-  if (newChildAbstracts) {
-    for (; newIndex < newChildAbstracts.length; newIndex++) {
-      const newAbstract = newChildAbstracts[newIndex]
-
-      // Try to find the matching old abstract.
-      let matched = false
-      if (oldChildAbstracts) {
-        for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
-          const oldAbstract = oldChildAbstracts[oldIndex]
-          if (
-            (
-              oldAbstract.t
-              && newAbstract.t === oldAbstract.t
-            )
-            || (
-              !oldAbstract.t
-              && !newAbstract.t
-            )
-          ) {
-            matched = true
-
-            if (newIndex !== (oldIndex + newCount)) {
-              // Move node in dom.
-              element.insertBefore(
-                element.childNodes[oldIndex + newCount],
-                element.childNodes[newIndex],
-              )
-              // Move node in abstract tree. TODO: Remove this pesky splicing so the old abstract tree is not mutated.
-              oldChildAbstracts.splice(
-                newIndex - newCount,
-                0,
-                oldChildAbstracts.splice(
-                  oldIndex,
-                  1,
-                )[0],
-              )
-            }
-
-            if (newAbstract.t) {
-              updateAttributes(
-                element.childNodes[newIndex],
-                newAbstract.a,
-                oldAbstract.a,
-              )
-              updateChildren(
-                element.childNodes[newIndex],
-                newAbstract.c,
-                oldAbstract.c,
-                inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg',
-              )
-            } else if (oldAbstract !== newAbstract) {
-              element.childNodes[newIndex].textContent = newAbstract
-            }
-            break
-          }
-        }
-      }
-
-      if (!matched) {
-        let newNode
-        if (newAbstract.t) {
-          let _inSvg = inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg'
-          if (_inSvg) {
-            newNode = document.createElementNS(
-              'http://www.w3.org/2000/svg',
-              newAbstract.t,
-            )
-          } else {
-            newNode = document.createElement(
-              newAbstract.t,
-            )
-          }
-          updateAttributes(
-            newNode,
-            newAbstract.a,
-          )
-          updateChildren(
-            newNode,
-            newAbstract.c,
-            undefined,
-            _inSvg,
-          )
-        } else {
-          newNode = document.createTextNode(
-            newAbstract,
-          )
-        }
-
-        element.insertBefore(
-          newNode,
-          element.childNodes[newIndex],
-        )
-        newCount++
-      }
-    }
-  }
-
-  // Remove old elements.
-  if (oldChildAbstracts) {
-    const elementLength = oldChildAbstracts.length + newCount
-    if (elementLength >= newIndex) {
-      for (let i = elementLength - 1; i >= newIndex; i--) {
-        element.childNodes[i].remove()
-      }
-    }
-  }
-}
-
-/**
  * Create a patch function that can be used to update the root element.
  *
  * @param {HTMLElement | Element | string} rootElement The root element to update.
@@ -274,6 +151,131 @@ export const prepare = (
   rootElement,
   oldAbstractTree,
 ) => {
+  const hasMoveBefore = 'moveBefore' in Element.prototype
+
+  /**
+   * Update the children of an element.
+   *
+   * @param {Element} element The element to update.
+   * @param {NodeContent[]} [newChildAbstracts] The new children to apply.
+   * @param {NodeContent[]} [oldChildAbstracts] The old children to cleanup.
+   */
+  const updateChildren = (
+    element,
+    newChildAbstracts,
+    oldChildAbstracts,
+    inSvg,
+  ) => {
+    let newIndex = 0
+    let newCount = 0
+    if (newChildAbstracts) {
+      for (; newIndex < newChildAbstracts.length; newIndex++) {
+        const newAbstract = newChildAbstracts[newIndex]
+
+        // Try to find the matching old abstract.
+        let matched = false
+        if (oldChildAbstracts) {
+          for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
+            const oldAbstract = oldChildAbstracts[oldIndex]
+            if (
+              (
+                oldAbstract.t
+                && newAbstract.t === oldAbstract.t
+              )
+              || (
+                !oldAbstract.t
+                && !newAbstract.t
+              )
+            ) {
+              matched = true
+
+              if (newIndex !== (oldIndex + newCount)) {
+                // Move node in dom.
+                element[hasMoveBefore ? 'moveBefore' : 'insertBefore'](
+                  element.childNodes[oldIndex + newCount],
+                  element.childNodes[newIndex],
+                )
+                // Move node in abstract tree. TODO: Remove this pesky splicing so the old abstract tree is not mutated.
+                oldChildAbstracts.splice(
+                  newIndex - newCount,
+                  0,
+                  oldChildAbstracts.splice(
+                    oldIndex,
+                    1,
+                  )[0],
+                )
+              }
+
+              if (newAbstract.t) {
+                updateAttributes(
+                  element.childNodes[newIndex],
+                  newAbstract.a,
+                  oldAbstract.a,
+                )
+                updateChildren(
+                  element.childNodes[newIndex],
+                  newAbstract.c,
+                  oldAbstract.c,
+                  inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg',
+                )
+              } else if (oldAbstract !== newAbstract) {
+                element.childNodes[newIndex].textContent = newAbstract
+              }
+              break
+            }
+          }
+        }
+
+        if (!matched) {
+          let newNode
+          if (newAbstract.t) {
+            let _inSvg = inSvg || newAbstract.t === 'SVG' || newAbstract.t === 'svg'
+            if (_inSvg) {
+              newNode = document.createElementNS(
+                'http://www.w3.org/2000/svg',
+                newAbstract.t,
+              )
+            } else {
+              newNode = document.createElement(
+                newAbstract.t,
+              )
+            }
+            updateAttributes(
+              newNode,
+              newAbstract.a,
+            )
+            updateChildren(
+              newNode,
+              newAbstract.c,
+              undefined,
+              _inSvg,
+            )
+          } else {
+            newNode = document.createTextNode(
+              newAbstract,
+            )
+          }
+
+          element.insertBefore(
+            newNode,
+            element.childNodes[newIndex],
+          )
+          newCount++
+        }
+      }
+    }
+
+    // Remove old elements.
+    if (oldChildAbstracts) {
+      const elementLength = oldChildAbstracts.length + newCount
+      if (elementLength >= newIndex) {
+        for (let i = elementLength - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove()
+        }
+      }
+    }
+  }
+
   const _rootElement = (
     typeof (rootElement) === 'string'
       ? (

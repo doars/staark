@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 import { Window } from 'happy-dom'
 
-import {
-    prepare,
-} from '../../src/index.js'
-
 const window = new Window()
 globalThis.window = window
 globalThis.document = window.document
+globalThis.Element = window.Element
+
+import {
+  prepare,
+} from '../../src/index.js'
 
 describe('Prepare', () => {
   it('should return a patch function', () => {

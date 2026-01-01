@@ -12,6 +12,7 @@ import {
 const window = new Window()
 globalThis.window = window
 globalThis.document = window.document
+globalThis.Element = window.Element
 
 describe('Patch with Stringify', () => {
   it('should stringify and patch', () => {

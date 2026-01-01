@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
-    factory,
+  factory,
 } from '../../src/index.js'
 
 describe('Factory', () => {

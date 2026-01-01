@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
 import {
-    conditional,
+  conditional,
 } from '../../src/index.js'
 
 describe('Conditional', () => {

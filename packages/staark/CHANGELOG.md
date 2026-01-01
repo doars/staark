@@ -1,7 +1,8 @@
 # Changelog
 
-## 1.7.15 (unreleased)
+## 1.7.15
 
+- Maintain iframe and media states by using moveBefore where available.
 - Switch to `AI.md` for providing library context to LLM's.
 
 ## 1.7.14

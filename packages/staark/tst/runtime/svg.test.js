@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'bun:test'
 import { Window } from 'happy-dom'
 
+const window = new Window()
+globalThis.window = window
+globalThis.document = window.document
+globalThis.Element = window.Element
+
 import {
     mount,
     node,
 } from '../../src/index.js'
-
-const window = new Window()
-globalThis.window = window
-globalThis.document = window.document
 
 describe('SVG', () => {
   it('should render SVG elements', () => {

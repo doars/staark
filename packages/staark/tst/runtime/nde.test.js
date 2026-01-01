@@ -1,4 +1,9 @@
 import { describe, expect, it } from 'bun:test'
+import { Window } from 'happy-dom'
+
+const window = new Window()
+globalThis.window = window
+globalThis.Element = window.Element
 
 import {
     nde,

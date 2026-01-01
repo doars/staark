@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.11
+
+- Maintain iframe and media states by using moveBefore where available.
+
 ## 1.4.10
 
 - Added SVG support.

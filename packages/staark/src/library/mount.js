@@ -1,17 +1,17 @@
 import {
-    arrayifyOrUndefined,
+  arrayifyOrUndefined,
 } from '@doars/staark-common/src/array.js'
 import {
-    cloneRecursive,
+  cloneRecursive,
 } from '@doars/staark-common/src/clone.js'
 import {
-    equalRecursive,
+  equalRecursive,
 } from '@doars/staark-common/src/compare.js'
 import {
-    childrenToNodes,
+  childrenToNodes,
 } from '@doars/staark-common/src/element.js'
 import {
-    proxify,
+  proxify,
 } from './proxy.js'
 
 /**
@@ -43,6 +43,8 @@ export const mount = (
   initialState,
   oldAbstractTree,
 ) => {
+  const hasMoveBefore = 'moveBefore' in Element.prototype
+
   if (typeof (initialState) === 'string') {
     initialState = JSON.parse(initialState)
   }
@@ -271,7 +273,7 @@ export const mount = (
               matched = true
 
               if (newIndex !== (oldIndex + newCount)) {
-                element.insertBefore(
+                element[hasMoveBefore ? 'moveBefore' : 'insertBefore'](
                   element.childNodes[oldIndex + newCount],
                   element.childNodes[newIndex],
                 )
