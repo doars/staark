@@ -42,7 +42,7 @@ export default (
         }, [
           r('a', {
             class: 'button',
-            href: 'https://github.com/doars/doars#readme',
+            href: 'https://github.com/doars/staark#readme',
             target: '_blank',
           }, iconGithub),
 
@@ -187,11 +187,11 @@ export default (
           card({}, 'From NPM', 'Install the package from NPM, then import and enable the library in your build.',
             r('button', {
               'onclick': () => {
-                window.copyToClipboard('npm i @doars/doars')
+                window.copyToClipboard('npm i @doars/staark')
               },
             }, [
               '&#160;',
-              r('code', 'npm i @doars/doars'),
+              r('code', 'npm i @doars/staark'),
               '&#160;&#160;',
               iconCopy,
             ]),

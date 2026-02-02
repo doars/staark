@@ -12,5 +12,4 @@
 
 **Write any additional context in place of this.**
 
-**Checklist**: *Check off the box by placing a `x` inside the brackets after making sure you agree to the term outlined.*
-* [ ] I have singed off my commits to adhere to the [Developer's Certificate of Origin](https://github.com/doars/doars/blob/master/DCO).
+
