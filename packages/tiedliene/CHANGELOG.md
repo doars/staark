@@ -4,6 +4,7 @@
 
 - Fix cloning `null` type.
 - Migrate tests from Bun to the Node.js test runner.
+- Expand state management tests for cloning, history, undo, and redo behavior.
 
 ## 1.2.0
 

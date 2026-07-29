@@ -203,25 +203,33 @@ export const stringify = (renderView, initialState) => {
  * @returns {string} Stringified data.
  */
 const customStringify = (data) => {
+	if (data === null) {
+		return "null";
+	}
+
 	if (typeof data === "number" || typeof data === "boolean") {
 		return String(data);
 	}
 
 	if (typeof data === "string") {
-		// Escape double quotes
-		return `"${data.replace(/"/g, '\\"')}"`;
+		return JSON.stringify(data);
 	}
 
 	if (Array.isArray(data)) {
-		return `[${data.map((item) => customStringify(item)).join(",")}]`;
+		const values = [];
+		for (const value of data) {
+			values.push(customStringify(value));
+		}
+		return `[${values.join(",")}]`;
 	}
 
 	if (typeof data === "object") {
 		const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
-		const objectContent = keys
-			.map((key) => `"${key}":${customStringify(data[key])}"`)
-			.join(",");
-		return `{${objectContent}}`;
+		const values = [];
+		for (const key of keys) {
+			values.push(`${JSON.stringify(key)}:${customStringify(data[key])}`);
+		}
+		return `{${values.join(",")}}`;
 	}
 
 	return "null";

@@ -35,11 +35,26 @@ describe('Stringify', () => {
 
   it('stringifyFull should render view function to HTML string, abstract tree string, and state string', () => {
     const [rendered, abstractTreeString, stateString] = stringifyFull(
-      () => node('h1', 'hello world'),
+      () => node('h1', {
+        title: 'Greeting',
+      }, 'hello "world"'),
+      {
+        count: 2,
+        enabled: true,
+      },
     )
-    assert.strictEqual(rendered, '<h1> hello world </h1>')
-    assert.match(abstractTreeString, /"t":"h1"/)
-    assert.strictEqual(stateString, '{}')
+    assert.strictEqual(rendered, '<h1 title="Greeting"> hello "world" </h1>')
+    assert.deepStrictEqual(JSON.parse(abstractTreeString), [{
+      a: {
+        title: 'Greeting',
+      },
+      c: ['hello "world"'],
+      t: 'h1',
+    }])
+    assert.deepStrictEqual(JSON.parse(stateString), {
+      count: 2,
+      enabled: true,
+    })
   })
 
   it('stringifyPatchFull should render abstract tree to HTML string and abstract tree string', () => {
@@ -47,6 +62,10 @@ describe('Stringify', () => {
       node('h1', 'hello world'),
     )
     assert.strictEqual(rendered, '<h1> hello world </h1>')
-    assert.match(abstractTreeString, /"t":"h1"/)
+    assert.deepStrictEqual(JSON.parse(abstractTreeString), [{
+      a: null,
+      c: ['hello world'],
+      t: 'h1',
+    }])
   })
 })

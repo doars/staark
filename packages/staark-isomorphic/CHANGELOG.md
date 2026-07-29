@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Migrate tests from Bun to the Node.js test runner.
+- Fix invalid abstract tree JSON returned by full stringification functions.
 
 ## 1.6.8
 

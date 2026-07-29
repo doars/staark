@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Migrate tests from Bun to the Node.js test runner.
+- Return request failures through the documented result tuple and always release concurrency slots.
+- Expand request tests for configuration, custom parsers, and error handling.
 
 ## 1.4.3
 

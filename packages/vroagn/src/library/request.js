@@ -255,7 +255,7 @@ export const create = (initialOptions) => {
 		};
 
 		const [error, response, result] = await retryRequest();
-		if (!response.ok) {
+		if (response && !response.ok) {
 			return [new Error(response.statusText), response, result];
 		}
 		return [error, response, result];
@@ -309,8 +309,16 @@ export const create = (initialOptions) => {
 		}
 
 		activeRequests++;
-		const results = await sendRequest(options);
-		activeRequests--;
-		return results;
+		try {
+			return await sendRequest(options);
+		} catch (error) {
+			return [
+				error instanceof Error ? error : new Error("Unknown request error"),
+				null,
+				null,
+			];
+		} finally {
+			activeRequests--;
+		}
 	};
 };
