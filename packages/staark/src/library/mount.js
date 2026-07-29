@@ -64,9 +64,9 @@ export const mount = (
 	 */
 	const updateAttributes = (element, newAttributes, oldAttributes) => {
 		if (newAttributes) {
-			for (const name in newAttributes) {
+			for (const name of Object.keys(newAttributes)) {
 				let value = newAttributes[name];
-				if (value) {
+				if (value !== null && value !== undefined && value !== false) {
 					const type = typeof value;
 					if (type === "function") {
 						const oldValue = oldAttributes?.[name];
@@ -91,7 +91,7 @@ export const mount = (
 									value = value.join(" ");
 								} else {
 									let classNames = "";
-									for (const className in value) {
+									for (const className of Object.keys(value)) {
 										if (value[className]) {
 											classNames += ` ${className}`;
 										}
@@ -101,7 +101,7 @@ export const mount = (
 							}
 							element.className = value;
 						} else if (name === "style" && typeof value === "object") {
-							for (const styleName in value) {
+							for (const styleName of Object.keys(value)) {
 								const styleValue = value[styleName];
 								if (styleName.includes("-", 1)) {
 									element.style.setProperty(styleName, styleValue);
@@ -115,8 +115,8 @@ export const mount = (
 								typeof oldAttributes[name] === "object" &&
 								!Array.isArray(oldAttributes[name])
 							) {
-								for (const styleName in oldAttributes[name]) {
-									if (!value[styleName]) {
+								for (const styleName of Object.keys(oldAttributes[name])) {
+									if (!Object.hasOwn(value, styleName)) {
 										if (styleName.includes("-", 1)) {
 											element.style.removeProperty(styleName);
 										} else {
@@ -142,9 +142,15 @@ export const mount = (
 		}
 
 		if (oldAttributes) {
-			for (const name in oldAttributes) {
+			for (const name of Object.keys(oldAttributes)) {
 				const value = oldAttributes[name];
-				if (!newAttributes?.[name]) {
+				const newValue = newAttributes?.[name];
+				if (
+					!Object.hasOwn(newAttributes || {}, name) ||
+					newValue === null ||
+					newValue === undefined ||
+					newValue === false
+				) {
 					if (typeof value === "function") {
 						element.removeEventListener(name, oldAttributes[name]);
 					} else if (name === "class") {
@@ -312,14 +318,15 @@ export const mount = (
 		if (active && !updating && updatePromise) {
 			updating = true;
 			updatePromise = null;
-
-			const newAbstractTree = arrayifyOrUndefined(renderView(state));
-			updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
-			oldAbstractTree = newAbstractTree;
-			oldMemoMap = newMemoMap;
-			newMemoMap = new WeakMap();
-
-			updating = false;
+			try {
+				const newAbstractTree = arrayifyOrUndefined(renderView(state));
+				updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+				oldAbstractTree = newAbstractTree;
+				oldMemoMap = newMemoMap;
+				newMemoMap = new WeakMap();
+			} finally {
+				updating = false;
+			}
 		}
 	};
 	triggerUpdate();
@@ -330,6 +337,7 @@ export const mount = (
 		() => {
 			if (active) {
 				active = false;
+				updatePromise = null;
 
 				for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
 					_rootElement.childNodes[i].remove();

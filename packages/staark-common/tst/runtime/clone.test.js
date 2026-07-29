@@ -55,5 +55,31 @@ describe('Clone', () => {
       assert.notStrictEqual(cloned.arr, original.arr)
       assert.notStrictEqual(cloned.arr[1], original.arr[1])
     })
+
+    it('preserves cycles and shared references without inherited properties', () => {
+      const value = Object.create({ inherited: true })
+      const child = { value: true }
+      value.first = child
+      value.second = child
+      value.self = value
+
+      const cloned = cloneRecursive(value)
+      assert.strictEqual(cloned.self, cloned)
+      assert.strictEqual(cloned.first, cloned.second)
+      assert.strictEqual(Object.hasOwn(cloned, 'inherited'), false)
+    })
+
+    it('clones DataView values and their visible byte range', () => {
+      const buffer = new Uint8Array([0, 1, 2, 3]).buffer
+      const original = new DataView(buffer, 1, 2)
+      const cloned = cloneRecursive(original)
+
+      assert.ok(cloned instanceof DataView)
+      assert.notStrictEqual(cloned, original)
+      assert.notStrictEqual(cloned.buffer, original.buffer)
+      assert.strictEqual(cloned.byteLength, 2)
+      assert.strictEqual(cloned.getUint8(0), 1)
+      assert.strictEqual(cloned.getUint8(1), 2)
+    })
   })
 })

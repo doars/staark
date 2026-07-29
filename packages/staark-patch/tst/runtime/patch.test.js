@@ -51,4 +51,23 @@ describe('Patch', () => {
 
     assert.strictEqual(div.innerHTML, '<div id="second-id"><ul><li>item 2</li><li>item 3</li><li>item 4</li></ul></div>')
   })
+
+  it('preserves numeric zero attributes and styles', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+
+    patch(node('input', {
+      'aria-valuenow': 0,
+      style: {
+        opacity: 0,
+      },
+      tabindex: 0,
+      value: 0,
+    }))
+
+    assert.strictEqual(div.firstChild.getAttribute('aria-valuenow'), '0')
+    assert.strictEqual(div.firstChild.getAttribute('tabindex'), '0')
+    assert.strictEqual(div.firstChild.value, '0')
+    assert.strictEqual(div.firstChild.style.opacity, '0')
+  })
 })

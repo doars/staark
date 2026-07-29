@@ -1,10 +1,11 @@
 # Changelog
 
-## 1.5.9 (unreleased)
+## 1.5.9
 
 - Fix cloning `null` type.
 - Fix parsing content after IDs (`#`).
 - Migrate tests from Bun to the Node.js test runner.
+- Preserve cycles and shared references in recursive clones, ignore inherited properties, safely clone `DataView` values, and compare binary views by their visible bytes.
 
 ## 1.5.8
 

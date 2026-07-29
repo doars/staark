@@ -1,7 +1,21 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
+- Parse single-line and multiline TOML arrays without losing their owning key.
+- Preserve blank lines in YAML block values and safely skip blank lines between
+  nested mappings.
+- Coordinate limited and unlimited requests through one strict FIFO scheduler,
+  including completion and queued-abort draining.
+- Add `createTrustedHTML` and `trustedTypesPolicy` HTML parsing options with
+  initial and per-call precedence.
+- Preserve platform objects such as `AbortController` while cloning request
+  option records.
+- Reject prototype-related keys in object-producing parsers and build parser
+  dictionaries without prototypes.
+- Settle debounced callers through one trailing request and replace animation
+  frame concurrency polling with a runtime-neutral FIFO queue.
+- Clear timeout resources deterministically and retry thrown network errors.
 - Migrate tests from Bun to the Node.js test runner.
 - Return request failures through the documented result tuple and always release concurrency slots.
 - Expand request tests for configuration, custom parsers, and error handling.

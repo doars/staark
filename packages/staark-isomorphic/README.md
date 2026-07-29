@@ -134,6 +134,23 @@ As mentioned before the `stringifyPatch` and `stringifyPatchFull` functions are 
 
 The library also exports the `factory`, `fctory`, `memo`, and `nde` functions from staark so these don't have te imported from there separately. But do note that `stringifyPatch` and `stringifyPatchFull` do not support the `memo` node since there is no state to provide to these memoization functions.
 
+## Rendering benchmark
+
+Run `npm run benchmark --workspace=packages/staark-isomorphic` to compare the
+published concatenation renderer with the private fragment-array experiment.
+The deterministic fixtures cover broad and deep trees, attribute-heavy nodes,
+escaping, SVG, custom elements, boolean attributes, classes, styles, and memo
+output. The benchmark warms each variant 20 times, alternates execution order,
+and reports 50-sample medians, median absolute deviation, and heap deltas.
+
+On Node.js 26.5.0, concatenation was faster in every fixture. For example, the
+large broad fixture measured 6.23 ms median versus 7.73 ms for fragments, while
+using roughly 6.20 MB versus 8.89 MB of additional heap. Node.js 20.20.2 showed
+the same result: 6.59 ms versus 9.22 ms and roughly 6.18 MB versus 8.93 MB for
+that fixture. The fragment variant therefore does not meet the 10% improvement
+threshold on either the minimum supported or development runtime, and the
+runtime renderer remains unchanged.
+
 ## Installation
 
 Via NPM

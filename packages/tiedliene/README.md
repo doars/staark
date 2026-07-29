@@ -127,6 +127,30 @@ stateManager.redo()
 console.log(stateManager.get())
 ```
 
+`manageState` accepts these options:
+
+- `maximumHistory` is a non-negative integer. Its default is `50`; `0` disables history.
+- `snapshot` is either `'clone'` (the defensive default) or `'reference'`. Reference snapshots expose managed state directly and require callers to treat it as immutable unless they intentionally want to mutate the manager state.
+- `clone` is an optional clone function used for snapshots and instrumentation.
+
+Plain objects and arrays may contain cycles and shared references, which are
+preserved. `Date`, `Map`, `Set`, and typed-array values are compared by value
+and stored as whole atomic changes. Functions, custom instances, weak
+collections, DOM nodes, symbol-keyed state, and enumerable accessors are
+rejected with `TypeError` before managed state changes.
+
+Run `npm run benchmark --workspace=packages/tiedliene` to measure `set`, `get`,
+`undo`, and `redo` across the included stable-tree sizes and history limits.
+The fixture sizes are 100, 1,000, and 5,000 records with one changing leaf;
+history limits are 0, 10, and 50. Each operation receives 20 warm-ups and 50
+samples. On Node.js 26.5.0, the 5,000-record/history-10 fixture measured medians
+of 19.17 ms for `set`, 2.11 ms for `get`, 2.09 ms for `undo`, and 2.05 ms for
+`redo`. Median snapshot heap deltas were about 1.97 MB; `set` heap deltas are
+GC-sensitive and are reported without treating negative samples as allocations.
+Clone instrumentation recorded 351 full snapshot clones for the complete
+fixture run. State assignment itself no longer performs a second full incoming
+clone; immutable forward/reverse patch values own changed data.
+
 tiedliene's functions are versatile and can be used with nested objects, arrays, or even custom objects like Proxies. The diffing, applying, and reverting mechanisms handle these cases smoothly, ensuring your state transitions are consistent and predictable.
 
 ```JavaScript

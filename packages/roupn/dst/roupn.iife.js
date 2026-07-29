@@ -15,9 +15,27 @@
   var ALPHANUMERIC_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   var IDENTIFIABLE_CHARACTERS = "ABCDEFGHKMNPQRSTUVWXYZ23456789";
   var generateCode = (length = 24, characters = ALPHANUMERIC_CHARACTERS) => {
+    if (!Number.isInteger(length) || length <= 0) {
+      throw new TypeError("Code length must be a positive integer");
+    }
+    if (typeof characters !== "string" || characters.length < 2 || characters.length > 256) {
+      throw new TypeError(
+        "Code characters must contain between 2 and 256 values"
+      );
+    }
+    const maximumByte = Math.floor(256 / characters.length) * characters.length;
     let code = "";
-    for (let i = 0; i < length; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    while (code.length < length) {
+      const bytes = new Uint8Array(Math.max(16, length - code.length));
+      globalThis.crypto.getRandomValues(bytes);
+      for (const byte of bytes) {
+        if (byte < maximumByte) {
+          code += characters[byte % characters.length];
+          if (code.length === length) {
+            break;
+          }
+        }
+      }
     }
     return code;
   };
@@ -100,7 +118,7 @@
   var INFIX = ":";
   var encode = (parts, stringToBase642) => {
     const segments = [];
-    for (const key in parts) {
+    for (const key of Object.keys(parts)) {
       const value = parts[key];
       if (value !== null && value !== void 0) {
         segments.push(key + INFIX + stringToBase642(String(value)));
@@ -108,16 +126,58 @@
     }
     return segments.join(DELIMITER);
   };
-  var decode = (message, base64ToString2) => {
-    const parts = {};
+  var decode = (message, base64ToString2, options = {}) => {
+    if (typeof message !== "string") {
+      throw new TypeError("protocol_message_not_string");
+    }
+    const {
+      allowedKeys,
+      maxDecodedFieldBytes = Infinity,
+      maxKeyBytes = Infinity,
+      maxSegments = Infinity,
+      maxTotalDecodedBytes = Infinity
+    } = options;
+    const parts = /* @__PURE__ */ Object.create(null);
     const segments = message.split(DELIMITER);
+    if (segments.length > maxSegments) {
+      throw new RangeError("protocol_too_many_segments");
+    }
+    let totalDecodedBytes = 0;
     for (const segment of segments) {
       const index = segment.indexOf(INFIX);
-      if (index > 0) {
-        const key = segment.substring(0, index);
-        const value = segment.substring(index + 1);
-        parts[key] = base64ToString2(value);
+      if (index <= 0) {
+        throw new TypeError("protocol_missing_separator");
       }
+      const key = segment.substring(0, index);
+      const value = segment.substring(index + 1);
+      if (new TextEncoder().encode(key).byteLength > maxKeyBytes) {
+        throw new RangeError("protocol_key_too_large");
+      }
+      if (allowedKeys && !allowedKeys.has(key)) {
+        throw new TypeError("protocol_unknown_key");
+      }
+      if (Object.hasOwn(parts, key)) {
+        throw new TypeError("protocol_duplicate_key");
+      }
+      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+        value
+      )) {
+        throw new TypeError("protocol_invalid_base64");
+      }
+      const maximumEncodedLength = Math.ceil(maxDecodedFieldBytes / 3) * 4;
+      if (value.length > maximumEncodedLength) {
+        throw new RangeError("protocol_field_too_large");
+      }
+      const decodedValue = base64ToString2(value);
+      const decodedBytes = new TextEncoder().encode(decodedValue).byteLength;
+      if (decodedBytes > maxDecodedFieldBytes) {
+        throw new RangeError("protocol_field_too_large");
+      }
+      totalDecodedBytes += decodedBytes;
+      if (totalDecodedBytes > maxTotalDecodedBytes) {
+        throw new RangeError("protocol_message_too_large");
+      }
+      parts[key] = decodedValue;
     }
     return parts;
   };
@@ -242,6 +302,7 @@
   var CONNECTION_DISCONNECTED = "DISCONNECTED";
   var CONNECTION_DISCONNECTING = "DISCONNECTING";
   var CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
+  var PROTOCOL_VERSION = 2;
   var EXCHANGE_0 = "_X0";
   var EXCHANGE_1 = "_X1";
   var EXCHANGE_2 = "_X2";
@@ -259,6 +320,8 @@
   // src/library/payload-keys.js
   var SERVER_PAYLOAD = "S";
   var SERVER_TIME = "T";
+  var CREATOR_AUTHENTICATION = "A";
+  var AUTHENTICATED_SENDER = "R";
   var SHARED_ENCRYPTION_PAYLOAD = "E";
   var SHARED_ENCRYPTION_IV = "I";
   var USER = "U";
@@ -279,8 +342,47 @@
       httpUrl = "http://localhost:3000",
       wsUrl = "http://localhost:3000",
       messageBufferMaxCount = 50,
-      messageBufferMaxDuration = 60 * 1e3
+      messageBufferMaxDuration = 60 * 1e3,
+      allowInsecureNonLoopback = false,
+      maxEncodedMessageBytes = 256 * 1024,
+      maxProtocolSegments = 16,
+      maxProtocolKeyBytes = 64,
+      maxDecodedFieldBytes = 192 * 1024,
+      maxTotalDecodedBytes = 256 * 1024
     } = options;
+    for (const [name, value] of [
+      ["maxEncodedMessageBytes", maxEncodedMessageBytes],
+      ["maxProtocolSegments", maxProtocolSegments],
+      ["maxProtocolKeyBytes", maxProtocolKeyBytes],
+      ["maxDecodedFieldBytes", maxDecodedFieldBytes],
+      ["maxTotalDecodedBytes", maxTotalDecodedBytes]
+    ]) {
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new TypeError(`${name} must be a positive integer`);
+      }
+    }
+    const allowedProtocolKeys = /* @__PURE__ */ new Set([
+      AUTHENTICATED_SENDER,
+      SERVER_PAYLOAD,
+      SERVER_TIME,
+      SHARED_ENCRYPTION_IV,
+      SHARED_ENCRYPTION_PAYLOAD,
+      USER,
+      USER_DIRECT_PAYLOAD,
+      USER_ENCRYPTION_IV,
+      USER_ENCRYPTION_KEY,
+      USER_ENCRYPTION_PAYLOAD,
+      USER_ENCRYPTION_SIGNATURE
+    ]);
+    const isLoopback = (hostname) => hostname === "localhost" || hostname === "::1" || hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+    for (const configuredUrl of [httpUrl, wsUrl]) {
+      const url = new URL(configuredUrl);
+      if ((url.protocol === "http:" || url.protocol === "ws:") && !isLoopback(url.hostname) && !allowInsecureNonLoopback) {
+        throw new TypeError(
+          "Insecure non-loopback URLs require allowInsecureNonLoopback"
+        );
+      }
+    }
     let _connectionState = CONNECTION_DISCONNECTED, _creatorId, _generatedKeys, _keyGenerationPromise, _myEncryptKeys, _myExchangeKeys, _myId, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _privateData, _privateDataVerify, _publicData, _publicDataVerify, _roomCode, _sharedKey, _sharedMessagesBuffer = [], _socket, _userDerivedKeys = /* @__PURE__ */ new Map(), _userEncryptKeys = /* @__PURE__ */ new Map(), _userSignKeys = /* @__PURE__ */ new Map(), _userVerification = /* @__PURE__ */ new Map(), _userVerified = /* @__PURE__ */ new Map();
     const _generateMyKeys = () => {
       if (!_generatedKeys && !_keyGenerationPromise) {
@@ -389,18 +491,28 @@
       type: USER_KICK,
       userId
     });
-    const _joinRoom = (roomCode, creatorSecret = null) => {
-      if (!creatorSecret && _connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
+    const _joinRoom = (roomCode, creatorConnectionToken = null) => {
+      if (!creatorConnectionToken && _connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
         return;
       }
       _setConnectionState(CONNECTION_CONNECTING);
       _roomCode = roomCode;
       const url = new URL(wsUrl + joinRoomEndpoint);
       url.searchParams.append("code", _roomCode);
-      if (creatorSecret) {
-        url.searchParams.append("creator", creatorSecret);
+      if (creatorConnectionToken) {
+        url.searchParams.append("creator", "1");
       }
       _socket = new WebSocket(url.toString());
+      if (creatorConnectionToken) {
+        _socket.addEventListener("open", () => {
+          _socket.send(
+            encode(
+              { [CREATOR_AUTHENTICATION]: creatorConnectionToken },
+              stringToBase64
+            )
+          );
+        });
+      }
       _socket.addEventListener("close", (event) => {
         onRoomLeave.dispatch({
           event
@@ -414,11 +526,29 @@
         leaveRoom();
       });
       _socket.addEventListener("message", async (event) => {
-        _processMessage(decode(event.data, base64ToString), event.data);
+        try {
+          if (typeof event.data !== "string" || new TextEncoder().encode(event.data).byteLength > maxEncodedMessageBytes) {
+            throw new RangeError("message_too_large");
+          }
+          await _processMessage(
+            decode(event.data, base64ToString, {
+              allowedKeys: allowedProtocolKeys,
+              maxDecodedFieldBytes,
+              maxKeyBytes: maxProtocolKeyBytes,
+              maxSegments: maxProtocolSegments,
+              maxTotalDecodedBytes
+            }),
+            event.data
+          );
+        } catch (error) {
+          onError.dispatch({ error });
+          _socket.close(1008, "invalid_protocol_message");
+        }
       });
     };
     const _processMessage = async (parts, raw, isBuffered = false) => {
       const {
+        [AUTHENTICATED_SENDER]: authenticatedSender,
         [SERVER_PAYLOAD]: serverPayload,
         [SERVER_TIME]: serverTime,
         [SHARED_ENCRYPTION_IV]: sharedEncryptionIv,
@@ -439,6 +569,9 @@
         payload = raw;
       }
       if (sharedEncryptionPayload) {
+        if (!authenticatedSender) {
+          throw new TypeError("missing_authenticated_sender");
+        }
         if (!_sharedKey || !isBuffered && _sharedMessagesBuffer.length > 0) {
           _sharedMessagesBuffer.push({
             time: Date.now(),
@@ -551,8 +684,18 @@
         }
       }
       data = deserializedData;
+      if ((sharedEncryptionPayload || userDirectPayload || userEncryptionPayload) && data?.sender !== authenticatedSender) {
+        throw new TypeError("authenticated_sender_mismatch");
+      }
       switch (data.type) {
         case ROOM_JOINED:
+          if (data.protocolVersion !== PROTOCOL_VERSION) {
+            onError.dispatch({
+              error: new Error("unsupported_protocol_version")
+            });
+            leaveRoom();
+            return;
+          }
           _creatorId = data.creatorId;
           _myId = data.userId;
           onRoomJoin.dispatch({
@@ -866,7 +1009,7 @@
               );
               while (_sharedMessagesBuffer.length > 0) {
                 const { parts: parts2, raw: raw2 } = _sharedMessagesBuffer.shift();
-                _processMessage(parts2, raw2, true);
+                await _processMessage(parts2, raw2, true);
               }
             }
             _setConnectionState(CONNECTION_CONNECTED);
@@ -1079,7 +1222,7 @@
           url.searchParams.append("limit", options2.limit);
         }
         const response = await fetch(url.toString(), {
-          method: "GET",
+          method: "POST",
           headers: {
             Accept: contentType
           }
@@ -1090,7 +1233,7 @@
         let data = await response.text();
         data = deserializeMessage(data);
         _myId = data.userId;
-        _joinRoom(data.roomCode, data.creatorSecret);
+        _joinRoom(data.roomCode, data.creatorConnectionToken);
         return data;
       },
       /**
@@ -1146,56 +1289,272 @@
   };
 
   // ../tiedliene/src/utilities/clone.js
-  var cloneRecursive = (value) => {
-    if (value && typeof value === "object") {
-      const clone = Array.isArray(value) ? [] : {};
-      for (const key in value) {
-        clone[key] = cloneRecursive(value[key]);
-      }
-      return clone;
+  var cloneRecursive = (value, clones = /* @__PURE__ */ new WeakMap()) => {
+    if (!value || typeof value !== "object") {
+      return value;
     }
-    return value;
+    if (clones.has(value)) {
+      return clones.get(value);
+    }
+    if (value instanceof Date) {
+      const clone2 = new Date(value.getTime());
+      clones.set(value, clone2);
+      return clone2;
+    }
+    if (value instanceof Map) {
+      const clone2 = /* @__PURE__ */ new Map();
+      clones.set(value, clone2);
+      for (const [key, entryValue] of value) {
+        clone2.set(
+          cloneRecursive(key, clones),
+          cloneRecursive(entryValue, clones)
+        );
+      }
+      return clone2;
+    }
+    if (value instanceof Set) {
+      const clone2 = /* @__PURE__ */ new Set();
+      clones.set(value, clone2);
+      for (const entryValue of value) {
+        clone2.add(cloneRecursive(entryValue, clones));
+      }
+      return clone2;
+    }
+    if (ArrayBuffer.isView(value)) {
+      const clone2 = value instanceof DataView ? new DataView(
+        value.buffer.slice(
+          value.byteOffset,
+          value.byteOffset + value.byteLength
+        )
+      ) : new value.constructor(value);
+      clones.set(value, clone2);
+      return clone2;
+    }
+    const clone = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
+    clones.set(value, clone);
+    for (const key of Object.keys(value)) {
+      clone[key] = cloneRecursive(value[key], clones);
+    }
+    return clone;
   };
 
   // ../tiedliene/src/library/diff.js
+  var FORBIDDEN_PATH_COMPONENTS = /* @__PURE__ */ new Set([
+    "__proto__",
+    "constructor",
+    "prototype"
+  ]);
+  var ARRAY_INDEX = /^(0|[1-9]\d*)$/;
+  var validatePath = (path) => {
+    if (!Array.isArray(path) || path.length === 0) {
+      throw new TypeError("Diff paths must be non-empty arrays");
+    }
+    for (const component of path) {
+      if (typeof component !== "string" && (!Number.isInteger(component) || component < 0)) {
+        throw new TypeError(
+          "Diff path components must be strings or array indices"
+        );
+      }
+      if (FORBIDDEN_PATH_COMPONENTS.has(String(component))) {
+        throw new TypeError(`Unsafe diff path component: ${String(component)}`);
+      }
+    }
+    return path;
+  };
+  var validateDiff = (diff) => {
+    if (!Array.isArray(diff)) {
+      throw new TypeError("Diff must be an array");
+    }
+    for (const change of diff) {
+      if (!change || typeof change !== "object" || change.type !== "set" && change.type !== "delete") {
+        throw new TypeError("Diff entries must be set or delete changes");
+      }
+      validatePath(change.path);
+    }
+    return diff;
+  };
+  var isContainer = (value) => value !== null && typeof value === "object" && (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+  var valuesEqual = (before, after, compared = /* @__PURE__ */ new WeakMap()) => {
+    if (Object.is(before, after)) {
+      return true;
+    }
+    if (!before || !after || typeof before !== "object" || typeof after !== "object") {
+      return false;
+    }
+    let comparedAfter = compared.get(before);
+    if (comparedAfter?.has(after)) {
+      return true;
+    }
+    if (!comparedAfter) {
+      comparedAfter = /* @__PURE__ */ new WeakSet();
+      compared.set(before, comparedAfter);
+    }
+    comparedAfter.add(after);
+    if (before instanceof Date || after instanceof Date) {
+      return before instanceof Date && after instanceof Date && before.getTime() === after.getTime();
+    }
+    if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
+      if (!ArrayBuffer.isView(before) || !ArrayBuffer.isView(after) || before.constructor !== after.constructor || before.byteLength !== after.byteLength) {
+        return false;
+      }
+      const beforeBytes = new Uint8Array(
+        before.buffer,
+        before.byteOffset,
+        before.byteLength
+      );
+      const afterBytes = new Uint8Array(
+        after.buffer,
+        after.byteOffset,
+        after.byteLength
+      );
+      for (let index = 0; index < beforeBytes.length; index++) {
+        if (beforeBytes[index] !== afterBytes[index]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (before instanceof Map || after instanceof Map) {
+      if (!(before instanceof Map) || !(after instanceof Map) || before.size !== after.size) {
+        return false;
+      }
+      const unmatchedEntries = [...after];
+      for (const [beforeKey, beforeValue] of before) {
+        let matchIndex = -1;
+        for (let index = 0; index < unmatchedEntries.length; index++) {
+          const [afterKey, afterValue] = unmatchedEntries[index];
+          if (valuesEqual(beforeKey, afterKey, /* @__PURE__ */ new WeakMap()) && valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())) {
+            matchIndex = index;
+            break;
+          }
+        }
+        if (matchIndex < 0) {
+          return false;
+        }
+        unmatchedEntries.splice(matchIndex, 1);
+      }
+      return true;
+    }
+    if (before instanceof Set || after instanceof Set) {
+      if (!(before instanceof Set) || !(after instanceof Set) || before.size !== after.size) {
+        return false;
+      }
+      const unmatchedValues = [...after];
+      for (const beforeValue of before) {
+        const matchIndex = unmatchedValues.findIndex(
+          (afterValue) => valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())
+        );
+        if (matchIndex < 0) {
+          return false;
+        }
+        unmatchedValues.splice(matchIndex, 1);
+      }
+      return true;
+    }
+    return false;
+  };
+  var getKey = (current, component) => {
+    if (Array.isArray(current)) {
+      if (typeof component === "number" && component >= 0 || typeof component === "string" && ARRAY_INDEX.test(component)) {
+        return Number(component);
+      }
+      throw new TypeError(
+        `Invalid array index in diff path: ${String(component)}`
+      );
+    }
+    return component;
+  };
   var setValueAtPath = (record, path, value) => {
     let current = record;
-    for (let i = 0; i < path.length - 1; i++) {
-      const key = path[i];
-      if (!(key in current)) {
-        current[key] = {};
+    for (let index = 0; index < path.length - 1; index++) {
+      if (!isContainer(current)) {
+        throw new TypeError("Cannot traverse a non-record diff path value");
+      }
+      const key = getKey(current, path[index]);
+      if (!Object.hasOwn(current, key)) {
+        const nextComponent = path[index + 1];
+        current[key] = typeof nextComponent === "number" ? [] : /* @__PURE__ */ Object.create(null);
+      }
+      if (!isContainer(current[key])) {
+        throw new TypeError("Cannot traverse a non-record diff path value");
       }
       current = current[key];
     }
-    current[path[path.length - 1]] = cloneRecursive(value);
+    if (!isContainer(current)) {
+      throw new TypeError("Cannot set a value on a non-record diff path value");
+    }
+    current[getKey(current, path[path.length - 1])] = cloneRecursive(value);
   };
   var deleteValueAtPath = (record, path) => {
     let current = record;
-    for (let i = 0; i < path.length - 1; i++) {
-      current = current[path[i]];
-      if (!current) {
+    for (let index = 0; index < path.length - 1; index++) {
+      if (!isContainer(current)) {
+        throw new TypeError("Cannot traverse a non-record diff path value");
+      }
+      const key2 = getKey(current, path[index]);
+      if (!Object.hasOwn(current, key2)) {
         return;
       }
+      current = current[key2];
     }
+    if (!isContainer(current)) {
+      throw new TypeError(
+        "Cannot delete a value on a non-record diff path value"
+      );
+    }
+    const key = getKey(current, path[path.length - 1]);
     if (Array.isArray(current)) {
-      current.splice(parseInt(path[path.length - 1], 10), 1);
+      current.splice(key, 1);
     } else {
-      delete current[path[path.length - 1]];
+      delete current[key];
     }
   };
-  var determineDiff = (before, after, path = []) => {
+  var applyValidatedDiff = (state, diff, reverting) => {
+    for (const change of diff) {
+      if (reverting) {
+        if (change.type === "set") {
+          if (change.old === void 0) {
+            deleteValueAtPath(state, change.path);
+          } else {
+            setValueAtPath(state, change.path, change.old);
+          }
+        } else {
+          setValueAtPath(state, change.path, change.old);
+        }
+      } else if (change.type === "set") {
+        setValueAtPath(state, change.path, change.new);
+      } else {
+        deleteValueAtPath(state, change.path);
+      }
+    }
+    return state;
+  };
+  var determineDiff = (before, after, path = [], compared = /* @__PURE__ */ new WeakMap()) => {
     const changes = [];
-    for (const key in before) {
+    if (before && after && typeof before === "object" && typeof after === "object") {
+      let comparedAfter = compared.get(before);
+      if (comparedAfter?.has(after)) {
+        return changes;
+      }
+      if (!comparedAfter) {
+        comparedAfter = /* @__PURE__ */ new WeakSet();
+        compared.set(before, comparedAfter);
+      }
+      comparedAfter.add(after);
+    }
+    for (const key of Object.keys(before)) {
       const currentPath = [...path, key];
-      if (!(key in after)) {
+      if (!Object.hasOwn(after, key)) {
         changes.unshift({
           type: "delete",
           path: currentPath,
           old: cloneRecursive(before[key])
         });
-      } else if (typeof before[key] === "object" && typeof after[key] === "object") {
-        changes.unshift(...determineDiff(before[key], after[key], currentPath));
-      } else if (before[key] !== after[key]) {
+      } else if (isContainer(before[key]) && isContainer(after[key])) {
+        changes.unshift(
+          ...determineDiff(before[key], after[key], currentPath, compared)
+        );
+      } else if (!valuesEqual(before[key], after[key])) {
         changes.unshift({
           type: "set",
           path: currentPath,
@@ -1204,8 +1563,8 @@
         });
       }
     }
-    for (const key in after) {
-      if (!(key in before)) {
+    for (const key of Object.keys(after)) {
+      if (!Object.hasOwn(before, key)) {
         changes.unshift({
           type: "set",
           path: [...path, key],
@@ -1216,35 +1575,58 @@
     return changes;
   };
   var applyDiff = (state, diff) => {
-    for (const change of diff) {
-      if (change.type === "set") {
-        setValueAtPath(state, change.path, change.new);
-      } else if (change.type === "delete") {
-        deleteValueAtPath(state, change.path);
-      }
-    }
-    return state;
+    validateDiff(diff);
+    applyValidatedDiff(cloneRecursive(state), diff, false);
+    return applyValidatedDiff(state, diff, false);
   };
   var revertDiff = (state, diff) => {
-    for (const change of diff) {
-      if (change.type === "set") {
-        if (change.old === void 0) {
-          deleteValueAtPath(state, change.path);
-        } else {
-          setValueAtPath(state, change.path, change.old);
-        }
-      } else if (change.type === "delete") {
-        setValueAtPath(state, change.path, change.old);
-      }
-    }
-    return state;
+    validateDiff(diff);
+    applyValidatedDiff(cloneRecursive(state), diff, true);
+    return applyValidatedDiff(state, diff, true);
   };
 
   // src/library/client-synchronizer.js
   var createClientSynchronizer = (options = {}, privateState = {}, publicState = {}) => {
     const connector = createClientConnector(options);
     const { messageRoom } = connector;
-    const { windowPerUser = 16, synchronisationInterval = 60 * 1e3 } = options;
+    const {
+      windowPerUser = 16,
+      synchronisationInterval = 60 * 1e3,
+      maxDiffChanges = 1e3,
+      maxDiffPathDepth = 32,
+      maxDiffValueBytes = 192 * 1024,
+      maxSerializedStateBytes = 1024 * 1024
+    } = options;
+    for (const [name, value] of [
+      ["maxDiffChanges", maxDiffChanges],
+      ["maxDiffPathDepth", maxDiffPathDepth],
+      ["maxDiffValueBytes", maxDiffValueBytes],
+      ["maxSerializedStateBytes", maxSerializedStateBytes]
+    ]) {
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new TypeError(`${name} must be a positive integer`);
+      }
+    }
+    const serializedBytes = (value) => {
+      const serialized = JSON.stringify(value);
+      if (serialized === void 0) {
+        throw new TypeError("invalid_serialized_value");
+      }
+      return new TextEncoder().encode(serialized).byteLength;
+    };
+    const validateStateDelta = (stateDelta) => {
+      if (!Array.isArray(stateDelta) || stateDelta.length > maxDiffChanges) {
+        throw new TypeError("invalid_state_delta");
+      }
+      for (const change of stateDelta) {
+        if (!change || typeof change !== "object" || change.type !== "set" && change.type !== "delete" || !Array.isArray(change.path) || change.path.length === 0 || change.path.length > maxDiffPathDepth) {
+          throw new TypeError("invalid_state_delta");
+        }
+        if (Object.hasOwn(change, "new") && serializedBytes(change.new) > maxDiffValueBytes || Object.hasOwn(change, "old") && serializedBytes(change.old) > maxDiffValueBytes) {
+          throw new TypeError("state_delta_value_too_large");
+        }
+      }
+    };
     const _stateUpdates = [];
     let _synchronisationIntervalId, _messageDelay = 0, _messageOffset = 0, _stateUpdatesWindow = windowPerUser;
     const _sendDelta = (stateDelta) => {
@@ -1291,6 +1673,16 @@
     };
     connector.onMessage.addListener(({ data, time }) => {
       if (data.sender === privateState.userId || data.receiver && data.receiver !== privateState.userId) {
+        return;
+      }
+      try {
+        if (data.type === STATE_UPDATE) {
+          validateStateDelta(data.stateDelta);
+        } else if (data.type === STATE_SYNCH && serializedBytes(data.state) > maxSerializedStateBytes) {
+          throw new TypeError("synchronized_state_too_large");
+        }
+      } catch (error) {
+        connector.onError.dispatch({ error });
         return;
       }
       _messageDelay = (_messageDelay + time.delay) / 2;
@@ -1362,10 +1754,9 @@
       privateState.roomCode = roomCode;
       privateState.userId = userId;
       privateState.users = users;
-      privateState.verifiedUsers = [];
+      privateState.verifiedUsers = [creatorId];
       privateState.previousState = cloneRecursive(publicState);
       if (userId === creatorId) {
-        privateState.verifiedUsers.push(userId);
         _synchronisationIntervalId = setInterval(
           _synchroniseState,
           synchronisationInterval

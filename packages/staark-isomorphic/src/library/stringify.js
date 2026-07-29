@@ -1,6 +1,6 @@
 import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
 
-const SELF_CLOSING = [
+const SELF_CLOSING = new Set([
 	"base",
 	"br",
 	"hr",
@@ -10,7 +10,18 @@ const SELF_CLOSING = [
 	"meta",
 	"source",
 	"wbr",
-];
+]);
+
+const UNSAFE_NAME_CHARACTERS = /[\s"'<>/=]/;
+const TEXT_CHARACTERS = /[&<>]/g;
+const ATTRIBUTE_CHARACTERS = /[&<>"']/g;
+const ESCAPED_CHARACTERS = {
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	'"': "&quot;",
+	"'": "&#39;",
+};
 
 /**
  * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
@@ -36,6 +47,52 @@ const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
 const HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
 
 /**
+ * Escape a character for use in HTML.
+ *
+ * @param {string} character - Character to escape.
+ * @returns {string} Escaped character.
+ */
+const escapeCharacter = (character) => ESCAPED_CHARACTERS[character];
+
+/**
+ * Escape text content for use in HTML.
+ *
+ * @param {unknown} value - Text value to escape.
+ * @returns {string} Escaped text.
+ */
+const escapeText = (value) =>
+	String(value).replace(TEXT_CHARACTERS, escapeCharacter);
+
+/**
+ * Escape an attribute value for use in HTML.
+ *
+ * @param {unknown} value - Attribute value to escape.
+ * @returns {string} Escaped attribute value.
+ */
+const escapeAttribute = (value) =>
+	String(value).replace(ATTRIBUTE_CHARACTERS, escapeCharacter);
+
+/**
+ * Validate an HTML, SVG, custom element, or namespaced name.
+ *
+ * @param {unknown} name - Name to validate.
+ * @param {string} context - Name context for the error.
+ * @returns {string} Validated name.
+ * @throws {TypeError} When the name is empty or contains unsafe characters.
+ */
+const validateName = (name, context) => {
+	if (
+		typeof name !== "string" ||
+		name.length === 0 ||
+		UNSAFE_NAME_CHARACTERS.test(name)
+	) {
+		throw new TypeError(`Invalid ${context} name: ${String(name)}`);
+	}
+
+	return name;
+};
+
+/**
  * Render attributes to string.
  *
  * @param {NodeAttributes} [attributes] Attributes to render.
@@ -43,62 +100,53 @@ const HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
  */
 const renderAttributes = (attributes) => {
 	let rendered = "";
-	if (attributes) {
-		for (const name in attributes) {
-			let value = attributes[name];
-			if (value !== null && value !== undefined) {
-				const type = typeof value;
+	if (!attributes) {
+		return rendered;
+	}
 
-				// Ensure it is of type string.
-				if (type === "boolean") {
-					value = value ? "true" : "false";
-				} else if (type !== "string") {
-					value = value.toString();
-				}
+	for (const name of Object.keys(attributes)) {
+		const validatedName = validateName(name, "attribute");
+		let value = attributes[name];
+		if (value === null || value === undefined) {
+			continue;
+		}
 
-				if (name === "class") {
-					if (typeof value === "object") {
-						if (Array.isArray(value)) {
-							value = value.join(" ");
-						} else {
-							let classNames = "";
-							for (const className in value) {
-								if (value[className]) {
-									classNames += ` ${className}`;
-								}
-							}
-							value = classNames;
-						}
-					}
-				} else if (name === "style") {
-					if (typeof value === "object") {
-						if (Array.isArray(value)) {
-							value = value.join(";");
-						} else {
-							let styles = "";
-							for (let styleProperty in value) {
-								const styleValue = value[styleProperty];
-
-								// Convert to kebab case.
-								styleProperty = styleProperty
-									.replace(MATCH_CAPITALS, HYPHENATE)
-									.toLowerCase();
-
-								if (Array.isArray(styleValue)) {
-									styles += `;${styleProperty}:${styleValue.join(" ")}`;
-								} else if (value) {
-									styles += `;${styleProperty}:${value}`;
-								}
-							}
-							value = styles;
-						}
+		if (validatedName === "class" && typeof value === "object") {
+			if (Array.isArray(value)) {
+				value = value.join(" ");
+			} else {
+				const classNames = [];
+				for (const className of Object.keys(value)) {
+					if (value[className]) {
+						classNames.push(className);
 					}
 				}
+				value = classNames.join(" ");
+			}
+		} else if (validatedName === "style" && typeof value === "object") {
+			if (Array.isArray(value)) {
+				value = value.join(";");
+			} else {
+				const styles = [];
+				for (let styleProperty of Object.keys(value)) {
+					const styleValue = value[styleProperty];
+					styleProperty = styleProperty
+						.replace(MATCH_CAPITALS, HYPHENATE)
+						.toLowerCase();
 
-				rendered += ` ${name}="${value}"`;
+					styles.push(
+						`${styleProperty}:${
+							Array.isArray(styleValue) ? styleValue.join(" ") : styleValue
+						}`,
+					);
+				}
+				value = styles.join(";");
 			}
 		}
+
+		rendered += ` ${validatedName}="${escapeAttribute(value)}"`;
 	}
+
 	return rendered;
 };
 
@@ -108,28 +156,35 @@ const renderAttributes = (attributes) => {
  * @param {NodeContent[]} [abstracts] Abstract tree.
  * @returns {string} Rendered elements.
  */
-const renderElements = (abstracts) => {
+const renderElements = (abstracts, state) => {
 	let rendered = "";
-	if (abstracts) {
-		for (const abstract of abstracts) {
-			if (abstract) {
-				if (abstract.t) {
-					rendered += `<${abstract.t.toLocaleLowerCase()}${renderAttributes(abstract.a)}`;
-					if (SELF_CLOSING.includes(abstract.t)) {
-						rendered += "/>";
-					} else {
-						rendered += ">";
-						if (abstract.c) {
-							rendered += renderElements(abstract.c);
-						}
-						rendered += `</${abstract.t.toLocaleLowerCase()}>`;
-					}
-				} else {
-					rendered += ` ${abstract} `;
-				}
+	if (!abstracts) {
+		return rendered;
+	}
+
+	for (const abstract of abstracts) {
+		if (abstract === null || abstract === undefined || abstract === false) {
+			continue;
+		}
+
+		if (abstract.m) {
+			rendered += renderElements(
+				arrayifyOrUndefined(abstract.r(state, abstract.m)),
+				state,
+			);
+		} else if (abstract.t) {
+			const type = validateName(abstract.t, "element").toLocaleLowerCase();
+			rendered += `<${type}${renderAttributes(abstract.a)}`;
+			if (SELF_CLOSING.has(type)) {
+				rendered += "/>";
+			} else {
+				rendered += `>${renderElements(abstract.c, state)}</${type}>`;
 			}
+		} else {
+			rendered += ` ${escapeText(abstract)} `;
 		}
 	}
+
 	return rendered;
 };
 
@@ -156,44 +211,8 @@ export const stringify = (renderView, initialState) => {
 		initialState = {};
 	}
 
-	/**
-	 * @param {NodeContent[]} [abstracts]
-	 * @returns {string}
-	 */
-	const renderElements = (abstracts) => {
-		let rendered = "";
-		if (abstracts) {
-			for (const abstract of abstracts) {
-				if (abstract) {
-					if (abstract.m) {
-						rendered += renderElements(
-							arrayifyOrUndefined(abstract.r(initialState, abstract.m)),
-						);
-					} else if (abstract.t) {
-						rendered +=
-							"<" +
-							abstract.t.toLocaleLowerCase() +
-							renderAttributes(abstract.a);
-						if (SELF_CLOSING.includes(abstract.t)) {
-							rendered += "/>";
-						} else {
-							rendered += ">";
-							if (abstract.c) {
-								rendered += renderElements(abstract.c);
-							}
-							rendered += `</${abstract.t.toLocaleLowerCase()}>`;
-						}
-					} else {
-						rendered += ` ${abstract} `;
-					}
-				}
-			}
-		}
-		return rendered;
-	};
-
 	const abstractTree = arrayifyOrUndefined(renderView(initialState));
-	return [renderElements(abstractTree), abstractTree];
+	return [renderElements(abstractTree, initialState), abstractTree];
 };
 
 /**

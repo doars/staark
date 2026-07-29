@@ -12,19 +12,57 @@
   };
 
   // src/clone.js
-  var cloneRecursive = (value) => {
-    if (value && typeof value === "object") {
-      const clone = Array.isArray(value) ? [] : {};
-      for (const key in value) {
-        clone[key] = cloneRecursive(value[key]);
-      }
-      return clone;
+  var cloneRecursive = (value, clones = /* @__PURE__ */ new WeakMap()) => {
+    if (!value || typeof value !== "object") {
+      return value;
     }
-    return value;
+    if (clones.has(value)) {
+      return clones.get(value);
+    }
+    if (value instanceof Date) {
+      const clone2 = new Date(value.getTime());
+      clones.set(value, clone2);
+      return clone2;
+    }
+    if (value instanceof Map) {
+      const clone2 = /* @__PURE__ */ new Map();
+      clones.set(value, clone2);
+      for (const [key, entryValue] of value) {
+        clone2.set(
+          cloneRecursive(key, clones),
+          cloneRecursive(entryValue, clones)
+        );
+      }
+      return clone2;
+    }
+    if (value instanceof Set) {
+      const clone2 = /* @__PURE__ */ new Set();
+      clones.set(value, clone2);
+      for (const entryValue of value) {
+        clone2.add(cloneRecursive(entryValue, clones));
+      }
+      return clone2;
+    }
+    if (ArrayBuffer.isView(value)) {
+      const clone2 = value instanceof DataView ? new DataView(
+        value.buffer.slice(
+          value.byteOffset,
+          value.byteOffset + value.byteLength
+        )
+      ) : new value.constructor(value);
+      clones.set(value, clone2);
+      return clone2;
+    }
+    const clone = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
+    clones.set(value, clone);
+    for (const key of Object.keys(value)) {
+      clone[key] = cloneRecursive(value[key], clones);
+    }
+    return clone;
   };
 
   // src/compare.js
-  var equalRecursive = (valueA, valueB) => {
+  var equalRecursive = (valueA, valueB, compared = /* @__PURE__ */ new WeakMap()) => {
     if (valueA === valueB) {
       return true;
     }
@@ -34,8 +72,56 @@
     if (valueA instanceof Date) {
       return valueB instanceof Date && valueA.getTime() === valueB.getTime();
     }
+    if (Object.getPrototypeOf(valueA) !== Object.getPrototypeOf(valueB)) {
+      return false;
+    }
+    let comparedWithA = compared.get(valueA);
+    if (comparedWithA?.has(valueB)) {
+      return true;
+    }
+    if (!comparedWithA) {
+      comparedWithA = /* @__PURE__ */ new WeakSet();
+      compared.set(valueA, comparedWithA);
+    }
+    comparedWithA.add(valueB);
+    if (valueA instanceof Map) {
+      if (!(valueB instanceof Map) || valueA.size !== valueB.size) return false;
+      for (const [key, entryValue] of valueA) {
+        if (!valueB.has(key) || !equalRecursive(entryValue, valueB.get(key), compared)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (valueA instanceof Set) {
+      if (!(valueB instanceof Set) || valueA.size !== valueB.size) return false;
+      for (const entryValue of valueA) {
+        if (!valueB.has(entryValue)) return false;
+      }
+      return true;
+    }
+    if (ArrayBuffer.isView(valueA)) {
+      if (!ArrayBuffer.isView(valueB) || valueA.constructor !== valueB.constructor || valueA.byteLength !== valueB.byteLength)
+        return false;
+      const bytesA = new Uint8Array(
+        valueA.buffer,
+        valueA.byteOffset,
+        valueA.byteLength
+      );
+      const bytesB = new Uint8Array(
+        valueB.buffer,
+        valueB.byteOffset,
+        valueB.byteLength
+      );
+      for (let index = 0; index < bytesA.length; index++) {
+        if (bytesA[index] !== bytesB[index]) return false;
+      }
+      return true;
+    }
     const keys = Object.keys(valueA);
-    return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
+    return keys.length === Object.keys(valueB).length && keys.every(
+      (key) => Object.hasOwn(valueB, key) && equalRecursive(valueA[key], valueB[key], compared)
+    );
   };
 
   // src/conditional.js

@@ -1,3 +1,5 @@
+import { createRecord, validateKey } from "./record.js";
+
 /**
  * @typedef {import('../request.js').RequestOptions} RequestOptions
  * @typedef {import('../request.js').ResponseParser} ResponseParser
@@ -46,13 +48,45 @@ const parseTomlValue = (value) => {
 };
 
 /**
+ * Parse the comma-separated values in a TOML array.
+ *
+ * @param {string} value Array contents without brackets.
+ * @returns {TomlValue[]} Parsed values.
+ */
+const parseTomlArray = (value) => {
+	const values = [];
+	let currentValue = "";
+	let quote = null;
+	for (const character of value) {
+		if ((character === '"' || character === "'") && !quote) {
+			quote = character;
+			currentValue += character;
+		} else if (character === quote) {
+			quote = null;
+			currentValue += character;
+		} else if (character === "," && !quote) {
+			if (currentValue.trim()) {
+				values.push(parseTomlValue(currentValue.trim()));
+			}
+			currentValue = "";
+		} else {
+			currentValue += character;
+		}
+	}
+	if (currentValue.trim()) {
+		values.push(parseTomlValue(currentValue.trim()));
+	}
+	return values;
+};
+
+/**
  * Parse an inline table.
  *
  * @param {string} tableString The inline table string.
  * @returns {TomlObject} The parsed inline table.
  */
 const parseInlineTable = (tableString) => {
-	const result = {};
+	const result = createRecord();
 	let key = "";
 	let value = "";
 	let inQuotes = false;
@@ -69,7 +103,9 @@ const parseInlineTable = (tableString) => {
 		} else if (!inQuotes && character === "=") {
 			inValue = true;
 		} else if (!inQuotes && character === ",") {
-			result[key.trim()] = parseTomlValue(value.trim());
+			const trimmedKey = key.trim();
+			validateKey(trimmedKey);
+			result[trimmedKey] = parseTomlValue(value.trim());
 			key = "";
 			value = "";
 			inValue = false;
@@ -83,7 +119,9 @@ const parseInlineTable = (tableString) => {
 	}
 
 	if (key) {
-		result[key.trim()] = parseTomlValue(value.trim());
+		const trimmedKey = key.trim();
+		validateKey(trimmedKey);
+		result[trimmedKey] = parseTomlValue(value.trim());
 	}
 
 	return result;
@@ -110,9 +148,10 @@ export const tomlParser = (options = {}) => {
 		parser: async (response, _requestOptions, _type) => {
 			const text = await response.text();
 
-			const result = {};
+			const result = createRecord();
 			let currentTable = result;
-			let currentArray = null;
+			let multilineArray = null;
+			let multilineArrayKey = null;
 			let multilineString = null;
 			let multilineStringDelimiter = null;
 
@@ -135,64 +174,78 @@ export const tomlParser = (options = {}) => {
 					}
 					continue;
 				}
-
-				if (line.startsWith("[") && line.endsWith("]")) {
-					// Table
-					const tableName = line.slice(1, -1).trim();
-					currentTable = result;
-					const parts = tableName.split(".");
-					for (const part of parts) {
-						if (!currentTable[part]) currentTable[part] = {};
-						currentTable = currentTable[part];
+				if (multilineArray !== null) {
+					multilineArray += ` ${line}`;
+					if (line.endsWith("]")) {
+						currentTable[multilineArrayKey] = parseTomlArray(
+							multilineArray.slice(0, -1),
+						);
+						multilineArray = null;
+						multilineArrayKey = null;
 					}
-					currentArray = null;
-				} else if (line.startsWith("[[") && line.endsWith("]]")) {
+					continue;
+				}
+
+				if (line.startsWith("[[") && line.endsWith("]]")) {
 					// Array of Tables
 					const arrayName = line.slice(2, -2).trim();
 					const parts = arrayName.split(".");
 					let parent = result;
 					for (let i = 0; i < parts.length - 1; i++) {
-						if (!parent[parts[i]]) parent[parts[i]] = {};
+						validateKey(parts[i]);
+						if (!Object.hasOwn(parent, parts[i]))
+							parent[parts[i]] = createRecord();
 						parent = parent[parts[i]];
 					}
 					const lastPart = parts[parts.length - 1];
-					if (!parent[lastPart]) parent[lastPart] = [];
-					const newTable = {};
+					validateKey(lastPart);
+					if (!Object.hasOwn(parent, lastPart)) parent[lastPart] = [];
+					const newTable = createRecord();
 					parent[lastPart].push(newTable);
 					currentTable = newTable;
-					currentArray = null;
+					multilineArray = null;
+					multilineArrayKey = null;
+				} else if (line.startsWith("[") && line.endsWith("]")) {
+					// Table
+					const tableName = line.slice(1, -1).trim();
+					currentTable = result;
+					const parts = tableName.split(".");
+					for (const part of parts) {
+						validateKey(part);
+						if (!Object.hasOwn(currentTable, part))
+							currentTable[part] = createRecord();
+						currentTable = currentTable[part];
+					}
+					multilineArray = null;
+					multilineArrayKey = null;
 				} else {
 					// Key-value pair
 					const [key, ...valueParts] = line.split("=");
-					let value = valueParts.join("=").trim();
+					const value = valueParts.join("=").trim();
+					const trimmedKey = key.trim();
+					validateKey(trimmedKey);
 
 					if (value.startsWith('"""') || value.startsWith("'''")) {
 						// Multi-line string
 						multilineStringDelimiter = value.slice(0, 3);
 						multilineString = value.slice(3);
 						if (value.endsWith(multilineStringDelimiter)) {
-							currentTable[key.trim()] = multilineString.slice(0, -3);
+							currentTable[trimmedKey] = multilineString.slice(0, -3);
 							multilineString = null;
 							multilineStringDelimiter = null;
 						}
 					} else if (value.startsWith("{") && value.endsWith("}")) {
 						// Inline table
-						currentTable[key.trim()] = parseInlineTable(value);
+						currentTable[trimmedKey] = parseInlineTable(value);
 					} else if (value.startsWith("[") && !value.endsWith("]")) {
 						// Multi-line array
-						currentArray = [];
-						value = value.slice(1).trim();
+						multilineArray = value.slice(1).trim();
+						multilineArrayKey = trimmedKey;
 					} else {
-						if (currentArray !== null) {
-							if (value.endsWith("]")) {
-								currentArray.push(parseTomlValue(value.slice(0, -1).trim()));
-								currentTable[key.trim()] = currentArray;
-								currentArray = null;
-							} else {
-								currentArray.push(parseTomlValue(value));
-							}
+						if (value.startsWith("[") && value.endsWith("]")) {
+							currentTable[trimmedKey] = parseTomlArray(value.slice(1, -1));
 						} else {
-							currentTable[key.trim()] = parseTomlValue(value);
+							currentTable[trimmedKey] = parseTomlValue(value);
 						}
 					}
 				}

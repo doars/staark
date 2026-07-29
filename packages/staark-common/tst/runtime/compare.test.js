@@ -65,5 +65,26 @@ describe('Compare', () => {
     it('should return false for Date vs non-Date', () => {
       assert.strictEqual(equalRecursive(new Date(), '2023-01-01'), false)
     })
+
+    it('compares equal and unequal circular graphs', () => {
+      const valueA = { value: true }
+      const valueB = { value: true }
+      valueA.self = valueA
+      valueB.self = valueB
+      assert.strictEqual(equalRecursive(valueA, valueB), true)
+
+      valueB.value = false
+      assert.strictEqual(equalRecursive(valueA, valueB), false)
+    })
+
+    it('compares DataView values by constructor and visible bytes', () => {
+      const valueA = new DataView(new Uint8Array([0, 1, 2]).buffer, 1)
+      const valueB = new DataView(new Uint8Array([1, 2]).buffer)
+      const valueC = new DataView(new Uint8Array([1, 3]).buffer)
+
+      assert.strictEqual(equalRecursive(valueA, valueB), true)
+      assert.strictEqual(equalRecursive(valueA, valueC), false)
+      assert.strictEqual(equalRecursive(valueA, new Uint8Array([1, 2])), false)
+    })
   })
 })

@@ -30,4 +30,21 @@ describe('Mount', () => {
     const result = mount(app, () => node('h1', 'hello world'))
     assert.strictEqual(app.innerHTML, '<h1>hello world</h1>')
   })
+
+  it('preserves numeric zero attributes and styles', () => {
+    const app = document.createElement('div')
+    mount(app, () => node('input', {
+      'aria-valuenow': 0,
+      style: {
+        opacity: 0,
+      },
+      tabindex: 0,
+      value: 0,
+    }))
+
+    assert.strictEqual(app.firstChild.getAttribute('aria-valuenow'), '0')
+    assert.strictEqual(app.firstChild.getAttribute('tabindex'), '0')
+    assert.strictEqual(app.firstChild.value, '0')
+    assert.strictEqual(app.firstChild.style.opacity, '0')
+  })
 })

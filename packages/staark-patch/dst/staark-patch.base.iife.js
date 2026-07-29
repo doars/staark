@@ -53,9 +53,9 @@
   // src/library/patch.js
   var updateAttributes = (element, newAttributes, oldAttributes) => {
     if (newAttributes) {
-      for (const name in newAttributes) {
+      for (const name of Object.keys(newAttributes)) {
         let value = newAttributes[name];
-        if (value) {
+        if (value !== null && value !== void 0 && value !== false) {
           const type = typeof value;
           if (type === "function") {
             const oldValue = oldAttributes?.[name];
@@ -72,7 +72,7 @@
                   value = value.join(" ");
                 } else {
                   let classNames = "";
-                  for (const className in value) {
+                  for (const className of Object.keys(value)) {
                     if (value[className]) {
                       classNames += ` ${className}`;
                     }
@@ -82,7 +82,7 @@
               }
               element.className = value;
             } else if (name === "style" && typeof value === "object") {
-              for (const styleName in value) {
+              for (const styleName of Object.keys(value)) {
                 const styleValue = value[styleName];
                 if (styleName.includes("-", 1)) {
                   element.style.setProperty(styleName, styleValue);
@@ -91,8 +91,8 @@
                 }
               }
               if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
-                for (const styleName in oldAttributes[name]) {
-                  if (!value[styleName]) {
+                for (const styleName of Object.keys(oldAttributes[name])) {
+                  if (!Object.hasOwn(value, styleName)) {
                     if (styleName.includes("-", 1)) {
                       element.style.removeProperty(styleName);
                     } else {
@@ -117,8 +117,9 @@
       }
     }
     if (oldAttributes) {
-      for (const name in oldAttributes) {
-        if (!newAttributes?.[name]) {
+      for (const name of Object.keys(oldAttributes)) {
+        const newValue = newAttributes?.[name];
+        if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
           if (typeof oldAttributes[name] === "function") {
             element.removeEventListener(name, oldAttributes[name]);
           } else if (name === "class") {

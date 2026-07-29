@@ -1,36 +1,36 @@
 {
-  "author": {
-    "name": "Ron Dekker",
-    "website": "https://rondekker.nl/en-gb"
-  },
-  "name": "@doars/vroagn",
-  "description": "A teensy-tiny library for managing network requests.",
-  "keywords": [],
-  "version": "1.4.3",
-  "license": "MIT",
-  "type": "module",
-  "main": "src/index.js",
-  "homepage": "https://github.com/doars/staark/tree/main/packages/vroagn#readme",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/doars/staark.git"
-  },
-  "bugs": {
-    "url": "https://github.com/doars/staark/issues"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "check": "biome check ./src",
-    "check:write": "biome check --write ./src",
-    "develop": "NODE_ENV=development node config.bundle.js",
-    "build": "NODE_ENV=production node config.bundle.js"
-  },
-  "files": [
-    "dst",
-    "src",
-    "CHANGELOG.md",
-    "README.md"
-  ]
+	"author": {
+		"name": "Ron Dekker",
+		"website": "https://rondekker.nl/en-gb"
+	},
+	"name": "@doars/vroagn",
+	"description": "A teensy-tiny library for managing network requests.",
+	"keywords": [],
+	"version": "1.5.0",
+	"license": "MIT",
+	"type": "module",
+	"main": "src/index.js",
+	"homepage": "https://github.com/doars/staark/tree/main/packages/vroagn#readme",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/doars/staark.git"
+	},
+	"bugs": {
+		"url": "https://github.com/doars/staark/issues"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"check": "biome check ./src",
+		"check:write": "biome check --write ./src",
+		"develop": "NODE_ENV=development node config.bundle.js",
+		"build": "NODE_ENV=production node config.bundle.js"
+	},
+	"files": [
+		"dst",
+		"src",
+		"CHANGELOG.md",
+		"README.md"
+	]
 }

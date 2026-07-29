@@ -39,19 +39,57 @@
   };
 
   // ../staark-common/src/clone.js
-  var cloneRecursive = (value) => {
-    if (value && typeof value === "object") {
-      const clone = Array.isArray(value) ? [] : {};
-      for (const key in value) {
-        clone[key] = cloneRecursive(value[key]);
-      }
-      return clone;
+  var cloneRecursive = (value, clones = /* @__PURE__ */ new WeakMap()) => {
+    if (!value || typeof value !== "object") {
+      return value;
     }
-    return value;
+    if (clones.has(value)) {
+      return clones.get(value);
+    }
+    if (value instanceof Date) {
+      const clone2 = new Date(value.getTime());
+      clones.set(value, clone2);
+      return clone2;
+    }
+    if (value instanceof Map) {
+      const clone2 = /* @__PURE__ */ new Map();
+      clones.set(value, clone2);
+      for (const [key, entryValue] of value) {
+        clone2.set(
+          cloneRecursive(key, clones),
+          cloneRecursive(entryValue, clones)
+        );
+      }
+      return clone2;
+    }
+    if (value instanceof Set) {
+      const clone2 = /* @__PURE__ */ new Set();
+      clones.set(value, clone2);
+      for (const entryValue of value) {
+        clone2.add(cloneRecursive(entryValue, clones));
+      }
+      return clone2;
+    }
+    if (ArrayBuffer.isView(value)) {
+      const clone2 = value instanceof DataView ? new DataView(
+        value.buffer.slice(
+          value.byteOffset,
+          value.byteOffset + value.byteLength
+        )
+      ) : new value.constructor(value);
+      clones.set(value, clone2);
+      return clone2;
+    }
+    const clone = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
+    clones.set(value, clone);
+    for (const key of Object.keys(value)) {
+      clone[key] = cloneRecursive(value[key], clones);
+    }
+    return clone;
   };
 
   // ../staark-common/src/compare.js
-  var equalRecursive = (valueA, valueB) => {
+  var equalRecursive = (valueA, valueB, compared = /* @__PURE__ */ new WeakMap()) => {
     if (valueA === valueB) {
       return true;
     }
@@ -61,8 +99,56 @@
     if (valueA instanceof Date) {
       return valueB instanceof Date && valueA.getTime() === valueB.getTime();
     }
+    if (Object.getPrototypeOf(valueA) !== Object.getPrototypeOf(valueB)) {
+      return false;
+    }
+    let comparedWithA = compared.get(valueA);
+    if (comparedWithA?.has(valueB)) {
+      return true;
+    }
+    if (!comparedWithA) {
+      comparedWithA = /* @__PURE__ */ new WeakSet();
+      compared.set(valueA, comparedWithA);
+    }
+    comparedWithA.add(valueB);
+    if (valueA instanceof Map) {
+      if (!(valueB instanceof Map) || valueA.size !== valueB.size) return false;
+      for (const [key, entryValue] of valueA) {
+        if (!valueB.has(key) || !equalRecursive(entryValue, valueB.get(key), compared)) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (valueA instanceof Set) {
+      if (!(valueB instanceof Set) || valueA.size !== valueB.size) return false;
+      for (const entryValue of valueA) {
+        if (!valueB.has(entryValue)) return false;
+      }
+      return true;
+    }
+    if (ArrayBuffer.isView(valueA)) {
+      if (!ArrayBuffer.isView(valueB) || valueA.constructor !== valueB.constructor || valueA.byteLength !== valueB.byteLength)
+        return false;
+      const bytesA = new Uint8Array(
+        valueA.buffer,
+        valueA.byteOffset,
+        valueA.byteLength
+      );
+      const bytesB = new Uint8Array(
+        valueB.buffer,
+        valueB.byteOffset,
+        valueB.byteLength
+      );
+      for (let index = 0; index < bytesA.length; index++) {
+        if (bytesA[index] !== bytesB[index]) return false;
+      }
+      return true;
+    }
     const keys = Object.keys(valueA);
-    return keys.length === Object.keys(valueB).length && keys.every((k) => equalRecursive(valueA[k], valueB[k]));
+    return keys.length === Object.keys(valueB).length && keys.every(
+      (key) => Object.hasOwn(valueB, key) && equalRecursive(valueA[key], valueB[key], compared)
+    );
   };
 
   // ../staark-common/src/element.js
@@ -86,6 +172,7 @@
 
   // src/library/proxy.js
   var proxify = (root, onChange) => {
+    const proxies = /* @__PURE__ */ new WeakMap();
     const handler = {
       /**
        * Deletes a property from the target object and invokes the onChange callback if the property existed.
@@ -95,7 +182,7 @@
        * @returns {boolean} - True if the property was deleted, otherwise false.
        */
       deleteProperty: (target, key) => {
-        if (Reflect.has(target, key)) {
+        if (Object.hasOwn(target, key)) {
           const deleted = Reflect.deleteProperty(target, key);
           if (deleted) {
             onChange();
@@ -112,25 +199,37 @@
        * @param {any} value - The value to be set.
        * @returns {boolean} - True if the property was set, otherwise false.
        */
-      set: (target, key, value) => {
+      set: (target, key, value, receiver) => {
         const existingValue = target[key];
         if (existingValue !== value) {
           if (value && typeof value === "object") {
             value = add(value);
           }
-          target[key] = value;
-          onChange();
+          const set = Reflect.set(target, key, value, receiver);
+          if (set) {
+            onChange();
+          }
+          return set;
         }
         return true;
       }
     };
     const add = (target) => {
-      for (const key in target) {
+      if (proxies.has(target)) {
+        return proxies.get(target);
+      }
+      const prototype = Object.getPrototypeOf(target);
+      if (!Array.isArray(target) && prototype !== Object.prototype && prototype !== null) {
+        return target;
+      }
+      const proxy = new Proxy(target, handler);
+      proxies.set(target, proxy);
+      for (const key of Object.keys(target)) {
         if (target[key] && typeof target[key] === "object") {
           target[key] = add(target[key]);
         }
       }
-      return new Proxy(target, handler);
+      return proxy;
     };
     return add(root);
   };
@@ -154,9 +253,9 @@
     const state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(initialState, triggerUpdate);
     const updateAttributes = (element, newAttributes, oldAttributes) => {
       if (newAttributes) {
-        for (const name in newAttributes) {
+        for (const name of Object.keys(newAttributes)) {
           let value = newAttributes[name];
-          if (value) {
+          if (value !== null && value !== void 0 && value !== false) {
             const type = typeof value;
             if (type === "function") {
               const oldValue = oldAttributes?.[name];
@@ -179,7 +278,7 @@
                     value = value.join(" ");
                   } else {
                     let classNames = "";
-                    for (const className in value) {
+                    for (const className of Object.keys(value)) {
                       if (value[className]) {
                         classNames += ` ${className}`;
                       }
@@ -189,7 +288,7 @@
                 }
                 element.className = value;
               } else if (name === "style" && typeof value === "object") {
-                for (const styleName in value) {
+                for (const styleName of Object.keys(value)) {
                   const styleValue = value[styleName];
                   if (styleName.includes("-", 1)) {
                     element.style.setProperty(styleName, styleValue);
@@ -198,8 +297,8 @@
                   }
                 }
                 if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
-                  for (const styleName in oldAttributes[name]) {
-                    if (!value[styleName]) {
+                  for (const styleName of Object.keys(oldAttributes[name])) {
+                    if (!Object.hasOwn(value, styleName)) {
                       if (styleName.includes("-", 1)) {
                         element.style.removeProperty(styleName);
                       } else {
@@ -224,9 +323,10 @@
         }
       }
       if (oldAttributes) {
-        for (const name in oldAttributes) {
+        for (const name of Object.keys(oldAttributes)) {
           const value = oldAttributes[name];
-          if (!newAttributes?.[name]) {
+          const newValue = newAttributes?.[name];
+          if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
             if (typeof value === "function") {
               element.removeEventListener(name, oldAttributes[name]);
             } else if (name === "class") {
@@ -351,12 +451,15 @@
       if (active && !updating && updatePromise) {
         updating = true;
         updatePromise = null;
-        const newAbstractTree = arrayifyOrUndefined(renderView(state));
-        updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
-        oldAbstractTree = newAbstractTree;
-        oldMemoMap = newMemoMap;
-        newMemoMap = /* @__PURE__ */ new WeakMap();
-        updating = false;
+        try {
+          const newAbstractTree = arrayifyOrUndefined(renderView(state));
+          updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+          oldAbstractTree = newAbstractTree;
+          oldMemoMap = newMemoMap;
+          newMemoMap = /* @__PURE__ */ new WeakMap();
+        } finally {
+          updating = false;
+        }
       }
     };
     triggerUpdate();
@@ -366,6 +469,7 @@
       () => {
         if (active) {
           active = false;
+          updatePromise = null;
           for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
             _rootElement.childNodes[i].remove();
           }

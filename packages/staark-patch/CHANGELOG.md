@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.4.12
 
+- Preserve numeric zero values in DOM attributes and style objects.
+- Apply only own attribute, class, and style properties during reconciliation.
 - Migrate tests from Bun to the Node.js test runner.
 
 ## 1.4.11

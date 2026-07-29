@@ -1,7 +1,13 @@
 # Changelog
 
-## 1.2.1 (unreleased)
+## 1.3.0
 
+- Store state transitions as changed-path patches instead of replacing state with a second full incoming clone.
+- Add validated `maximumHistory`, `snapshot`, and clone-instrumentation options.
+- Compare `Date`, `Map`, `Set`, and typed arrays atomically and reject unsupported managed-state values before mutation.
+- Add deterministic large-stable-tree state benchmarks.
+- Validate diff paths before applying them, reject prototype-related keys, and make invalid diffs fail atomically.
+- Preserve cycles and shared references when cloning own enumerable values.
 - Fix cloning `null` type.
 - Migrate tests from Bun to the Node.js test runner.
 - Expand state management tests for cloning, history, undo, and redo behavior.

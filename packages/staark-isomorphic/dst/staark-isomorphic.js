@@ -233,7 +233,7 @@
   };
 
   // src/library/stringify.js
-  var SELF_CLOSING = [
+  var SELF_CLOSING = /* @__PURE__ */ new Set([
     "base",
     "br",
     "hr",
@@ -243,80 +243,94 @@
     "meta",
     "source",
     "wbr"
-  ];
+  ]);
+  var UNSAFE_NAME_CHARACTERS = /[\s"'<>/=]/;
+  var TEXT_CHARACTERS = /[&<>]/g;
+  var ATTRIBUTE_CHARACTERS = /[&<>"']/g;
+  var ESCAPED_CHARACTERS = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  };
   var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
   var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
+  var escapeCharacter = (character) => ESCAPED_CHARACTERS[character];
+  var escapeText = (value) => String(value).replace(TEXT_CHARACTERS, escapeCharacter);
+  var escapeAttribute = (value) => String(value).replace(ATTRIBUTE_CHARACTERS, escapeCharacter);
+  var validateName = (name, context) => {
+    if (typeof name !== "string" || name.length === 0 || UNSAFE_NAME_CHARACTERS.test(name)) {
+      throw new TypeError(`Invalid ${context} name: ${String(name)}`);
+    }
+    return name;
+  };
   var renderAttributes = (attributes) => {
     let rendered = "";
-    if (attributes) {
-      for (const name in attributes) {
-        let value = attributes[name];
-        if (value !== null && value !== void 0) {
-          const type = typeof value;
-          if (type === "boolean") {
-            value = value ? "true" : "false";
-          } else if (type !== "string") {
-            value = value.toString();
-          }
-          if (name === "class") {
-            if (typeof value === "object") {
-              if (Array.isArray(value)) {
-                value = value.join(" ");
-              } else {
-                let classNames = "";
-                for (const className in value) {
-                  if (value[className]) {
-                    classNames += ` ${className}`;
-                  }
-                }
-                value = classNames;
-              }
-            }
-          } else if (name === "style") {
-            if (typeof value === "object") {
-              if (Array.isArray(value)) {
-                value = value.join(";");
-              } else {
-                let styles = "";
-                for (let styleProperty in value) {
-                  const styleValue = value[styleProperty];
-                  styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-                  if (Array.isArray(styleValue)) {
-                    styles += `;${styleProperty}:${styleValue.join(" ")}`;
-                  } else if (value) {
-                    styles += `;${styleProperty}:${value}`;
-                  }
-                }
-                value = styles;
-              }
+    if (!attributes) {
+      return rendered;
+    }
+    for (const name of Object.keys(attributes)) {
+      const validatedName = validateName(name, "attribute");
+      let value = attributes[name];
+      if (value === null || value === void 0) {
+        continue;
+      }
+      if (validatedName === "class" && typeof value === "object") {
+        if (Array.isArray(value)) {
+          value = value.join(" ");
+        } else {
+          const classNames = [];
+          for (const className of Object.keys(value)) {
+            if (value[className]) {
+              classNames.push(className);
             }
           }
-          rendered += ` ${name}="${value}"`;
+          value = classNames.join(" ");
+        }
+      } else if (validatedName === "style" && typeof value === "object") {
+        if (Array.isArray(value)) {
+          value = value.join(";");
+        } else {
+          const styles = [];
+          for (let styleProperty of Object.keys(value)) {
+            const styleValue = value[styleProperty];
+            styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
+            styles.push(
+              `${styleProperty}:${Array.isArray(styleValue) ? styleValue.join(" ") : styleValue}`
+            );
+          }
+          value = styles.join(";");
         }
       }
+      rendered += ` ${validatedName}="${escapeAttribute(value)}"`;
     }
     return rendered;
   };
-  var renderElements = (abstracts) => {
+  var renderElements = (abstracts, state) => {
     let rendered = "";
-    if (abstracts) {
-      for (const abstract of abstracts) {
-        if (abstract) {
-          if (abstract.t) {
-            rendered += `<${abstract.t.toLocaleLowerCase()}${renderAttributes(abstract.a)}`;
-            if (SELF_CLOSING.includes(abstract.t)) {
-              rendered += "/>";
-            } else {
-              rendered += ">";
-              if (abstract.c) {
-                rendered += renderElements(abstract.c);
-              }
-              rendered += `</${abstract.t.toLocaleLowerCase()}>`;
-            }
-          } else {
-            rendered += ` ${abstract} `;
-          }
+    if (!abstracts) {
+      return rendered;
+    }
+    for (const abstract of abstracts) {
+      if (abstract === null || abstract === void 0 || abstract === false) {
+        continue;
+      }
+      if (abstract.m) {
+        rendered += renderElements(
+          arrayifyOrUndefined(abstract.r(state, abstract.m)),
+          state
+        );
+      } else if (abstract.t) {
+        const type = validateName(abstract.t, "element").toLocaleLowerCase();
+        rendered += `<${type}${renderAttributes(abstract.a)}`;
+        if (SELF_CLOSING.has(type)) {
+          rendered += "/>";
+        } else {
+          rendered += `>${renderElements(abstract.c, state)}</${type}>`;
         }
+      } else {
+        rendered += ` ${escapeText(abstract)} `;
       }
     }
     return rendered;
@@ -329,51 +343,33 @@
     if (!initialState) {
       initialState = {};
     }
-    const renderElements2 = (abstracts) => {
-      let rendered = "";
-      if (abstracts) {
-        for (const abstract of abstracts) {
-          if (abstract) {
-            if (abstract.m) {
-              rendered += renderElements2(
-                arrayifyOrUndefined(abstract.r(initialState, abstract.m))
-              );
-            } else if (abstract.t) {
-              rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
-              if (SELF_CLOSING.includes(abstract.t)) {
-                rendered += "/>";
-              } else {
-                rendered += ">";
-                if (abstract.c) {
-                  rendered += renderElements2(abstract.c);
-                }
-                rendered += `</${abstract.t.toLocaleLowerCase()}>`;
-              }
-            } else {
-              rendered += ` ${abstract} `;
-            }
-          }
-        }
-      }
-      return rendered;
-    };
     const abstractTree = arrayifyOrUndefined(renderView(initialState));
-    return [renderElements2(abstractTree), abstractTree];
+    return [renderElements(abstractTree, initialState), abstractTree];
   };
   var customStringify = (data) => {
+    if (data === null) {
+      return "null";
+    }
     if (typeof data === "number" || typeof data === "boolean") {
       return String(data);
     }
     if (typeof data === "string") {
-      return `"${data.replace(/"/g, '\\"')}"`;
+      return JSON.stringify(data);
     }
     if (Array.isArray(data)) {
-      return `[${data.map((item) => customStringify(item)).join(",")}]`;
+      const values = [];
+      for (const value of data) {
+        values.push(customStringify(value));
+      }
+      return `[${values.join(",")}]`;
     }
     if (typeof data === "object") {
       const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
-      const objectContent = keys.map((key) => `"${key}":${customStringify(data[key])}"`).join(",");
-      return `{${objectContent}}`;
+      const values = [];
+      for (const key of keys) {
+        values.push(`${JSON.stringify(key)}:${customStringify(data[key])}`);
+      }
+      return `{${values.join(",")}}`;
     }
     return "null";
   };

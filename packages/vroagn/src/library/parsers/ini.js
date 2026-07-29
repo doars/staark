@@ -1,3 +1,5 @@
+import { createRecord, validateKey } from "./record.js";
+
 /**
  * @typedef {import('../request.js').RequestOptions} RequestOptions
  * @typedef {import('../request.js').ResponseParser} ResponseParser
@@ -34,7 +36,7 @@ export const iniParser = (options = {}) => {
 		parser: async (response, _requestOptions, _type) => {
 			const text = await response.text();
 
-			const result = {};
+			const result = createRecord();
 			const lines = text.split(/\r?\n/).map((line) => line.trim());
 
 			let currentSection = "";
@@ -47,22 +49,25 @@ export const iniParser = (options = {}) => {
 				if (line.startsWith("[") && line.endsWith("]")) {
 					// New section.
 					currentSection = line.slice(1, -1).trim();
-					if (!result[currentSection]) {
-						result[currentSection] = {};
+					validateKey(currentSection);
+					if (!Object.hasOwn(result, currentSection)) {
+						result[currentSection] = createRecord();
 					}
 				} else {
 					// Key-value pair.
 					const [key, ...valueParts] = line.split("=");
 					const value = valueParts.join("=").trim();
+					const trimmedKey = key.trim();
+					validateKey(trimmedKey);
 
 					if (currentSection === "") {
 						// Global section (outside any named section).
-						if (!result.global) {
-							result.global = {};
+						if (!Object.hasOwn(result, "global")) {
+							result.global = createRecord();
 						}
-						result.global[key.trim()] = value;
+						result.global[trimmedKey] = value;
 					} else {
-						result[currentSection][key.trim()] = value;
+						result[currentSection][trimmedKey] = value;
 					}
 				}
 			}
