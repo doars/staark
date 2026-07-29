@@ -2,6 +2,10 @@
 
 Possible plans to look at in the future.
 
+These items are explicitly deferred and are not completion requirements for
+the remaining work in [`README.md`](./README.md). Promoting either item requires
+a public key representation decision and a separate compatibility review.
+
 ## staark: Quadratic sibling reconciliation
 
 **Priority:** Medium
@@ -56,4 +60,3 @@ work.
 - Verify event listeners and form values remain associated with the intended DOM
   nodes after moves.
 - Benchmark broad lists at several sizes and compare DOM operation counts.
-

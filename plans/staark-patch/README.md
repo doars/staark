@@ -5,8 +5,13 @@
 - Keep reconciliation behavior aligned with `staark`.
 - Avoid mutating abstract trees supplied by callers.
 
+## Status
+
+Own-property attribute, class, and style handling is complete. Keyed
+reconciliation and avoiding caller-tree mutation are deliberately deferred to
+[`MAYBE.md`](../MAYBE.md) and are not part of the remaining implementation
+sequence.
+
 ### Completion criteria
 
-- Reconciliation avoids quadratic lookup for keyed lists.
-- Input abstract trees remain unchanged after patching.
 - Only own attributes, classes, and styles are applied.
