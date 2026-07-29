@@ -22,8 +22,8 @@
 		"access": "public"
 	},
 	"scripts": {
-		"check": "biome check ./src",
-		"check:write": "biome check --write ./src",
+		"check": "biome check ./src ./exm/client.js ./exm/server.js",
+		"check:write": "biome check --write --unsafe ./src ./exm/client.js ./exm/server.js",
 		"develop": "NODE_ENV=development node config.bundle.js",
 		"build": "NODE_ENV=production node config.bundle.js",
 		"start:example": "node ./exm/server.js"
