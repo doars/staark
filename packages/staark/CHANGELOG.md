@@ -1,15 +1,11 @@
 # Changelog
 
-## Unreleased
-
-- Preserve numeric zero values in DOM attributes and style objects.
-- Reuse proxies for circular and shared state, leave built-in and custom
-  instances unwrapped, and recover cleanly after rendering errors.
-- Apply only own attribute, class, and style properties.
-
-## Unreleased
+## 1.7.16
 
 - Migrate tests from Bun to the Node.js test runner.
+- Preserve numeric zero values in DOM attributes and style objects.
+- Reuse proxies for circular and shared state, leave built-in and custom instances unwrapped, and recover cleanly after rendering errors.
+- Apply only own attribute, class, and style properties.
 
 ## 1.7.15
 

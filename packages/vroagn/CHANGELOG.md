@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 - Parse single-line and multiline TOML arrays without losing their owning key.
 - Preserve blank lines in YAML block values and safely skip blank lines between
@@ -16,7 +16,6 @@
 - Settle debounced callers through one trailing request and replace animation
   frame concurrency polling with a runtime-neutral FIFO queue.
 - Clear timeout resources deterministically and retry thrown network errors.
-
 - Migrate tests from Bun to the Node.js test runner.
 - Return request failures through the documented result tuple and always release concurrency slots.
 - Expand request tests for configuration, custom parsers, and error handling.

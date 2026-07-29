@@ -1,12 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.6.9
 
-- Add deterministic concatenation-versus-fragment rendering benchmarks and
-  retain concatenation after it won every measured fixture with lower memory.
-- Escape server-rendered text and attribute values, validate emitted names, and
-  use one renderer for `stringify` and `stringifyPatch`.
-
+- Add deterministic concatenation-versus-fragment rendering benchmarks and retain concatenation after it won every measured fixture with lower memory.
+- Escape server-rendered text and attribute values, validate emitted names, and use one renderer for `stringify` and `stringifyPatch`.
 - Migrate tests from Bun to the Node.js test runner.
 - Fix invalid abstract tree JSON returned by full stringification functions.
 
