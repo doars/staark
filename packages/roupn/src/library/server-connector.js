@@ -43,6 +43,7 @@ import {
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
  *
  * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
+ * @property {number} [maxRooms=1000] - Maximum number of active rooms.
  */
 
 /**
@@ -82,7 +83,14 @@ export const createServerConnector = (options = {}) => {
 		serverOrigin = "http://localhost:3000",
 
 		maxUsersPerRoom = 16,
+		maxRooms = 1000,
 	} = options;
+	if (!Number.isInteger(maxUsersPerRoom) || maxUsersPerRoom <= 0) {
+		throw new TypeError("maxUsersPerRoom must be a positive integer");
+	}
+	if (!Number.isInteger(maxRooms) || maxRooms <= 0) {
+		throw new TypeError("maxRooms must be a positive integer");
+	}
 
 	const onRoomMessage = createEvent();
 	const onRoomRemove = createEvent();
@@ -103,14 +111,20 @@ export const createServerConnector = (options = {}) => {
 	 * @returns {string} return.userId - Unique identifier for the creator user.
 	 */
 	const createRoom = (options = {}) => {
+		if (_rooms.size >= maxRooms) {
+			throw new Error("Maximum room count reached");
+		}
+		let userLimit = maxUsersPerRoom;
+		if (options.limit !== undefined) {
+			if (!Number.isInteger(options.limit) || options.limit <= 0) {
+				throw new TypeError("Room limit must be a positive integer");
+			}
+			userLimit = Math.min(options.limit, maxUsersPerRoom);
+		}
+
 		let roomCode = generateCode(6, IDENTIFIABLE_CHARACTERS);
 		while (_rooms.has(roomCode)) {
 			roomCode = generateCode(6, IDENTIFIABLE_CHARACTERS);
-		}
-
-		let userLimit = options?.limit;
-		if (userLimit > 0 && userLimit > maxUsersPerRoom) {
-			userLimit = maxUsersPerRoom;
 		}
 
 		const users = new Map();
@@ -157,7 +171,8 @@ export const createServerConnector = (options = {}) => {
 			];
 		}
 
-		if (_room.users.size >= _room.userLimit) {
+		const _isCreator = creatorSecret && creatorSecret === _room.creatorSecret;
+		if (!_isCreator && _room.users.size >= _room.userLimit) {
 			return [
 				false,
 				{
@@ -167,7 +182,6 @@ export const createServerConnector = (options = {}) => {
 			];
 		}
 
-		const _isCreator = creatorSecret && creatorSecret === _room.creatorSecret;
 		// Prevent re-use of the creator secret.
 		if (_isCreator && _room.users.get(_room.creatorId).verified) {
 			return [
@@ -554,10 +568,24 @@ export const createServerConnector = (options = {}) => {
 			);
 
 			if (pathname === createRoomEndpoint) {
-				const limit = parseInt(searchParams.get("limit"), 10) || undefined;
-				const { creatorSecret, roomCode, userId } = createRoom({
-					limit,
-				});
+				if (request.method !== "POST") {
+					response.writeHead(405, { Allow: "POST" });
+					response.end();
+					return true;
+				}
+				const limitValue = searchParams.get("limit");
+				const limit = limitValue === null ? undefined : Number(limitValue);
+				let room;
+				try {
+					room = createRoom({ limit });
+				} catch (error) {
+					response.writeHead(error instanceof TypeError ? 400 : 503, {
+						"Content-Type": contentType,
+					});
+					response.end(serializeMessage({ error: error.message }));
+					return true;
+				}
+				const { creatorSecret, roomCode, userId } = room;
 
 				response.writeHead(200, {
 					"Content-Type": contentType,

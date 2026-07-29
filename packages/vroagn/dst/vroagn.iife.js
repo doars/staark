@@ -11,6 +11,16 @@
     subject[path[path.length - 1]] = data;
   };
 
+  // src/library/parsers/record.js
+  var FORBIDDEN_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
+  var validateKey = (key) => {
+    if (typeof key !== "string" || FORBIDDEN_KEYS.has(key.trim())) {
+      throw new TypeError(`Unsafe parser key: ${String(key)}`);
+    }
+    return key;
+  };
+  var createRecord = () => /* @__PURE__ */ Object.create(null);
+
   // src/library/parsers/csv.js
   var tsvTypes = ["tsv", "text/tab-separated-values"];
   var csvParser = (options) => {
@@ -67,11 +77,14 @@
         }
         if (optionsTemp.hasHeaders) {
           const headers = rows[0];
+          for (const header of headers) {
+            validateKey(header);
+          }
           return rows.slice(1).map((row) => {
             return headers.reduce((object, header, index) => {
               object[header] = row[index] || "";
               return object;
-            }, {});
+            }, createRecord());
           });
         }
         return rows;
@@ -93,7 +106,7 @@
        */
       parser: async (response, _requestOptions, _type) => {
         const text = await response.text();
-        const result = {};
+        const result = createRecord();
         const lines = text.split(/\r?\n/).map((line) => line.trim());
         let currentSection = "";
         for (const line of lines) {
@@ -102,19 +115,22 @@
           }
           if (line.startsWith("[") && line.endsWith("]")) {
             currentSection = line.slice(1, -1).trim();
-            if (!result[currentSection]) {
-              result[currentSection] = {};
+            validateKey(currentSection);
+            if (!Object.hasOwn(result, currentSection)) {
+              result[currentSection] = createRecord();
             }
           } else {
             const [key, ...valueParts] = line.split("=");
             const value = valueParts.join("=").trim();
+            const trimmedKey = key.trim();
+            validateKey(trimmedKey);
             if (currentSection === "") {
-              if (!result.global) {
-                result.global = {};
+              if (!Object.hasOwn(result, "global")) {
+                result.global = createRecord();
               }
-              result.global[key.trim()] = value;
+              result.global[trimmedKey] = value;
             } else {
-              result[currentSection][key.trim()] = value;
+              result[currentSection][trimmedKey] = value;
             }
           }
         }
@@ -145,7 +161,7 @@
     return value;
   };
   var parseInlineTable = (tableString) => {
-    const result = {};
+    const result = createRecord();
     let key = "";
     let value = "";
     let inQuotes = false;
@@ -161,7 +177,9 @@
       } else if (!inQuotes && character === "=") {
         inValue = true;
       } else if (!inQuotes && character === ",") {
-        result[key.trim()] = parseTomlValue(value.trim());
+        const trimmedKey = key.trim();
+        validateKey(trimmedKey);
+        result[trimmedKey] = parseTomlValue(value.trim());
         key = "";
         value = "";
         inValue = false;
@@ -174,7 +192,9 @@
       }
     }
     if (key) {
-      result[key.trim()] = parseTomlValue(value.trim());
+      const trimmedKey = key.trim();
+      validateKey(trimmedKey);
+      result[trimmedKey] = parseTomlValue(value.trim());
     }
     return result;
   };
@@ -191,7 +211,7 @@
        */
       parser: async (response, _requestOptions, _type) => {
         const text = await response.text();
-        const result = {};
+        const result = createRecord();
         let currentTable = result;
         let currentArray = null;
         let multilineString = null;
@@ -214,42 +234,49 @@
             }
             continue;
           }
-          if (line.startsWith("[") && line.endsWith("]")) {
-            const tableName = line.slice(1, -1).trim();
-            currentTable = result;
-            const parts = tableName.split(".");
-            for (const part of parts) {
-              if (!currentTable[part]) currentTable[part] = {};
-              currentTable = currentTable[part];
-            }
-            currentArray = null;
-          } else if (line.startsWith("[[") && line.endsWith("]]")) {
+          if (line.startsWith("[[") && line.endsWith("]]")) {
             const arrayName = line.slice(2, -2).trim();
             const parts = arrayName.split(".");
             let parent = result;
             for (let i2 = 0; i2 < parts.length - 1; i2++) {
-              if (!parent[parts[i2]]) parent[parts[i2]] = {};
+              validateKey(parts[i2]);
+              if (!Object.hasOwn(parent, parts[i2]))
+                parent[parts[i2]] = createRecord();
               parent = parent[parts[i2]];
             }
             const lastPart = parts[parts.length - 1];
-            if (!parent[lastPart]) parent[lastPart] = [];
-            const newTable = {};
+            validateKey(lastPart);
+            if (!Object.hasOwn(parent, lastPart)) parent[lastPart] = [];
+            const newTable = createRecord();
             parent[lastPart].push(newTable);
             currentTable = newTable;
+            currentArray = null;
+          } else if (line.startsWith("[") && line.endsWith("]")) {
+            const tableName = line.slice(1, -1).trim();
+            currentTable = result;
+            const parts = tableName.split(".");
+            for (const part of parts) {
+              validateKey(part);
+              if (!Object.hasOwn(currentTable, part))
+                currentTable[part] = createRecord();
+              currentTable = currentTable[part];
+            }
             currentArray = null;
           } else {
             const [key, ...valueParts] = line.split("=");
             let value = valueParts.join("=").trim();
+            const trimmedKey = key.trim();
+            validateKey(trimmedKey);
             if (value.startsWith('"""') || value.startsWith("'''")) {
               multilineStringDelimiter = value.slice(0, 3);
               multilineString = value.slice(3);
               if (value.endsWith(multilineStringDelimiter)) {
-                currentTable[key.trim()] = multilineString.slice(0, -3);
+                currentTable[trimmedKey] = multilineString.slice(0, -3);
                 multilineString = null;
                 multilineStringDelimiter = null;
               }
             } else if (value.startsWith("{") && value.endsWith("}")) {
-              currentTable[key.trim()] = parseInlineTable(value);
+              currentTable[trimmedKey] = parseInlineTable(value);
             } else if (value.startsWith("[") && !value.endsWith("]")) {
               currentArray = [];
               value = value.slice(1).trim();
@@ -257,13 +284,13 @@
               if (currentArray !== null) {
                 if (value.endsWith("]")) {
                   currentArray.push(parseTomlValue(value.slice(0, -1).trim()));
-                  currentTable[key.trim()] = currentArray;
+                  currentTable[trimmedKey] = currentArray;
                   currentArray = null;
                 } else {
                   currentArray.push(parseTomlValue(value));
                 }
               } else {
-                currentTable[key.trim()] = parseTomlValue(value);
+                currentTable[trimmedKey] = parseTomlValue(value);
               }
             }
           }
@@ -330,13 +357,13 @@
        */
       parser: async (response, _requestOptions, _type) => {
         const lines = (await response.text()).split("\n");
-        const result = {};
+        const result = createRecord();
         let currentObject = result;
         const indentStack = [result];
         let currentIndent = 0;
         let multilineKey = null;
         let multilineValue = [];
-        const anchors = {};
+        const anchors = createRecord();
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i].trimEnd();
           if (line.trim().startsWith("#")) {
@@ -370,7 +397,7 @@
               currentObject[lastKey] = [];
               currentObject = currentObject[lastKey];
             }
-            currentObject.push({});
+            currentObject.push(createRecord());
             currentObject = currentObject[currentObject.length - 1];
             continue;
           }
@@ -379,6 +406,7 @@
             continue;
           }
           const key = line.slice(0, colonIndex).trim();
+          validateKey(key);
           let value = line.slice(colonIndex + 1).trim();
           if (value.startsWith("&")) {
             const anchorName = value.slice(1).split(" ")[0];
@@ -395,7 +423,7 @@
           } else if (value) {
             currentObject[key] = parseValue(value, anchors);
           } else {
-            currentObject[key] = {};
+            currentObject[key] = createRecord();
           }
         }
         return result;
@@ -466,19 +494,56 @@
     let activeRequests = 0;
     let totalRequests = 0;
     let debounceTimeout = null;
+    let debounceOptions = null;
+    const debounceResolvers = [];
+    const concurrencyQueue = [];
+    if (initialOptions.maxConcurrency !== void 0 && (!Number.isInteger(initialOptions.maxConcurrency) || initialOptions.maxConcurrency <= 0)) {
+      throw new TypeError("maxConcurrency must be a positive integer");
+    }
     const throttle = async (throttleValue) => {
       const now = Date.now();
       const waitTime = throttleValue - (now - lastExecutionTime);
       lastExecutionTime = now + (waitTime > 0 ? waitTime : 0);
       await delay(waitTime);
     };
-    const debounce = (debounceValue) => {
-      return new Promise((resolve) => {
-        if (debounceTimeout) {
-          clearTimeout(debounceTimeout);
+    const acquireConcurrency = (maximum, signal) => new Promise((resolve, reject) => {
+      if (activeRequests < maximum) {
+        activeRequests++;
+        resolve();
+        return;
+      }
+      const queued = {
+        reject,
+        resolve,
+        signal
+      };
+      const abort = () => {
+        const index = concurrencyQueue.indexOf(queued);
+        if (index >= 0) {
+          concurrencyQueue.splice(index, 1);
+          reject(
+            signal.reason || new DOMException("Request aborted", "AbortError")
+          );
         }
-        debounceTimeout = setTimeout(resolve, debounceValue);
-      });
+      };
+      queued.abort = abort;
+      concurrencyQueue.push(queued);
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
+      signal?.addEventListener("abort", abort, { once: true });
+    });
+    const releaseConcurrency = () => {
+      while (concurrencyQueue.length > 0) {
+        const queued = concurrencyQueue.shift();
+        queued.signal?.removeEventListener("abort", queued.abort);
+        if (!queued.signal?.aborted) {
+          queued.resolve();
+          return;
+        }
+      }
+      activeRequests--;
     };
     const sendRequest = async (options) => {
       if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
@@ -498,25 +563,46 @@
       if (options.queryParams) {
         url += `?${new URLSearchParams(options.queryParams).toString()}`;
       }
-      if (options.timeout) {
-        const controller = options.abort || new AbortController();
-        config.signal = controller.signal;
-        setTimeout(() => controller.abort(), options.timeout);
+      const externalSignal = options.abort?.signal || options.abort;
+      const controller = new AbortController();
+      const abortFromExternal = () => controller.abort(externalSignal.reason);
+      if (externalSignal?.aborted) {
+        abortFromExternal();
+      } else {
+        externalSignal?.addEventListener("abort", abortFromExternal, {
+          once: true
+        });
       }
+      config.signal = controller.signal;
+      const timeoutIdentifier = options.timeout ? setTimeout(
+        () => controller.abort(
+          new DOMException("Request timed out", "TimeoutError")
+        ),
+        options.timeout
+      ) : null;
       const executeFetch = async () => {
-        const response2 = await (options.fetch ?? fetch)(url, config);
-        if (!response2.ok) {
-          return [new Error("Invalid response"), response2, null];
+        let response;
+        try {
+          response = await (options.fetch ?? fetch)(url, config);
+        } catch (error) {
+          return [
+            error instanceof Error ? error : new Error("Unknown fetch error"),
+            null,
+            null
+          ];
+        }
+        if (!response.ok) {
+          return [new Error("Invalid response"), response, null];
         }
         try {
-          let result2;
+          let result;
           let foundParser = false;
-          const type = options.type || getType(url, response2.headers, options.headers);
+          const type = options.type || getType(url, response.headers, options.headers);
           if (options.parsers) {
             for (const parser of options.parsers) {
               foundParser = parser.types.includes(type);
               if (foundParser) {
-                result2 = await parser.parser(response2, options, type);
+                result = await parser.parser(response, options, type);
                 break;
               }
             }
@@ -524,59 +610,59 @@
           if (!foundParser) {
             switch (type.toLowerCase()) {
               case "arraybuffer":
-                result2 = await response2.arrayBuffer();
+                result = await response.arrayBuffer();
                 break;
               case "blob":
-                result2 = await response2.blob();
+                result = await response.blob();
                 break;
               case "formdata":
-                result2 = await response2.formData();
+                result = await response.formData();
                 break;
               case "text/plain":
               case "text":
               case "txt":
-                result2 = await response2.text();
+                result = await response.text();
                 break;
               case "text/html-partial":
               case "html-partial":
                 {
-                  result2 = await response2.text();
+                  result = await response.text();
                   const template = document.createElement("template");
-                  template.innerHTML = result2;
-                  result2 = template.content.childNodes;
+                  template.innerHTML = result;
+                  result = template.content.childNodes;
                 }
                 break;
               case "text/html":
               case "html":
-                result2 = await response2.text();
-                result2 = new DOMParser().parseFromString(result2, "text/html");
+                result = await response.text();
+                result = new DOMParser().parseFromString(result, "text/html");
                 break;
               case "application/json":
               case "text/json":
               case "json":
-                result2 = await response2.json();
+                result = await response.json();
                 break;
               case "image/svg+xml":
               case "svg":
-                result2 = await response2.text();
-                result2 = new DOMParser().parseFromString(result2, "image/svg+xml");
+                result = await response.text();
+                result = new DOMParser().parseFromString(result, "image/svg+xml");
                 break;
               case "application/xml":
               case "text/xml":
               case "xml":
-                result2 = await response2.text();
-                result2 = new DOMParser().parseFromString(
-                  result2,
+                result = await response.text();
+                result = new DOMParser().parseFromString(
+                  result,
                   "application/xml"
                 );
                 break;
             }
           }
-          return [null, response2, result2];
-        } catch (error2) {
+          return [null, response, result];
+        } catch (error) {
           return [
-            error2 || new Error("Thrown parsing error is falsy"),
-            response2,
+            error || new Error("Thrown parsing error is falsy"),
+            response,
             null
           ];
         }
@@ -585,20 +671,26 @@
         let attempt = 0;
         const retryAttempts = options.retryAttempts || 0;
         const retryDelay = options.retryDelay || 0;
-        while (attempt < retryAttempts) {
-          const [error2, response2, result2] = await executeFetch();
-          if (!error2) {
-            return [error2, response2, result2];
+        while (attempt <= retryAttempts) {
+          const [error, response, result] = await executeFetch();
+          if (!error) {
+            return [error, response, result];
           }
-          if (!options.retryCodes?.includes(response2.status || 200)) {
-            return [new Error("Invalid status code"), response2, result2];
+          if (controller.signal.aborted) {
+            return [error, response, result];
+          }
+          if (response?.ok) {
+            return [error, response, result];
+          }
+          if (response && !options.retryCodes?.includes(response.status)) {
+            return [new Error("Invalid status code"), response, result];
           }
           attempt++;
-          if (attempt >= retryAttempts) {
-            return [new Error("Too many retry attempts"), response2, result2];
+          if (attempt > retryAttempts) {
+            return [error, response, result];
           }
           let delayTime = retryDelay * 2 ** (attempt - 1);
-          const retryAfter = response2.headers.get("Retry-After");
+          const retryAfter = response?.headers.get("Retry-After");
           if (retryAfter) {
             const retryAfterSeconds = parseInt(retryAfter, 10);
             if (!Number.isNaN(retryAfterSeconds)) {
@@ -611,17 +703,66 @@
               }
             }
           }
+          if (options.maximumRetryDelay !== void 0) {
+            delayTime = Math.min(delayTime, options.maximumRetryDelay);
+          }
           await delay(delayTime);
         }
         return executeFetch();
       };
-      const [error, response, result] = await retryRequest();
-      if (!response.ok) {
-        return [new Error(response.statusText), response, result];
+      try {
+        const [error, response, result] = await retryRequest();
+        if (response && !response.ok) {
+          return [new Error(response.statusText), response, result];
+        }
+        return [error, response, result];
+      } finally {
+        if (timeoutIdentifier !== null) {
+          clearTimeout(timeoutIdentifier);
+        }
+        externalSignal?.removeEventListener("abort", abortFromExternal);
       }
-      return [error, response, result];
     };
-    return async (sendOptions) => {
+    const executeScheduled = async (options) => {
+      if (options.delay) {
+        await delay(options.delay);
+      }
+      if (options.throttle) {
+        await throttle(options.throttle);
+      }
+      const maximum = options.maxConcurrency;
+      if (maximum !== void 0 && (!Number.isInteger(maximum) || maximum <= 0)) {
+        return [
+          new TypeError("maxConcurrency must be a positive integer"),
+          null,
+          null
+        ];
+      }
+      const signal = options.abort?.signal || options.abort;
+      let acquired = false;
+      try {
+        if (maximum !== void 0) {
+          await acquireConcurrency(maximum, signal);
+        } else {
+          activeRequests++;
+        }
+        acquired = true;
+        return await sendRequest(options);
+      } catch (error) {
+        return [
+          error instanceof Error ? error : new Error("Unknown request error"),
+          null,
+          null
+        ];
+      } finally {
+        if (acquired && maximum !== void 0) {
+          releaseConcurrency();
+        } else if (acquired) {
+          activeRequests--;
+        }
+      }
+    };
+    return (sendOptions = {}) => {
       const options = {
         ...initialOptions,
         ...cloneRecursive(sendOptions)
@@ -632,35 +773,59 @@
           ...options.headers
         };
       }
-      if (options.debounce) {
-        await debounce(options.debounce);
+      if (!options.debounce) {
+        return executeScheduled(options);
       }
-      if (options.delay) {
-        await delay(options.delay);
-      }
-      if (options.throttle) {
-        await throttle(options.throttle);
-      }
-      if (options.maxConcurrency && activeRequests >= options.maxConcurrency) {
-        await new Promise((resolve) => {
-          let interval = null;
-          const wait = () => {
-            if (activeRequests >= options.maxConcurrency) {
-              interval = requestAnimationFrame(wait);
-            } else {
-              if (interval) {
-                clearInterval(interval);
-              }
-              resolve(null);
+      debounceOptions = options;
+      return new Promise((resolve) => {
+        const signal = options.abort?.signal || options.abort;
+        const pending = {
+          options,
+          resolve,
+          signal
+        };
+        const abort = () => {
+          const index = debounceResolvers.indexOf(pending);
+          if (index >= 0) {
+            debounceResolvers.splice(index, 1);
+            if (debounceOptions === options) {
+              debounceOptions = debounceResolvers.at(-1)?.options || null;
             }
-          };
-          interval = requestAnimationFrame(wait);
-        });
-      }
-      activeRequests++;
-      const results = await sendRequest(options);
-      activeRequests--;
-      return results;
+            resolve([
+              signal.reason || new DOMException("Request aborted", "AbortError"),
+              null,
+              null
+            ]);
+          }
+        };
+        pending.abort = abort;
+        debounceResolvers.push(pending);
+        if (signal?.aborted) {
+          abort();
+        } else {
+          signal?.addEventListener("abort", abort, { once: true });
+        }
+        if (debounceTimeout !== null) {
+          clearTimeout(debounceTimeout);
+        }
+        debounceTimeout = setTimeout(async () => {
+          const pendingResolvers = debounceResolvers.splice(0);
+          const settledOptions = debounceOptions;
+          debounceTimeout = null;
+          debounceOptions = null;
+          if (pendingResolvers.length === 0) {
+            return;
+          }
+          const result = await executeScheduled(settledOptions);
+          for (const pendingResolver of pendingResolvers) {
+            pendingResolver.signal?.removeEventListener(
+              "abort",
+              pendingResolver.abort
+            );
+            pendingResolver.resolve(result);
+          }
+        }, options.debounce);
+      });
     };
   };
 

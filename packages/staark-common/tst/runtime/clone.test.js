@@ -55,5 +55,18 @@ describe('Clone', () => {
       assert.notStrictEqual(cloned.arr, original.arr)
       assert.notStrictEqual(cloned.arr[1], original.arr[1])
     })
+
+    it('preserves cycles and shared references without inherited properties', () => {
+      const value = Object.create({ inherited: true })
+      const child = { value: true }
+      value.first = child
+      value.second = child
+      value.self = value
+
+      const cloned = cloneRecursive(value)
+      assert.strictEqual(cloned.self, cloned)
+      assert.strictEqual(cloned.first, cloned.second)
+      assert.strictEqual(Object.hasOwn(cloned, 'inherited'), false)
+    })
   })
 })

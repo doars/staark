@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Apply only own attribute, class, and style properties during reconciliation.
+
+## Unreleased
+
 - Migrate tests from Bun to the Node.js test runner.
 
 ## 1.4.11

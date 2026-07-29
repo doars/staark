@@ -32,6 +32,7 @@ import { getType } from "../utilities/type.js";
  * @property {number} [retryAttempts] The number of retry attempts for the request.
  * @property {number[]} [retryCodes] The HTTP status codes that should trigger a retry.
  * @property {number} [retryDelay] The delay between retry attempts.
+ * @property {number} [maximumRetryDelay] Maximum delay between retry attempts.
  **/
 
 /**
@@ -61,6 +62,17 @@ export const create = (initialOptions) => {
 	let activeRequests = 0;
 	let totalRequests = 0;
 	let debounceTimeout = null;
+	let debounceOptions = null;
+	const debounceResolvers = [];
+	const concurrencyQueue = [];
+
+	if (
+		initialOptions.maxConcurrency !== undefined &&
+		(!Number.isInteger(initialOptions.maxConcurrency) ||
+			initialOptions.maxConcurrency <= 0)
+	) {
+		throw new TypeError("maxConcurrency must be a positive integer");
+	}
 
 	/**
 	 * @param {number} throttleValue
@@ -78,13 +90,47 @@ export const create = (initialOptions) => {
 	 * @param {number} debounceValue The debounce time in milliseconds.
 	 * @returns {Promise<void>} A promise that resolves after the debounce time.
 	 */
-	const debounce = (debounceValue) => {
-		return new Promise((resolve) => {
-			if (debounceTimeout) {
-				clearTimeout(debounceTimeout);
+	const acquireConcurrency = (maximum, signal) =>
+		new Promise((resolve, reject) => {
+			if (activeRequests < maximum) {
+				activeRequests++;
+				resolve();
+				return;
 			}
-			debounceTimeout = setTimeout(resolve, debounceValue);
+
+			const queued = {
+				reject,
+				resolve,
+				signal,
+			};
+			const abort = () => {
+				const index = concurrencyQueue.indexOf(queued);
+				if (index >= 0) {
+					concurrencyQueue.splice(index, 1);
+					reject(
+						signal.reason || new DOMException("Request aborted", "AbortError"),
+					);
+				}
+			};
+			queued.abort = abort;
+			concurrencyQueue.push(queued);
+			if (signal?.aborted) {
+				abort();
+				return;
+			}
+			signal?.addEventListener("abort", abort, { once: true });
 		});
+
+	const releaseConcurrency = () => {
+		while (concurrencyQueue.length > 0) {
+			const queued = concurrencyQueue.shift();
+			queued.signal?.removeEventListener("abort", queued.abort);
+			if (!queued.signal?.aborted) {
+				queued.resolve();
+				return;
+			}
+		}
+		activeRequests--;
 	};
 
 	/**
@@ -118,17 +164,41 @@ export const create = (initialOptions) => {
 			url += `?${new URLSearchParams(options.queryParams).toString()}`;
 		}
 
-		if (options.timeout) {
-			const controller = options.abort || new AbortController();
-			config.signal = controller.signal;
-			setTimeout(() => controller.abort(), options.timeout);
+		const externalSignal = options.abort?.signal || options.abort;
+		const controller = new AbortController();
+		const abortFromExternal = () => controller.abort(externalSignal.reason);
+		if (externalSignal?.aborted) {
+			abortFromExternal();
+		} else {
+			externalSignal?.addEventListener("abort", abortFromExternal, {
+				once: true,
+			});
 		}
+		config.signal = controller.signal;
+		const timeoutIdentifier = options.timeout
+			? setTimeout(
+					() =>
+						controller.abort(
+							new DOMException("Request timed out", "TimeoutError"),
+						),
+					options.timeout,
+				)
+			: null;
 
 		/**
 		 * @returns {Promise<[Error | null, Response, any]>}
 		 */
 		const executeFetch = async () => {
-			const response = await (options.fetch ?? fetch)(url, config);
+			let response;
+			try {
+				response = await (options.fetch ?? fetch)(url, config);
+			} catch (error) {
+				return [
+					error instanceof Error ? error : new Error("Unknown fetch error"),
+					null,
+					null,
+				];
+			}
 			if (!response.ok) {
 				return [new Error("Invalid response"), response, null];
 			}
@@ -219,23 +289,29 @@ export const create = (initialOptions) => {
 			const retryAttempts = options.retryAttempts || 0;
 			const retryDelay = options.retryDelay || 0;
 
-			while (attempt < retryAttempts) {
+			while (attempt <= retryAttempts) {
 				const [error, response, result] = await executeFetch();
 				if (!error) {
 					return [error, response, result];
 				}
-				if (!options.retryCodes?.includes(response.status || 200)) {
+				if (controller.signal.aborted) {
+					return [error, response, result];
+				}
+				if (response?.ok) {
+					return [error, response, result];
+				}
+				if (response && !options.retryCodes?.includes(response.status)) {
 					return [new Error("Invalid status code"), response, result];
 				}
 
 				attempt++;
-				if (attempt >= retryAttempts) {
-					return [new Error("Too many retry attempts"), response, result];
+				if (attempt > retryAttempts) {
+					return [error, response, result];
 				}
 
 				let delayTime = retryDelay * 2 ** (attempt - 1);
 
-				const retryAfter = response.headers.get("Retry-After");
+				const retryAfter = response?.headers.get("Retry-After");
 				if (retryAfter) {
 					const retryAfterSeconds = parseInt(retryAfter, 10);
 					if (!Number.isNaN(retryAfterSeconds)) {
@@ -248,17 +324,69 @@ export const create = (initialOptions) => {
 						}
 					}
 				}
+				if (options.maximumRetryDelay !== undefined) {
+					delayTime = Math.min(delayTime, options.maximumRetryDelay);
+				}
 
 				await delay(delayTime);
 			}
 			return executeFetch();
 		};
 
-		const [error, response, result] = await retryRequest();
-		if (response && !response.ok) {
-			return [new Error(response.statusText), response, result];
+		try {
+			const [error, response, result] = await retryRequest();
+			if (response && !response.ok) {
+				return [new Error(response.statusText), response, result];
+			}
+			return [error, response, result];
+		} finally {
+			if (timeoutIdentifier !== null) {
+				clearTimeout(timeoutIdentifier);
+			}
+			externalSignal?.removeEventListener("abort", abortFromExternal);
 		}
-		return [error, response, result];
+	};
+
+	const executeScheduled = async (options) => {
+		if (options.delay) {
+			await delay(options.delay);
+		}
+		if (options.throttle) {
+			await throttle(options.throttle);
+		}
+
+		const maximum = options.maxConcurrency;
+		if (maximum !== undefined && (!Number.isInteger(maximum) || maximum <= 0)) {
+			return [
+				new TypeError("maxConcurrency must be a positive integer"),
+				null,
+				null,
+			];
+		}
+
+		const signal = options.abort?.signal || options.abort;
+		let acquired = false;
+		try {
+			if (maximum !== undefined) {
+				await acquireConcurrency(maximum, signal);
+			} else {
+				activeRequests++;
+			}
+			acquired = true;
+			return await sendRequest(options);
+		} catch (error) {
+			return [
+				error instanceof Error ? error : new Error("Unknown request error"),
+				null,
+				null,
+			];
+		} finally {
+			if (acquired && maximum !== undefined) {
+				releaseConcurrency();
+			} else if (acquired) {
+				activeRequests--;
+			}
+		}
 	};
 
 	/**
@@ -267,7 +395,7 @@ export const create = (initialOptions) => {
 	 * @param {SendOptions} sendOptions The options for sending the request.
 	 * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
 	 */
-	return async (sendOptions) => {
+	return (sendOptions = {}) => {
 		const options = {
 			...initialOptions,
 			...cloneRecursive(sendOptions),
@@ -279,46 +407,59 @@ export const create = (initialOptions) => {
 			};
 		}
 
-		if (options.debounce) {
-			await debounce(options.debounce);
+		if (!options.debounce) {
+			return executeScheduled(options);
 		}
 
-		if (options.delay) {
-			await delay(options.delay);
-		}
-
-		if (options.throttle) {
-			await throttle(options.throttle);
-		}
-
-		if (options.maxConcurrency && activeRequests >= options.maxConcurrency) {
-			await new Promise((resolve) => {
-				let interval = null;
-				const wait = () => {
-					if (activeRequests >= options.maxConcurrency) {
-						interval = requestAnimationFrame(wait);
-					} else {
-						if (interval) {
-							clearInterval(interval);
-						}
-						resolve(null);
+		debounceOptions = options;
+		return new Promise((resolve) => {
+			const signal = options.abort?.signal || options.abort;
+			const pending = {
+				options,
+				resolve,
+				signal,
+			};
+			const abort = () => {
+				const index = debounceResolvers.indexOf(pending);
+				if (index >= 0) {
+					debounceResolvers.splice(index, 1);
+					if (debounceOptions === options) {
+						debounceOptions = debounceResolvers.at(-1)?.options || null;
 					}
-				};
-				interval = requestAnimationFrame(wait);
-			});
-		}
-
-		activeRequests++;
-		try {
-			return await sendRequest(options);
-		} catch (error) {
-			return [
-				error instanceof Error ? error : new Error("Unknown request error"),
-				null,
-				null,
-			];
-		} finally {
-			activeRequests--;
-		}
+					resolve([
+						signal.reason || new DOMException("Request aborted", "AbortError"),
+						null,
+						null,
+					]);
+				}
+			};
+			pending.abort = abort;
+			debounceResolvers.push(pending);
+			if (signal?.aborted) {
+				abort();
+			} else {
+				signal?.addEventListener("abort", abort, { once: true });
+			}
+			if (debounceTimeout !== null) {
+				clearTimeout(debounceTimeout);
+			}
+			debounceTimeout = setTimeout(async () => {
+				const pendingResolvers = debounceResolvers.splice(0);
+				const settledOptions = debounceOptions;
+				debounceTimeout = null;
+				debounceOptions = null;
+				if (pendingResolvers.length === 0) {
+					return;
+				}
+				const result = await executeScheduled(settledOptions);
+				for (const pendingResolver of pendingResolvers) {
+					pendingResolver.signal?.removeEventListener(
+						"abort",
+						pendingResolver.abort,
+					);
+					pendingResolver.resolve(result);
+				}
+			}, options.debounce);
+		});
 	};
 };

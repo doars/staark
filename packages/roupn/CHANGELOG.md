@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Enforce validated per-room and global room limits, including when callers omit
+  a room limit.
+- Require POST for room creation and generate room codes with unbiased
+  cryptographic randomness.
+
 ## 0.1.1
 
 - Added security checks.

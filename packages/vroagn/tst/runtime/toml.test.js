@@ -35,6 +35,9 @@ describe('TOML Request', () => {
 
     const [error, _response, result] = await request()
     assert.strictEqual(error, null)
-    assert.deepStrictEqual(result, { Lorem: 'ipsum', Dolor: 'sit' })
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result)), {
+      Lorem: 'ipsum',
+      Dolor: 'sit',
+    })
   })
 })

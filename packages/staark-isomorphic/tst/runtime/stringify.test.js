@@ -68,4 +68,48 @@ describe('Stringify', () => {
       t: 'h1',
     }])
   })
+
+  it('escapes text and attribute values in both stringify paths', () => {
+    const abstractTree = node(
+      'custom-element',
+      {
+        'aria-label': `"' & < >`,
+        'xlink:href': `javascript:alert('unsafe')`,
+      },
+      '<script>alert("unsafe")</script> & text',
+    )
+    const expected = '<custom-element aria-label="&quot;&#39; &amp; &lt; &gt;" xlink:href="javascript:alert(&#39;unsafe&#39;)"> &lt;script&gt;alert("unsafe")&lt;/script&gt; &amp; text </custom-element>'
+
+    assert.strictEqual(stringify(() => abstractTree)[0], expected)
+    assert.strictEqual(stringifyPatch(abstractTree)[0], expected)
+  })
+
+  it('rejects unsafe element and attribute names', () => {
+    assert.throws(
+      () => stringifyPatch(node('div><script', 'unsafe')),
+      /Invalid element name/,
+    )
+    assert.throws(
+      () => stringifyPatch(node('div', {
+        'title" onmouseover="alert(1)': 'unsafe',
+      })),
+      /Invalid attribute name/,
+    )
+  })
+
+  it('renders only own class and style properties', () => {
+    const classNames = Object.create({ inherited: true })
+    classNames.visible = true
+    const styles = Object.create({ backgroundImage: 'url(unsafe)' })
+    styles.color = 'red'
+
+    assert.strictEqual(
+      stringifyPatch(node('svg', {
+        class: classNames,
+        style: styles,
+        viewBox: '0 0 10 10',
+      }))[0],
+      '<svg class="visible" style="color:red" viewBox="0 0 10 10"></svg>',
+    )
+  })
 })

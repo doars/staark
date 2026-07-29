@@ -35,6 +35,8 @@ describe('INI Request', () => {
 
     const [error, _response, result] = await request()
     assert.strictEqual(error, null)
-    assert.deepStrictEqual(result, { global: { Lorem: 'ipsum', Dolor: 'sit' } })
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(result)), {
+      global: { Lorem: 'ipsum', Dolor: 'sit' },
+    })
   })
 })

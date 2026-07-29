@@ -1166,7 +1166,7 @@ export const createClientConnector = (options = {}) => {
 			}
 
 			const response = await fetch(url.toString(), {
-				method: "GET",
+				method: "POST",
 				headers: {
 					Accept: contentType,
 				},

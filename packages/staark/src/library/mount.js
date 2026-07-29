@@ -64,7 +64,7 @@ export const mount = (
 	 */
 	const updateAttributes = (element, newAttributes, oldAttributes) => {
 		if (newAttributes) {
-			for (const name in newAttributes) {
+			for (const name of Object.keys(newAttributes)) {
 				let value = newAttributes[name];
 				if (value) {
 					const type = typeof value;
@@ -91,7 +91,7 @@ export const mount = (
 									value = value.join(" ");
 								} else {
 									let classNames = "";
-									for (const className in value) {
+									for (const className of Object.keys(value)) {
 										if (value[className]) {
 											classNames += ` ${className}`;
 										}
@@ -101,7 +101,7 @@ export const mount = (
 							}
 							element.className = value;
 						} else if (name === "style" && typeof value === "object") {
-							for (const styleName in value) {
+							for (const styleName of Object.keys(value)) {
 								const styleValue = value[styleName];
 								if (styleName.includes("-", 1)) {
 									element.style.setProperty(styleName, styleValue);
@@ -115,7 +115,7 @@ export const mount = (
 								typeof oldAttributes[name] === "object" &&
 								!Array.isArray(oldAttributes[name])
 							) {
-								for (const styleName in oldAttributes[name]) {
+								for (const styleName of Object.keys(oldAttributes[name])) {
 									if (!value[styleName]) {
 										if (styleName.includes("-", 1)) {
 											element.style.removeProperty(styleName);
@@ -142,7 +142,7 @@ export const mount = (
 		}
 
 		if (oldAttributes) {
-			for (const name in oldAttributes) {
+			for (const name of Object.keys(oldAttributes)) {
 				const value = oldAttributes[name];
 				if (!newAttributes?.[name]) {
 					if (typeof value === "function") {
@@ -312,14 +312,15 @@ export const mount = (
 		if (active && !updating && updatePromise) {
 			updating = true;
 			updatePromise = null;
-
-			const newAbstractTree = arrayifyOrUndefined(renderView(state));
-			updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
-			oldAbstractTree = newAbstractTree;
-			oldMemoMap = newMemoMap;
-			newMemoMap = new WeakMap();
-
-			updating = false;
+			try {
+				const newAbstractTree = arrayifyOrUndefined(renderView(state));
+				updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+				oldAbstractTree = newAbstractTree;
+				oldMemoMap = newMemoMap;
+				newMemoMap = new WeakMap();
+			} finally {
+				updating = false;
+			}
 		}
 	};
 	triggerUpdate();
@@ -330,6 +331,7 @@ export const mount = (
 		() => {
 			if (active) {
 				active = false;
+				updatePromise = null;
 
 				for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
 					_rootElement.childNodes[i].remove();

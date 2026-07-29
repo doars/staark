@@ -6,6 +6,7 @@
  * @returns {Record<string, any>} - The proxified root object.
  */
 export const proxify = (root, onChange) => {
+	const proxies = new WeakMap();
 	const handler = {
 		/**
 		 * Deletes a property from the target object and invokes the onChange callback if the property existed.
@@ -15,7 +16,7 @@ export const proxify = (root, onChange) => {
 		 * @returns {boolean} - True if the property was deleted, otherwise false.
 		 */
 		deleteProperty: (target, key) => {
-			if (Reflect.has(target, key)) {
+			if (Object.hasOwn(target, key)) {
 				const deleted = Reflect.deleteProperty(target, key);
 
 				if (deleted) {
@@ -35,17 +36,20 @@ export const proxify = (root, onChange) => {
 		 * @param {any} value - The value to be set.
 		 * @returns {boolean} - True if the property was set, otherwise false.
 		 */
-		set: (target, key, value) => {
+		set: (target, key, value, receiver) => {
 			const existingValue = target[key];
 			if (existingValue !== value) {
 				// Add proxy if value is an object.
 				if (value && typeof value === "object") {
 					value = add(value);
 				}
-				target[key] = value;
+				const set = Reflect.set(target, key, value, receiver);
 
 				// Dispatch set event. If the target is an array and a new item has been pushed then the length has also changed, therefore a more generalizable path will be dispatched.
-				onChange();
+				if (set) {
+					onChange();
+				}
+				return set;
 			}
 			return true;
 		},
@@ -58,14 +62,28 @@ export const proxify = (root, onChange) => {
 	 * @returns {Record<string, any>} - The proxified object.
 	 */
 	const add = (target) => {
+		if (proxies.has(target)) {
+			return proxies.get(target);
+		}
+		const prototype = Object.getPrototypeOf(target);
+		if (
+			!Array.isArray(target) &&
+			prototype !== Object.prototype &&
+			prototype !== null
+		) {
+			return target;
+		}
+
+		const proxy = new Proxy(target, handler);
+		proxies.set(target, proxy);
 		// Recursively create proxies for each property.
-		for (const key in target) {
+		for (const key of Object.keys(target)) {
 			if (target[key] && typeof target[key] === "object") {
 				target[key] = add(target[key]);
 			}
 		}
 
-		return new Proxy(target, handler);
+		return proxy;
 	};
 
 	return add(root);

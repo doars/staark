@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Preserve cycles and shared references in recursive clones, ignore inherited
+  properties, and cache object pairs during recursive equality checks.
+
 ## 1.5.9 (unreleased)
 
 - Fix cloning `null` type.

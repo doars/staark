@@ -1,3 +1,5 @@
+import { createRecord, validateKey } from "./record.js";
+
 /**
  * @typedef {import('../request.js').RequestOptions} RequestOptions
  * @typedef {import('../request.js').ResponseParser} ResponseParser
@@ -87,11 +89,14 @@ export const csvParser = (options) => {
 			if (optionsTemp.hasHeaders) {
 				// Extract headers and create objects.
 				const headers = rows[0];
+				for (const header of headers) {
+					validateKey(header);
+				}
 				return rows.slice(1).map((row) => {
 					return headers.reduce((object, header, index) => {
 						object[header] = row[index] || "";
 						return object;
-					}, {});
+					}, createRecord());
 				});
 			}
 

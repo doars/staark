@@ -17,7 +17,7 @@ import { childrenToNodes } from "@doars/staark-common/src/element.js";
  */
 const updateAttributes = (element, newAttributes, oldAttributes) => {
 	if (newAttributes) {
-		for (const name in newAttributes) {
+		for (const name of Object.keys(newAttributes)) {
 			let value = newAttributes[name];
 			if (value) {
 				const type = typeof value;
@@ -37,7 +37,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 								value = value.join(" ");
 							} else {
 								let classNames = "";
-								for (const className in value) {
+								for (const className of Object.keys(value)) {
 									if (value[className]) {
 										classNames += ` ${className}`;
 									}
@@ -48,7 +48,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 						element.className = value;
 					} else if (name === "style" && typeof value === "object") {
 						// Apply updated styles.
-						for (const styleName in value) {
+						for (const styleName of Object.keys(value)) {
 							const styleValue = value[styleName];
 							if (styleName.includes("-", 1)) {
 								element.style.setProperty(styleName, styleValue);
@@ -63,7 +63,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 							typeof oldAttributes[name] === "object" &&
 							!Array.isArray(oldAttributes[name])
 						) {
-							for (const styleName in oldAttributes[name]) {
+							for (const styleName of Object.keys(oldAttributes[name])) {
 								if (!value[styleName]) {
 									if (styleName.includes("-", 1)) {
 										element.style.removeProperty(styleName);
@@ -92,7 +92,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 
 	// Cleanup old attributes.
 	if (oldAttributes) {
-		for (const name in oldAttributes) {
+		for (const name of Object.keys(oldAttributes)) {
 			if (!newAttributes?.[name]) {
 				if (typeof oldAttributes[name] === "function") {
 					element.removeEventListener(name, oldAttributes[name]);

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Validate diff paths before applying them, reject prototype-related keys, and
+  make invalid diffs fail atomically.
+- Preserve cycles and shared references when cloning own enumerable values.
+
 ## 1.2.1 (unreleased)
 
 - Fix cloning `null` type.

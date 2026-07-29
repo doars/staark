@@ -1,3 +1,5 @@
+import { createRecord, validateKey } from "./record.js";
+
 /**
  * @typedef {import('../request.js').RequestOptions} RequestOptions
  * @typedef {import('../request.js').ResponseParser} ResponseParser
@@ -91,13 +93,13 @@ export const yamlParser = (options = {}) => {
 		 */
 		parser: async (response, _requestOptions, _type) => {
 			const lines = (await response.text()).split("\n");
-			const result = {};
+			const result = createRecord();
 			let currentObject = result;
 			const indentStack = [result];
 			let currentIndent = 0;
 			let multilineKey = null;
 			let multilineValue = [];
-			const anchors = {};
+			const anchors = createRecord();
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trimEnd();
@@ -137,7 +139,7 @@ export const yamlParser = (options = {}) => {
 						currentObject[lastKey] = [];
 						currentObject = currentObject[lastKey];
 					}
-					currentObject.push({});
+					currentObject.push(createRecord());
 					currentObject = currentObject[currentObject.length - 1];
 					continue;
 				}
@@ -148,6 +150,7 @@ export const yamlParser = (options = {}) => {
 				}
 
 				const key = line.slice(0, colonIndex).trim();
+				validateKey(key);
 				let value = line.slice(colonIndex + 1).trim();
 
 				if (value.startsWith("&")) {
@@ -165,7 +168,7 @@ export const yamlParser = (options = {}) => {
 				} else if (value) {
 					currentObject[key] = parseValue(value, anchors);
 				} else {
-					currentObject[key] = {};
+					currentObject[key] = createRecord();
 				}
 			}
 

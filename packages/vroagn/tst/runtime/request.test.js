@@ -158,3 +158,64 @@ describe('Request', () => {
     assert.strictEqual(fetchCount, 1)
   })
 })
+
+describe('Request scheduling', () => {
+  it('settles all debounced callers with one trailing fetch', async () => {
+    let fetchCount = 0
+    const request = create({
+      debounce: 5,
+      fetch: async () => {
+        fetchCount++
+        return new Response('done')
+      },
+      type: 'text',
+    })
+
+    const results = await Promise.all([
+      request({ path: '/first' }),
+      request({ path: '/second' }),
+      request({ path: '/third' }),
+    ])
+
+    assert.strictEqual(fetchCount, 1)
+    for (const [error, _response, result] of results) {
+      assert.strictEqual(error, null)
+      assert.strictEqual(result, 'done')
+    }
+  })
+
+  it('runs concurrency-limited requests in FIFO order without browser APIs', async () => {
+    const started = []
+    const releases = []
+    const request = create({
+      fetch: async (url) => {
+        started.push(url)
+        await new Promise((resolve) => releases.push(resolve))
+        return new Response('done')
+      },
+      maxConcurrency: 1,
+      type: 'text',
+    })
+
+    const pending = [
+      request({ path: '/first' }),
+      request({ path: '/second' }),
+      request({ path: '/third' }),
+    ]
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(started, ['/first'])
+    releases.shift()()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(started, ['/first', '/second'])
+    releases.shift()()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(started, ['/first', '/second', '/third'])
+    releases.shift()()
+    await Promise.all(pending)
+  })
+
+  it('rejects invalid concurrency limits', () => {
+    assert.throws(() => create({ maxConcurrency: 0 }), TypeError)
+    assert.throws(() => create({ maxConcurrency: 1.5 }), TypeError)
+  })
+})

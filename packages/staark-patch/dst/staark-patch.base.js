@@ -41,7 +41,7 @@
   // src/library/patch.js
   var updateAttributes = (element, newAttributes, oldAttributes) => {
     if (newAttributes) {
-      for (const name in newAttributes) {
+      for (const name of Object.keys(newAttributes)) {
         let value = newAttributes[name];
         if (value) {
           const type = typeof value;
@@ -60,7 +60,7 @@
                   value = value.join(" ");
                 } else {
                   let classNames = "";
-                  for (const className in value) {
+                  for (const className of Object.keys(value)) {
                     if (value[className]) {
                       classNames += ` ${className}`;
                     }
@@ -70,7 +70,7 @@
               }
               element.className = value;
             } else if (name === "style" && typeof value === "object") {
-              for (const styleName in value) {
+              for (const styleName of Object.keys(value)) {
                 const styleValue = value[styleName];
                 if (styleName.includes("-", 1)) {
                   element.style.setProperty(styleName, styleValue);
@@ -79,7 +79,7 @@
                 }
               }
               if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
-                for (const styleName in oldAttributes[name]) {
+                for (const styleName of Object.keys(oldAttributes[name])) {
                   if (!value[styleName]) {
                     if (styleName.includes("-", 1)) {
                       element.style.removeProperty(styleName);
@@ -105,7 +105,7 @@
       }
     }
     if (oldAttributes) {
-      for (const name in oldAttributes) {
+      for (const name of Object.keys(oldAttributes)) {
         if (!newAttributes?.[name]) {
           if (typeof oldAttributes[name] === "function") {
             element.removeEventListener(name, oldAttributes[name]);

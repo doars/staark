@@ -1057,7 +1057,7 @@
           url.searchParams.append("limit", options2.limit);
         }
         const response = await fetch(url.toString(), {
-          method: "GET",
+          method: "POST",
           headers: {
             Accept: contentType
           }

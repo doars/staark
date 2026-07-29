@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Reuse proxies for circular and shared state, leave built-in and custom
+  instances unwrapped, and recover cleanly after rendering errors.
+- Apply only own attribute, class, and style properties.
+
+## Unreleased
+
 - Migrate tests from Bun to the Node.js test runner.
 
 ## 1.7.15

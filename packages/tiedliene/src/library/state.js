@@ -58,9 +58,7 @@ export const manageState = (state, options) => {
 					options.maximumHistory &&
 					undoStack.length > options.maximumHistory
 				) {
-					for (let i = undoStack.length - options.maximumHistory; i > 0; i--) {
-						undoStack.shift();
-					}
+					undoStack.splice(0, undoStack.length - options.maximumHistory);
 				}
 
 				// Clear the redo stack when a new state is set.
@@ -87,13 +85,7 @@ export const manageState = (state, options) => {
 						options.maximumHistory &&
 						redoStack.length > options.maximumHistory
 					) {
-						for (
-							let i = redoStack.length - options.maximumHistory;
-							i > 0;
-							i--
-						) {
-							redoStack.shift();
-						}
+						redoStack.splice(0, redoStack.length - options.maximumHistory);
 					}
 
 					state = revertDiff(state, lastDiffs);
@@ -119,13 +111,7 @@ export const manageState = (state, options) => {
 						options.maximumHistory &&
 						undoStack.length > options.maximumHistory
 					) {
-						for (
-							let i = undoStack.length - options.maximumHistory;
-							i > 0;
-							i--
-						) {
-							undoStack.shift();
-						}
+						undoStack.splice(0, undoStack.length - options.maximumHistory);
 					}
 
 					state = applyDiff(state, diffs);
