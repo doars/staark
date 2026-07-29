@@ -103,6 +103,12 @@ export const yamlParser = (options = {}) => {
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trimEnd();
+				if (line.trim() === "") {
+					if (multilineKey !== null) {
+						multilineValue.push("");
+					}
+					continue;
+				}
 				if (line.trim().startsWith("#")) {
 					continue;
 				}
@@ -170,6 +176,9 @@ export const yamlParser = (options = {}) => {
 				} else {
 					currentObject[key] = createRecord();
 				}
+			}
+			if (multilineKey !== null) {
+				currentObject[multilineKey] = multilineValue.join("\n");
 			}
 
 			return result;

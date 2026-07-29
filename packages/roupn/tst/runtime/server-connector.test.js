@@ -6,7 +6,16 @@ import {
 
 import { createServerConnector } from '../../src/library/server-connector.js'
 import { createClientConnector } from '../../src/library/client-connector.js'
-import { stringToBase64 } from '../../src/utilities/encoding-server.js'
+import {
+  base64ToString,
+  stringToBase64,
+} from '../../src/utilities/encoding-server.js'
+import { decode } from '../../src/utilities/protocol.js'
+import {
+  AUTHENTICATED_SENDER,
+  SERVER_PAYLOAD,
+  SERVER_TIME,
+} from '../../src/library/payload-keys.js'
 
 const createResponse = () => {
   const result = {
@@ -35,6 +44,7 @@ const createConnection = () => {
     bufferedAmount: 0,
     listeners,
     readyState: 1,
+    sent: [],
     addEventListener: (type, listener) => listeners.set(type, listener),
     close(code, reason) {
       this.closeCount++
@@ -42,7 +52,9 @@ const createConnection = () => {
       this.closeReason = reason
       this.readyState = this.CLOSED
     },
-    send: () => {},
+    send(message) {
+      this.sent.push(message)
+    },
 		dispatch: (type, event) => listeners.get(type)?.(event),
   }
 }
@@ -116,6 +128,41 @@ describe('Server room creation policy', () => {
 })
 
 describe('Server message limits', () => {
+  it('attaches the connection identity to relayed messages', () => {
+    const connector = createServerConnector()
+    const room = connector.createRoom()
+    const creatorConnection = createConnection()
+    connector.joinRoom(room.roomCode, creatorConnection, true)
+    creatorConnection.dispatch('message', {
+      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+    })
+    const peerConnection = createConnection()
+    const [, peer] = connector.joinRoom(room.roomCode, peerConnection)
+
+    connector.messageUser(
+      room.roomCode,
+      peer.userId,
+      room.userId,
+      `D:${stringToBase64('{}')}|U:${stringToBase64(room.userId)}`,
+    )
+
+    const parts = decode(
+      creatorConnection.sent.at(-1),
+      base64ToString,
+      {
+        allowedKeys: new Set([
+          AUTHENTICATED_SENDER,
+          SERVER_PAYLOAD,
+          SERVER_TIME,
+          'D',
+          'U',
+        ]),
+      },
+    )
+    assert.strictEqual(parts[AUTHENTICATED_SENDER], peer.userId)
+    connector.removeRoom(room.roomCode)
+  })
+
   it('closes malformed and oversized senders without throwing', () => {
     const connector = createServerConnector({
       maxEncodedMessageBytes: 32,

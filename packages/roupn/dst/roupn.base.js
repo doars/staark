@@ -264,7 +264,7 @@
   var CONNECTION_DISCONNECTED = "DISCONNECTED";
   var CONNECTION_DISCONNECTING = "DISCONNECTING";
   var CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
-  var PROTOCOL_VERSION = 1;
+  var PROTOCOL_VERSION = 2;
   var EXCHANGE_0 = "_X0";
   var EXCHANGE_1 = "_X1";
   var EXCHANGE_2 = "_X2";
@@ -281,6 +281,7 @@
   var SERVER_PAYLOAD = "S";
   var SERVER_TIME = "T";
   var CREATOR_AUTHENTICATION = "A";
+  var AUTHENTICATED_SENDER = "R";
   var SHARED_ENCRYPTION_PAYLOAD = "E";
   var SHARED_ENCRYPTION_IV = "I";
   var USER = "U";
@@ -321,6 +322,7 @@
       }
     }
     const allowedProtocolKeys = /* @__PURE__ */ new Set([
+      AUTHENTICATED_SENDER,
       SERVER_PAYLOAD,
       SERVER_TIME,
       SHARED_ENCRYPTION_IV,
@@ -488,7 +490,7 @@
           if (typeof event.data !== "string" || new TextEncoder().encode(event.data).byteLength > maxEncodedMessageBytes) {
             throw new RangeError("message_too_large");
           }
-          _processMessage(
+          await _processMessage(
             decode(event.data, base64ToString, {
               allowedKeys: allowedProtocolKeys,
               maxDecodedFieldBytes,
@@ -506,6 +508,7 @@
     };
     const _processMessage = async (parts, raw, isBuffered = false) => {
       const {
+        [AUTHENTICATED_SENDER]: authenticatedSender,
         [SERVER_PAYLOAD]: serverPayload,
         [SERVER_TIME]: serverTime,
         [SHARED_ENCRYPTION_IV]: sharedEncryptionIv,
@@ -526,6 +529,9 @@
         payload = raw;
       }
       if (sharedEncryptionPayload) {
+        if (!authenticatedSender) {
+          throw new TypeError("missing_authenticated_sender");
+        }
         if (!_sharedKey || !isBuffered && _sharedMessagesBuffer.length > 0) {
           _sharedMessagesBuffer.push({
             time: Date.now(),
@@ -638,6 +644,9 @@
         }
       }
       data = deserializedData;
+      if ((sharedEncryptionPayload || userDirectPayload || userEncryptionPayload) && data?.sender !== authenticatedSender) {
+        throw new TypeError("authenticated_sender_mismatch");
+      }
       switch (data.type) {
         case ROOM_JOINED:
           if (data.protocolVersion !== PROTOCOL_VERSION) {
@@ -960,7 +969,7 @@
               );
               while (_sharedMessagesBuffer.length > 0) {
                 const { parts: parts2, raw: raw2 } = _sharedMessagesBuffer.shift();
-                _processMessage(parts2, raw2, true);
+                await _processMessage(parts2, raw2, true);
               }
             }
             _setConnectionState(CONNECTION_CONNECTED);

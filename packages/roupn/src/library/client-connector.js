@@ -41,6 +41,7 @@ import {
 	USER_VERIFIED,
 } from "./message-types.js";
 import {
+	AUTHENTICATED_SENDER,
 	CREATOR_AUTHENTICATION,
 	SERVER_PAYLOAD,
 	SERVER_TIME,
@@ -141,6 +142,7 @@ export const createClientConnector = (options = {}) => {
 		}
 	}
 	const allowedProtocolKeys = new Set([
+		AUTHENTICATED_SENDER,
 		SERVER_PAYLOAD,
 		SERVER_TIME,
 		SHARED_ENCRYPTION_IV,
@@ -423,7 +425,7 @@ export const createClientConnector = (options = {}) => {
 				) {
 					throw new RangeError("message_too_large");
 				}
-				_processMessage(
+				await _processMessage(
 					decode(event.data, base64ToString, {
 						allowedKeys: allowedProtocolKeys,
 						maxDecodedFieldBytes,
@@ -449,6 +451,7 @@ export const createClientConnector = (options = {}) => {
 	 */
 	const _processMessage = async (parts, raw, isBuffered = false) => {
 		const {
+			[AUTHENTICATED_SENDER]: authenticatedSender,
 			[SERVER_PAYLOAD]: serverPayload,
 			[SERVER_TIME]: serverTime,
 
@@ -474,6 +477,9 @@ export const createClientConnector = (options = {}) => {
 		}
 
 		if (sharedEncryptionPayload) {
+			if (!authenticatedSender) {
+				throw new TypeError("missing_authenticated_sender");
+			}
 			if (!_sharedKey || (!isBuffered && _sharedMessagesBuffer.length > 0)) {
 				// Can't decrypt without the key, store the messages for later.
 				_sharedMessagesBuffer.push({
@@ -601,6 +607,12 @@ export const createClientConnector = (options = {}) => {
 			}
 		}
 		data = deserializedData;
+		if (
+			(sharedEncryptionPayload || userDirectPayload || userEncryptionPayload) &&
+			data?.sender !== authenticatedSender
+		) {
+			throw new TypeError("authenticated_sender_mismatch");
+		}
 
 		switch (data.type) {
 			case ROOM_JOINED:
@@ -978,7 +990,7 @@ export const createClientConnector = (options = {}) => {
 
 						while (_sharedMessagesBuffer.length > 0) {
 							const { parts, raw } = _sharedMessagesBuffer.shift();
-							_processMessage(parts, raw, true);
+							await _processMessage(parts, raw, true);
 						}
 					}
 

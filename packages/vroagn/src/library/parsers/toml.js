@@ -48,6 +48,38 @@ const parseTomlValue = (value) => {
 };
 
 /**
+ * Parse the comma-separated values in a TOML array.
+ *
+ * @param {string} value Array contents without brackets.
+ * @returns {TomlValue[]} Parsed values.
+ */
+const parseTomlArray = (value) => {
+	const values = [];
+	let currentValue = "";
+	let quote = null;
+	for (const character of value) {
+		if ((character === '"' || character === "'") && !quote) {
+			quote = character;
+			currentValue += character;
+		} else if (character === quote) {
+			quote = null;
+			currentValue += character;
+		} else if (character === "," && !quote) {
+			if (currentValue.trim()) {
+				values.push(parseTomlValue(currentValue.trim()));
+			}
+			currentValue = "";
+		} else {
+			currentValue += character;
+		}
+	}
+	if (currentValue.trim()) {
+		values.push(parseTomlValue(currentValue.trim()));
+	}
+	return values;
+};
+
+/**
  * Parse an inline table.
  *
  * @param {string} tableString The inline table string.
@@ -118,7 +150,8 @@ export const tomlParser = (options = {}) => {
 
 			const result = createRecord();
 			let currentTable = result;
-			let currentArray = null;
+			let multilineArray = null;
+			let multilineArrayKey = null;
 			let multilineString = null;
 			let multilineStringDelimiter = null;
 
@@ -141,6 +174,17 @@ export const tomlParser = (options = {}) => {
 					}
 					continue;
 				}
+				if (multilineArray !== null) {
+					multilineArray += ` ${line}`;
+					if (line.endsWith("]")) {
+						currentTable[multilineArrayKey] = parseTomlArray(
+							multilineArray.slice(0, -1),
+						);
+						multilineArray = null;
+						multilineArrayKey = null;
+					}
+					continue;
+				}
 
 				if (line.startsWith("[[") && line.endsWith("]]")) {
 					// Array of Tables
@@ -159,7 +203,8 @@ export const tomlParser = (options = {}) => {
 					const newTable = createRecord();
 					parent[lastPart].push(newTable);
 					currentTable = newTable;
-					currentArray = null;
+					multilineArray = null;
+					multilineArrayKey = null;
 				} else if (line.startsWith("[") && line.endsWith("]")) {
 					// Table
 					const tableName = line.slice(1, -1).trim();
@@ -171,11 +216,12 @@ export const tomlParser = (options = {}) => {
 							currentTable[part] = createRecord();
 						currentTable = currentTable[part];
 					}
-					currentArray = null;
+					multilineArray = null;
+					multilineArrayKey = null;
 				} else {
 					// Key-value pair
 					const [key, ...valueParts] = line.split("=");
-					let value = valueParts.join("=").trim();
+					const value = valueParts.join("=").trim();
 					const trimmedKey = key.trim();
 					validateKey(trimmedKey);
 
@@ -193,17 +239,11 @@ export const tomlParser = (options = {}) => {
 						currentTable[trimmedKey] = parseInlineTable(value);
 					} else if (value.startsWith("[") && !value.endsWith("]")) {
 						// Multi-line array
-						currentArray = [];
-						value = value.slice(1).trim();
+						multilineArray = value.slice(1).trim();
+						multilineArrayKey = trimmedKey;
 					} else {
-						if (currentArray !== null) {
-							if (value.endsWith("]")) {
-								currentArray.push(parseTomlValue(value.slice(0, -1).trim()));
-								currentTable[trimmedKey] = currentArray;
-								currentArray = null;
-							} else {
-								currentArray.push(parseTomlValue(value));
-							}
+						if (value.startsWith("[") && value.endsWith("]")) {
+							currentTable[trimmedKey] = parseTomlArray(value.slice(1, -1));
 						} else {
 							currentTable[trimmedKey] = parseTomlValue(value);
 						}

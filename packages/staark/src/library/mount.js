@@ -66,7 +66,7 @@ export const mount = (
 		if (newAttributes) {
 			for (const name of Object.keys(newAttributes)) {
 				let value = newAttributes[name];
-				if (value) {
+				if (value !== null && value !== undefined && value !== false) {
 					const type = typeof value;
 					if (type === "function") {
 						const oldValue = oldAttributes?.[name];
@@ -116,7 +116,7 @@ export const mount = (
 								!Array.isArray(oldAttributes[name])
 							) {
 								for (const styleName of Object.keys(oldAttributes[name])) {
-									if (!value[styleName]) {
+									if (!Object.hasOwn(value, styleName)) {
 										if (styleName.includes("-", 1)) {
 											element.style.removeProperty(styleName);
 										} else {
@@ -144,7 +144,13 @@ export const mount = (
 		if (oldAttributes) {
 			for (const name of Object.keys(oldAttributes)) {
 				const value = oldAttributes[name];
-				if (!newAttributes?.[name]) {
+				const newValue = newAttributes?.[name];
+				if (
+					!Object.hasOwn(newAttributes || {}, name) ||
+					newValue === null ||
+					newValue === undefined ||
+					newValue === false
+				) {
 					if (typeof value === "function") {
 						element.removeEventListener(name, oldAttributes[name]);
 					} else if (name === "class") {

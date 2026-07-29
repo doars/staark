@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Preserve numeric zero values in DOM attributes and style objects.
 - Reuse proxies for circular and shared state, leave built-in and custom
   instances unwrapped, and recover cleanly after rendering errors.
 - Apply only own attribute, class, and style properties.

@@ -18,6 +18,7 @@ import {
 	USER_VERIFIED,
 } from "./message-types.js";
 import {
+	AUTHENTICATED_SENDER,
 	CREATOR_AUTHENTICATION,
 	SERVER_PAYLOAD,
 	SERVER_TIME,
@@ -883,7 +884,10 @@ export const createServerConnector = (options = {}) => {
 			];
 		}
 
-		const message = `${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${payload}`;
+		const senderPart = sender
+			? `|${AUTHENTICATED_SENDER}:${stringToBase64(sender)}`
+			: "";
+		const message = `${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${payload}${senderPart}`;
 
 		for (const [userId, { connection, verified }] of _room.users) {
 			if (!verified || (sender && sender === userId)) {
@@ -913,7 +917,7 @@ export const createServerConnector = (options = {}) => {
 	/**
 	 * Sends a direct message to a user.
 	 */
-	const messageUser = (roomCode, _sender, receiver, data) => {
+	const messageUser = (roomCode, sender, receiver, data) => {
 		const room = _rooms.get(roomCode);
 		if (!room) {
 			return [
@@ -957,7 +961,9 @@ export const createServerConnector = (options = {}) => {
 
 		sendConnection(
 			connection,
-			`${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${data}`,
+			`${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${data}${
+				sender ? `|${AUTHENTICATED_SENDER}:${stringToBase64(sender)}` : ""
+			}`,
 		);
 		return [true, {}];
 	};

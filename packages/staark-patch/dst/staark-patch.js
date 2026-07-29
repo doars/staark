@@ -249,7 +249,7 @@
     if (newAttributes) {
       for (const name of Object.keys(newAttributes)) {
         let value = newAttributes[name];
-        if (value) {
+        if (value !== null && value !== void 0 && value !== false) {
           const type = typeof value;
           if (type === "function") {
             const oldValue = oldAttributes?.[name];
@@ -286,7 +286,7 @@
               }
               if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
                 for (const styleName of Object.keys(oldAttributes[name])) {
-                  if (!value[styleName]) {
+                  if (!Object.hasOwn(value, styleName)) {
                     if (styleName.includes("-", 1)) {
                       element.style.removeProperty(styleName);
                     } else {
@@ -312,7 +312,8 @@
     }
     if (oldAttributes) {
       for (const name of Object.keys(oldAttributes)) {
-        if (!newAttributes?.[name]) {
+        const newValue = newAttributes?.[name];
+        if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
           if (typeof oldAttributes[name] === "function") {
             element.removeEventListener(name, oldAttributes[name]);
           } else if (name === "class") {

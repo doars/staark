@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Bind decrypted message senders to their server-authenticated WebSocket
+  connections and advance the room protocol to version 2.
+- Contain asynchronous decrypting, key-importing, and message-processing errors
+  in the WebSocket message handler.
 - Mark the room creator as verified for every connected client.
 - Bound encoded and decoded protocol messages, reject malformed segments, and
   use null-prototype decoded records.

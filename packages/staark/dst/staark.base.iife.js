@@ -71,7 +71,12 @@
       return clone2;
     }
     if (ArrayBuffer.isView(value)) {
-      const clone2 = new value.constructor(value);
+      const clone2 = value instanceof DataView ? new DataView(
+        value.buffer.slice(
+          value.byteOffset,
+          value.byteOffset + value.byteLength
+        )
+      ) : new value.constructor(value);
       clones.set(value, clone2);
       return clone2;
     }
@@ -123,10 +128,20 @@
       return true;
     }
     if (ArrayBuffer.isView(valueA)) {
-      if (!ArrayBuffer.isView(valueB) || valueA.length !== valueB.length)
+      if (!ArrayBuffer.isView(valueB) || valueA.constructor !== valueB.constructor || valueA.byteLength !== valueB.byteLength)
         return false;
-      for (let index = 0; index < valueA.length; index++) {
-        if (valueA[index] !== valueB[index]) return false;
+      const bytesA = new Uint8Array(
+        valueA.buffer,
+        valueA.byteOffset,
+        valueA.byteLength
+      );
+      const bytesB = new Uint8Array(
+        valueB.buffer,
+        valueB.byteOffset,
+        valueB.byteLength
+      );
+      for (let index = 0; index < bytesA.length; index++) {
+        if (bytesA[index] !== bytesB[index]) return false;
       }
       return true;
     }
@@ -240,7 +255,7 @@
       if (newAttributes) {
         for (const name of Object.keys(newAttributes)) {
           let value = newAttributes[name];
-          if (value) {
+          if (value !== null && value !== void 0 && value !== false) {
             const type = typeof value;
             if (type === "function") {
               const oldValue = oldAttributes?.[name];
@@ -283,7 +298,7 @@
                 }
                 if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
                   for (const styleName of Object.keys(oldAttributes[name])) {
-                    if (!value[styleName]) {
+                    if (!Object.hasOwn(value, styleName)) {
                       if (styleName.includes("-", 1)) {
                         element.style.removeProperty(styleName);
                       } else {
@@ -310,7 +325,8 @@
       if (oldAttributes) {
         for (const name of Object.keys(oldAttributes)) {
           const value = oldAttributes[name];
-          if (!newAttributes?.[name]) {
+          const newValue = newAttributes?.[name];
+          if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
             if (typeof value === "function") {
               element.removeEventListener(name, oldAttributes[name]);
             } else if (name === "class") {

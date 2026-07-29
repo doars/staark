@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Parse single-line and multiline TOML arrays without losing their owning key.
+- Preserve blank lines in YAML block values and safely skip blank lines between
+  nested mappings.
 - Coordinate limited and unlimited requests through one strict FIFO scheduler,
   including completion and queued-abort draining.
 - Add `createTrustedHTML` and `trustedTypesPolicy` HTML parsing options with

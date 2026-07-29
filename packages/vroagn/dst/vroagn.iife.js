@@ -160,6 +160,31 @@
     }
     return value;
   };
+  var parseTomlArray = (value) => {
+    const values = [];
+    let currentValue = "";
+    let quote = null;
+    for (const character of value) {
+      if ((character === '"' || character === "'") && !quote) {
+        quote = character;
+        currentValue += character;
+      } else if (character === quote) {
+        quote = null;
+        currentValue += character;
+      } else if (character === "," && !quote) {
+        if (currentValue.trim()) {
+          values.push(parseTomlValue(currentValue.trim()));
+        }
+        currentValue = "";
+      } else {
+        currentValue += character;
+      }
+    }
+    if (currentValue.trim()) {
+      values.push(parseTomlValue(currentValue.trim()));
+    }
+    return values;
+  };
   var parseInlineTable = (tableString) => {
     const result = createRecord();
     let key = "";
@@ -213,7 +238,8 @@
         const text = await response.text();
         const result = createRecord();
         let currentTable = result;
-        let currentArray = null;
+        let multilineArray = null;
+        let multilineArrayKey = null;
         let multilineString = null;
         let multilineStringDelimiter = null;
         const lines = text.split(/\r?\n/);
@@ -234,6 +260,17 @@
             }
             continue;
           }
+          if (multilineArray !== null) {
+            multilineArray += ` ${line}`;
+            if (line.endsWith("]")) {
+              currentTable[multilineArrayKey] = parseTomlArray(
+                multilineArray.slice(0, -1)
+              );
+              multilineArray = null;
+              multilineArrayKey = null;
+            }
+            continue;
+          }
           if (line.startsWith("[[") && line.endsWith("]]")) {
             const arrayName = line.slice(2, -2).trim();
             const parts = arrayName.split(".");
@@ -250,7 +287,8 @@
             const newTable = createRecord();
             parent[lastPart].push(newTable);
             currentTable = newTable;
-            currentArray = null;
+            multilineArray = null;
+            multilineArrayKey = null;
           } else if (line.startsWith("[") && line.endsWith("]")) {
             const tableName = line.slice(1, -1).trim();
             currentTable = result;
@@ -261,10 +299,11 @@
                 currentTable[part] = createRecord();
               currentTable = currentTable[part];
             }
-            currentArray = null;
+            multilineArray = null;
+            multilineArrayKey = null;
           } else {
             const [key, ...valueParts] = line.split("=");
-            let value = valueParts.join("=").trim();
+            const value = valueParts.join("=").trim();
             const trimmedKey = key.trim();
             validateKey(trimmedKey);
             if (value.startsWith('"""') || value.startsWith("'''")) {
@@ -278,17 +317,11 @@
             } else if (value.startsWith("{") && value.endsWith("}")) {
               currentTable[trimmedKey] = parseInlineTable(value);
             } else if (value.startsWith("[") && !value.endsWith("]")) {
-              currentArray = [];
-              value = value.slice(1).trim();
+              multilineArray = value.slice(1).trim();
+              multilineArrayKey = trimmedKey;
             } else {
-              if (currentArray !== null) {
-                if (value.endsWith("]")) {
-                  currentArray.push(parseTomlValue(value.slice(0, -1).trim()));
-                  currentTable[trimmedKey] = currentArray;
-                  currentArray = null;
-                } else {
-                  currentArray.push(parseTomlValue(value));
-                }
+              if (value.startsWith("[") && value.endsWith("]")) {
+                currentTable[trimmedKey] = parseTomlArray(value.slice(1, -1));
               } else {
                 currentTable[trimmedKey] = parseTomlValue(value);
               }
@@ -366,6 +399,12 @@
         const anchors = createRecord();
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i].trimEnd();
+          if (line.trim() === "") {
+            if (multilineKey !== null) {
+              multilineValue.push("");
+            }
+            continue;
+          }
           if (line.trim().startsWith("#")) {
             continue;
           }
@@ -425,6 +464,9 @@
           } else {
             currentObject[key] = createRecord();
           }
+        }
+        if (multilineKey !== null) {
+          currentObject[multilineKey] = multilineValue.join("\n");
         }
         return result;
       }
