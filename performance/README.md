@@ -22,18 +22,6 @@ With the `todo_app` there are a thousand rows created and then modified. Simple 
 
 [Hyperapp](https://github.com/jorgebucaran/hyperapp#readme) is a similar library to [staark](https://github.com/doars/staark/tree/main/packages/staark#readme). It offers almost the same functionality with some exceptions. Out of the box it does not have the `factory`, `fctory`, and `nde` function, although these could be added as wrappers. Hyperapp also doesn't handle `class` and `style` attributes the same way, but the biggest difference is in how you as the user make changes to the state. Hyperapp expects you to return a new copy of the state with the mutations made as the return of a listener. This means only listeners can easily mutate the state at the end of the event. staark on the other had allows mutation of any key on the state no matter when, it will then after a change has been made re-render the application. This means staark allows you to comfortably use asynchronous functions such [fetch](https://github.com/doars/staark/tree/main/packages/vroagn#readme) and have it automatically update the interface afterwards. And an added bonus of staark is that if an event does not change the state then no re-rendering will happen.
 
-### Incremental DOM
-
-[incremental-dom](https://github.com/google/incremental-dom#readme)
-
-### Mithril
-
-[Mithril](https://github.com/MithrilJS/mithril.js#readme)
-
-### Snabbdom
-
-[Snabbdom](https://github.com/snabbdom/snabbdom#readme) is similar library to [staark patch](https://github.com/doars/staark/tree/main/packages/staark-patch#readme) and has many overlapping features. Snabbdom comes with many more, mainly focussed at being the base for your own framework to be build on top, whereas staark patch is only concerned with you brining your own state, since [staark](https://github.com/doars/staark/tree/main/packages/staark#readme) already exists providing a full solution.
-
 ### Superfine
 
 [Superfine](https://github.com/jorgebucaran/superfine#readme) can be seen as [Hyperapp](https://github.com/jorgebucaran/hyperapp#readme) without the state management included. This makes it similar to the relation between [staark](https://github.com/doars/staark/tree/main/packages/staark#readme) and [staark patch](https://github.com/doars/staark/tree/main/packages/staark-patch#readme).
@@ -49,21 +37,6 @@ hyperapp
 Minified           3.76KB
 Min+gzip           1.84KB    48.90%
 Min+brotli         1.65KB    43.78%
-
-incremental-dom
-Minified           9.07KB
-Min+gzip           3.73KB    41.08%
-Min+brotli         3.32KB    36.63%
-
-mithril
-Minified          25.85KB
-Min+gzip           9.86KB    38.14%
-Min+brotli         8.71KB    33.71%
-
-snabbdom
-Minified          14.23KB
-Min+gzip           5.27KB    37.06%
-Min+brotli         4.66KB    32.72%
 
 staark
 Minified           3.71KB
@@ -86,13 +59,6 @@ Min+brotli         1.13KB    45.01%
 When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
 
 ```
-snabbdom
-- reorder
-  Setup time     x̄4.51ms,   ∧4.10ms,   ∨5.40ms,   ±1.18%
-  Setup memory   x̄0.20MB,   ∧0.19MB,   ∨1.20MB,  ±10.73%
-  Run time       x̄2.68ms,   ∧1.90ms,   ∨3.50ms,   ±3.31%
-  Run memory     x̄0.32MB,   ∧0.10MB,   ∨0.81MB,  ±13.86%
-
 staark-patch
 - reorder
   Setup time     x̄3.22ms,   ∧3.00ms,   ∨3.70ms,   ±0.94%
@@ -120,27 +86,6 @@ hyperapp
   Run time       x̄8.07ms,   ∧7.10ms,  ∨24.10ms,   ±5.61%
   Run memory     x̄1.02MB,   ∧1.01MB,   ∨1.04MB,   ±0.17%
 
-incremental-dom
-- todo_app
-  Setup time    x̄20.96ms,  ∧18.80ms,  ∨29.20ms,   ±1.80%
-  Setup memory   x̄1.04MB,   ∧1.03MB,   ∨1.07MB,   ±0.16%
-  Run time       x̄5.37ms,   ∧4.60ms,   ∨9.50ms,   ±2.27%
-  Run memory     x̄0.54MB,   ∧0.52MB,   ∨0.57MB,   ±0.21%
-
-mithril
-- todo_app
-  Setup time    x̄19.46ms,  ∧17.70ms,  ∨21.80ms,   ±0.98%
-  Setup memory   x̄1.37MB,   ∧1.35MB,   ∨1.38MB,   ±0.08%
-  Run time       x̄8.81ms,   ∧6.70ms,  ∨28.00ms,  ±10.56%
-  Run memory     x̄1.05MB,   ∧1.05MB,   ∨1.05MB,   ±0.01%
-
-snabbdom
-- todo_app
-  Setup time    x̄18.84ms,  ∧17.00ms,  ∨21.50ms,   ±0.89%
-  Setup memory   x̄0.81MB,   ∧0.79MB,   ∨0.83MB,   ±0.23%
-  Run time       x̄7.87ms,   ∧6.90ms,   ∨9.10ms,   ±1.04%
-  Run memory     x̄0.76MB,   ∧0.75MB,   ∨1.11MB,   ±1.11%
-
 staark
 - todo_app
   Setup time    x̄14.54ms,  ∧13.50ms,  ∨16.60ms,   ±0.86%
@@ -164,8 +109,6 @@ superfine
 ```
 
 > For staark the base build is used which does not include added functions such as `factory` and `nde` Making the comparison with Hyperapp well suited.
-
-> for Snabbdom the added plugins for handling event listeners, class names, and style attributes. This is done to make the comparison to staark-patch and Superfine.
 
 ## Profiling
 
