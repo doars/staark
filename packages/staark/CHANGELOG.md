@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Migrate tests from Bun to the Node.js test runner.
+
 ## 1.7.15
 
 - Maintain iframe and media states by using moveBefore where available.

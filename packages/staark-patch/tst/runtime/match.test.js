@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
   match,
@@ -11,7 +15,7 @@ describe('Match', () => {
       'option-2': 'option-2',
       'option-3': 'option-3',
     })
-    expect(result).toEqual(['option-1'])
+    assert.deepStrictEqual(result, ['option-1'])
   })
 
   it('should return another matching value', () => {
@@ -20,20 +24,20 @@ describe('Match', () => {
       'option-2': 'option-2',
       'option-3': 'option-3',
     })
-    expect(result).toEqual(['option-2'])
+    assert.deepStrictEqual(result, ['option-2'])
   })
 
   it('should return fallback when key not found', () => {
     const result = match('option-4', {
       'option-1': 'option-1',
     }, 'fallback')
-    expect(result).toEqual(['fallback'])
+    assert.deepStrictEqual(result, ['fallback'])
   })
 
   it('should handle function values', () => {
     const result = match('key', {
       'key': () => 'function result',
     })
-    expect(result).toEqual(['function result'])
+    assert.deepStrictEqual(result, ['function result'])
   })
 })

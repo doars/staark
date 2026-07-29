@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict'
 import {
-    describe,
-    expect,
-    it,
-} from 'bun:test'
+  describe,
+  it,
+} from 'node:test'
 
 import {
     determineDiff,
@@ -18,7 +18,7 @@ describe('Determine diff', () => {
       general: 'kenobi',
     })
     const expected = []
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow object delete', () => {
@@ -33,7 +33,7 @@ describe('Determine diff', () => {
       path: ['general',],
       old: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow object add', () => {
@@ -48,7 +48,7 @@ describe('Determine diff', () => {
       path: ['general',],
       new: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow object set', () => {
@@ -70,7 +70,7 @@ describe('Determine diff', () => {
       old: 'there',
       new: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array same', () => {
@@ -86,7 +86,7 @@ describe('Determine diff', () => {
       'kenobi',
     ])
     const expected = []
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array delete', () => {
@@ -110,7 +110,7 @@ describe('Determine diff', () => {
       new: 'kenobi',
       old: 'general',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array delete multiple', () => {
@@ -142,7 +142,7 @@ describe('Determine diff', () => {
       old: 'hello',
       new: 'general',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array add', () => {
@@ -166,7 +166,7 @@ describe('Determine diff', () => {
       new: 'general',
       old: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object same', () => {
@@ -182,7 +182,7 @@ describe('Determine diff', () => {
       },
     })
     const expected = []
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object delete', () => {
@@ -201,7 +201,7 @@ describe('Determine diff', () => {
       path: ['hello', 'general',],
       old: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object add', () => {
@@ -220,7 +220,7 @@ describe('Determine diff', () => {
       path: ['hello', 'general',],
       new: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object set', () => {
@@ -246,7 +246,7 @@ describe('Determine diff', () => {
       old: 'there',
       new: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object and array same', () => {
@@ -268,7 +268,7 @@ describe('Determine diff', () => {
       ],
     })
     const expected = []
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy same', () => {
@@ -280,7 +280,7 @@ describe('Determine diff', () => {
       general: 'kenobi',
     })
     const expected = []
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy delete', () => {
@@ -295,7 +295,7 @@ describe('Determine diff', () => {
       path: ['general',],
       old: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy add', () => {
@@ -310,7 +310,7 @@ describe('Determine diff', () => {
       path: ['general',],
       new: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy set', () => {
@@ -332,6 +332,6 @@ describe('Determine diff', () => {
       old: 'there',
       new: 'kenobi',
     }]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 })

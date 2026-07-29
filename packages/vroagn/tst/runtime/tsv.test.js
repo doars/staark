@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import {
+  after,
+  before,
+  describe,
+  it,
+} from 'node:test'
 
 import {
     create,
@@ -8,12 +15,12 @@ import {
 describe('TSV Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('Lorem\tDolor\nipsum\tsit\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('Lorem\tDolor\nipsum\tsit\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -27,7 +34,7 @@ describe('TSV Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result).toEqual([['Lorem','Dolor'],['ipsum','sit']])
+    assert.strictEqual(error, null)
+    assert.deepStrictEqual(result, [['Lorem','Dolor'],['ipsum','sit']])
   })
 })

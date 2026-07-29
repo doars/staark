@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -16,7 +20,7 @@ describe('Match', () => {
       'option-2': ['option-2',],
       'option-3': ['option-3',],
     })
-    expect(result).toEqual(['option-1'])
+    assert.deepStrictEqual(result, ['option-1'])
   })
 
   it('should return another matching value', () => {
@@ -25,14 +29,14 @@ describe('Match', () => {
       'option-2': ['option-2',],
       'option-3': ['option-3',],
     })
-    expect(result).toEqual(['option-2'])
+    assert.deepStrictEqual(result, ['option-2'])
   })
 
   it('should return fallback when key not found', () => {
     const result = match('option-2', {
       'option-1': ['option-1',],
     }, ['fallback',])
-    expect(result).toEqual(['fallback'])
+    assert.deepStrictEqual(result, ['fallback'])
   })
 
   it('should return matching value as an array', () => {
@@ -41,7 +45,7 @@ describe('Match', () => {
       'option-2': 'option-2',
       'option-3': 'option-3',
     })
-    expect(result).toEqual(['option-1'])
+    assert.deepStrictEqual(result, ['option-1'])
   })
 
   it('should return another matching value as an array', () => {
@@ -50,20 +54,20 @@ describe('Match', () => {
       'option-2': 'option-2',
       'option-3': 'option-3',
     })
-    expect(result).toEqual(['option-2'])
+    assert.deepStrictEqual(result, ['option-2'])
   })
 
   it('should return fallback when nothing matches as an array', () => {
     const result = match('option-2', {
       'option-1': ['option-1',],
     }, 'fallback')
-    expect(result).toEqual(['fallback'])
+    assert.deepStrictEqual(result, ['fallback'])
   })
 
   it('should handle function values', () => {
     const result = match('key', {
       'key': () => 'function result',
     })
-    expect(result).toEqual(['function result'])
+    assert.deepStrictEqual(result, ['function result'])
   })
 })

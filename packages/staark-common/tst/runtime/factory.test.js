@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
     factory,
@@ -8,26 +12,26 @@ describe('Factory', () => {
   describe('factory proxy', () => {
     it('should create a function for a given type', () => {
       const divFactory = factory.div
-      expect(typeof divFactory).toBe('function')
+      assert.strictEqual(typeof divFactory, 'function')
     })
 
     it('should cache the created function', () => {
       const divFactory1 = factory.div
       const divFactory2 = factory.div
-      expect(divFactory1).toBe(divFactory2)
+      assert.strictEqual(divFactory1, divFactory2)
     })
 
     it('should convert camelCase to kebab-case', () => {
       const customElementFactory = factory.customElement
-      expect(typeof customElementFactory).toBe('function')
+      assert.strictEqual(typeof customElementFactory, 'function')
     })
 
     it('should call node with correct arguments when factory function is called', () => {
       const divFactory = factory.div
       const result = divFactory({ class: 'test' }, ['content'])
-      expect(result.t).toBe('div')
-      expect(result.a).toEqual({ class: 'test' })
-      expect(result.c).toEqual(['content'])
+      assert.strictEqual(result.t, 'div')
+      assert.deepStrictEqual(result.a, { class: 'test' })
+      assert.deepStrictEqual(result.c, ['content'])
     })
   })
 })

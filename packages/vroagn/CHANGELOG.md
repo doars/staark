@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Migrate tests from Bun to the Node.js test runner.
+
 ## 1.4.3
 
 - Switch from TypeScript to JavaScript with JSDocs.

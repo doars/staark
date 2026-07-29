@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -86,7 +90,7 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.bmi).toBe(0)
+    assert.strictEqual(state.bmi, 0)
 
     const weightInput = app.querySelector('input[placeholder="Weight (kg)"]')
     const heightInput = app.querySelector('input[placeholder="Height (cm)"]')
@@ -99,8 +103,8 @@ describe('Examples', () => {
     heightInput.dispatchEvent(new window.Event('input', { bubbles: true }))
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.bmi).toBe('24.22')
-    expect(app.textContent).toContain('BMI: 24.22')
+    assert.strictEqual(state.bmi, '24.22')
+    assert.ok(app.textContent.includes('BMI: 24.22'))
   })
 
   it('should handle calculator', async () => {
@@ -256,7 +260,7 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.display).toBe('0')
+    assert.strictEqual(state.display, '0')
 
     const buttons = app.querySelectorAll('button')
     const sevenButton = Array.from(buttons).find(b => b.textContent === '7')
@@ -266,19 +270,19 @@ describe('Examples', () => {
 
     sevenButton.click()
     await new Promise(resolve => setTimeout(resolve, 0))
-    expect(state.display).toBe('7')
+    assert.strictEqual(state.display, '7')
 
     plusButton.click()
     await new Promise(resolve => setTimeout(resolve, 0))
-    expect(state.display).toBe('0')
+    assert.strictEqual(state.display, '0')
 
     threeButton.click()
     await new Promise(resolve => setTimeout(resolve, 0))
-    expect(state.display).toBe('3')
+    assert.strictEqual(state.display, '3')
 
     equalsButton.click()
     await new Promise(resolve => setTimeout(resolve, 0))
-    expect(state.display).toBe('10')
+    assert.strictEqual(state.display, '10')
   })
 
   it('should handle stopwatch', async () => {
@@ -306,10 +310,12 @@ describe('Examples', () => {
           node('button', {
             click: (event, state) => {
               if (!state.timerInterval) {
-                state.timerInterval = setInterval(
+                const timerInterval = setInterval(
                   () => state.time++,
                   100,
                 )
+                timerInterval.unref()
+                state.timerInterval = timerInterval
               }
             },
             style: {
@@ -335,7 +341,7 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.time).toBe(0)
+    assert.strictEqual(state.time, 0)
 
     const startButton = app.querySelector('button')
     const stopButton = app.querySelectorAll('button')[1]
@@ -345,10 +351,10 @@ describe('Examples', () => {
     await new Promise(resolve => setTimeout(resolve, 200))
     stopButton.click()
 
-    expect(state.time).toBeGreaterThan(0)
+    assert.ok(state.time > 0)
 
     resetButton.click()
-    expect(state.time).toBe(0)
+    assert.strictEqual(state.time, 0)
   })
 
   it('should handle tabs', async () => {
@@ -392,15 +398,15 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.activeTab).toBe(0)
-    expect(app.textContent).toContain('Lorem ipsum dolor sit amet')
+    assert.strictEqual(state.activeTab, 0)
+    assert.ok(app.textContent.includes('Lorem ipsum dolor sit amet'))
 
     const tab2Button = app.querySelectorAll('button')[1]
     tab2Button.click()
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.activeTab).toBe(1)
-    expect(app.textContent).toContain('Praesent placerat ex metus')
+    assert.strictEqual(state.activeTab, 1)
+    assert.ok(app.textContent.includes('Praesent placerat ex metus'))
   })
 
   it('should handle task-list', async () => {
@@ -504,8 +510,8 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.tasks.length).toBe(1)
-    expect(state.tasks[0].text).toBe('Use task app')
+    assert.strictEqual(state.tasks.length, 1)
+    assert.strictEqual(state.tasks[0].text, 'Use task app')
 
     const input = app.querySelector('input')
     const addButton = app.querySelector('button')
@@ -517,14 +523,14 @@ describe('Examples', () => {
     addButton.click()
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.tasks.length).toBe(2)
-    expect(state.tasks[1].text).toBe('New task')
+    assert.strictEqual(state.tasks.length, 2)
+    assert.strictEqual(state.tasks[1].text, 'New task')
 
     const taskSpan = app.querySelectorAll('span')[1] // Second span is the new task
     taskSpan.click()
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.tasks[1].completed).toBe(true)
+    assert.strictEqual(state.tasks[1].completed, true)
   })
 
   it('should handle temperature', async () => {
@@ -571,8 +577,8 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.fahrenheit).toBe(32)
-    expect(state.kelvin).toBe(273.15)
+    assert.strictEqual(state.fahrenheit, 32)
+    assert.strictEqual(state.kelvin, 273.15)
 
     const input = app.querySelector('input')
 
@@ -580,8 +586,8 @@ describe('Examples', () => {
     input.dispatchEvent(new window.Event('input', { bubbles: true }))
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.fahrenheit).toBe('77.00')
-    expect(state.kelvin).toBe('298.15')
+    assert.strictEqual(state.fahrenheit, '77.00')
+    assert.strictEqual(state.kelvin, '298.15')
   })
 
   it('should handle words', async () => {
@@ -622,8 +628,8 @@ describe('Examples', () => {
       },
     )
 
-    expect(state.text.length).toBe(30)
-    expect(state.text.trim().split(/\s+/).filter(Boolean).length).toBe(6)
+    assert.strictEqual(state.text.length, 30)
+    assert.strictEqual(state.text.trim().split(/\s+/).filter(Boolean).length, 6)
 
     const textarea = app.querySelector('textarea')
 
@@ -631,7 +637,7 @@ describe('Examples', () => {
     textarea.dispatchEvent(new window.Event('input', { bubbles: true }))
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.text.length).toBe(13)
-    expect(state.text.trim().split(/\s+/).filter(Boolean).length).toBe(3)
+    assert.strictEqual(state.text.length, 13)
+    assert.strictEqual(state.text.trim().split(/\s+/).filter(Boolean).length, 3)
   })
 })

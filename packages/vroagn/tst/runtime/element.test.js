@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import {
+  after,
+  before,
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 import {
@@ -13,12 +20,12 @@ globalThis.DOMParser = window.DOMParser
 describe('Element Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('<h1>Lorem ipsum</h1>\n<p>Dolor sit amet consectetur adipisicing elit. Nihil soluta doloremque quo fuga.</p>\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('<h1>Lorem ipsum</h1>\n<p>Dolor sit amet consectetur adipisicing elit. Nihil soluta doloremque quo fuga.</p>\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -30,7 +37,7 @@ describe('Element Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result.length).toBe(4) // h1, text, p, text
+    assert.strictEqual(error, null)
+    assert.strictEqual(result.length, 4) // h1, text, p, text
   })
 })

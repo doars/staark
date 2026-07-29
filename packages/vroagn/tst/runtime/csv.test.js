@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import {
+  after,
+  before,
+  describe,
+  it,
+} from 'node:test'
 
 import {
     create,
@@ -8,12 +15,12 @@ import {
 describe('CSV Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('Lorem,Dolor\nipsum,sit\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('Lorem,Dolor\nipsum,sit\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -27,20 +34,20 @@ describe('CSV Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result).toEqual([['Lorem','Dolor'],['ipsum','sit']])
+    assert.strictEqual(error, null)
+    assert.deepStrictEqual(result, [['Lorem','Dolor'],['ipsum','sit']])
   })
 })
 
 describe('CSV Headers Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('Lorem,Dolor\nipsum,sit\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('Lorem,Dolor\nipsum,sit\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -56,20 +63,20 @@ describe('CSV Headers Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result).toEqual([{ Lorem: 'ipsum', Dolor: 'sit' }])
+    assert.strictEqual(error, null)
+    assert.deepStrictEqual(result, [{ Lorem: 'ipsum', Dolor: 'sit' }])
   })
 })
 
 describe('CSV Semicolons Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('Lorem;Dolor\nipsum;sit\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('Lorem;Dolor\nipsum;sit\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -85,7 +92,7 @@ describe('CSV Semicolons Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result).toEqual([['Lorem','Dolor'],['ipsum','sit']])
+    assert.strictEqual(error, null)
+    assert.deepStrictEqual(result, [['Lorem','Dolor'],['ipsum','sit']])
   })
 })

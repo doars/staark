@@ -3,6 +3,7 @@
 ## 1.2.1 (unreleased)
 
 - Fix cloning `null` type.
+- Migrate tests from Bun to the Node.js test runner.
 
 ## 1.2.0
 

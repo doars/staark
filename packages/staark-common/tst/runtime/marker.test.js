@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
     marker,
@@ -7,7 +11,7 @@ import {
 describe('Marker', () => {
   describe('marker', () => {
     it('should be the string "n"', () => {
-      expect(marker).toBe('n')
+      assert.strictEqual(marker, 'n')
     })
   })
 })

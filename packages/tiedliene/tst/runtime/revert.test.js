@@ -1,8 +1,8 @@
+import assert from 'node:assert/strict'
 import {
-    describe,
-    expect,
-    it,
-} from 'bun:test'
+  describe,
+  it,
+} from 'node:test'
 
 import {
     revertDiff,
@@ -18,7 +18,7 @@ describe('Revert diff', () => {
       hello: 'there',
       general: 'kenobi',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow object delete', () => {
@@ -33,7 +33,7 @@ describe('Revert diff', () => {
       hello: 'there',
       general: 'kenobi',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow object add', () => {
@@ -48,7 +48,7 @@ describe('Revert diff', () => {
     const expected = {
       hello: 'there',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow object set', () => {
@@ -70,7 +70,7 @@ describe('Revert diff', () => {
       hello: 'there',
       general: 'kenobi',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array none', () => {
@@ -86,7 +86,7 @@ describe('Revert diff', () => {
       'general',
       'kenobi',
     ]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array delete', () => {
@@ -110,7 +110,7 @@ describe('Revert diff', () => {
       'general',
       'kenobi',
     ]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array delete multiple', () => {
@@ -142,7 +142,7 @@ describe('Revert diff', () => {
       'general',
       'kenobi',
     ]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow array add', () => {
@@ -166,7 +166,7 @@ describe('Revert diff', () => {
       'there',
       'kenobi',
     ]
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object none', () => {
@@ -182,7 +182,7 @@ describe('Revert diff', () => {
         general: 'kenobi',
       },
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object delete', () => {
@@ -201,7 +201,7 @@ describe('Revert diff', () => {
         general: 'kenobi',
       },
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object add', () => {
@@ -220,7 +220,7 @@ describe('Revert diff', () => {
         hello: 'there',
       },
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object set', () => {
@@ -246,7 +246,7 @@ describe('Revert diff', () => {
         general: 'kenobi',
       },
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('nested object and array none', () => {
@@ -268,7 +268,7 @@ describe('Revert diff', () => {
         'kenobi',
       ],
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy none', () => {
@@ -280,7 +280,7 @@ describe('Revert diff', () => {
       hello: 'there',
       general: 'kenobi',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy delete', () => {
@@ -295,7 +295,7 @@ describe('Revert diff', () => {
       hello: 'there',
       general: 'kenobi',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy add', () => {
@@ -310,7 +310,7 @@ describe('Revert diff', () => {
     const expected = {
       hello: 'there',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 
   it('shallow proxy set', () => {
@@ -332,6 +332,6 @@ describe('Revert diff', () => {
       hello: 'there',
       general: 'kenobi',
     }
-    expect(actual).toEqual(expected)
+    assert.deepStrictEqual(actual, expected)
   })
 })

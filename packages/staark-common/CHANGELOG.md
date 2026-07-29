@@ -4,6 +4,7 @@
 
 - Fix cloning `null` type.
 - Fix parsing content after IDs (`#`).
+- Migrate tests from Bun to the Node.js test runner.
 
 ## 1.5.8
 

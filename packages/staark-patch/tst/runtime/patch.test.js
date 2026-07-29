@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -31,7 +35,7 @@ describe('Patch', () => {
       ]),
     )
 
-    expect(div.innerHTML).toBe('<div id="first-id"><ul><li>item 1</li><li>item 2</li><li>item 3</li></ul></div>')
+    assert.strictEqual(div.innerHTML, '<div id="first-id"><ul><li>item 1</li><li>item 2</li><li>item 3</li></ul></div>')
 
     patch(
       node('div', {
@@ -45,6 +49,6 @@ describe('Patch', () => {
       ]),
     )
 
-    expect(div.innerHTML).toBe('<div id="second-id"><ul><li>item 2</li><li>item 3</li><li>item 4</li></ul></div>')
+    assert.strictEqual(div.innerHTML, '<div id="second-id"><ul><li>item 2</li><li>item 3</li><li>item 4</li></ul></div>')
   })
 })

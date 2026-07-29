@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
     node,
@@ -13,36 +17,36 @@ describe('Stringify', () => {
     const [rendered, abstractTree] = stringify(
       () => node('h1', 'Hello world'),
     )
-    expect(rendered).toBe('<h1> Hello world </h1>')
-    expect(abstractTree).toBeDefined()
-    expect(abstractTree[0].t).toBe('h1')
-    expect(abstractTree[0].c).toEqual(['Hello world'])
+    assert.strictEqual(rendered, '<h1> Hello world </h1>')
+    assert.notStrictEqual(abstractTree, undefined)
+    assert.strictEqual(abstractTree[0].t, 'h1')
+    assert.deepStrictEqual(abstractTree[0].c, ['Hello world'])
   })
 
   it('stringifyPatch should render abstract tree to HTML string and return abstract tree', () => {
     const [rendered, abstractTree] = stringifyPatch(
       node('h1', 'hello world'),
     )
-    expect(rendered).toBe('<h1> hello world </h1>')
-    expect(abstractTree).toBeDefined()
-    expect(abstractTree[0].t).toBe('h1')
-    expect(abstractTree[0].c).toEqual(['hello world'])
+    assert.strictEqual(rendered, '<h1> hello world </h1>')
+    assert.notStrictEqual(abstractTree, undefined)
+    assert.strictEqual(abstractTree[0].t, 'h1')
+    assert.deepStrictEqual(abstractTree[0].c, ['hello world'])
   })
 
   it('stringifyFull should render view function to HTML string, abstract tree string, and state string', () => {
     const [rendered, abstractTreeString, stateString] = stringifyFull(
       () => node('h1', 'hello world'),
     )
-    expect(rendered).toBe('<h1> hello world </h1>')
-    expect(abstractTreeString).toMatch(/"t":"h1"/)
-    expect(stateString).toBe('{}')
+    assert.strictEqual(rendered, '<h1> hello world </h1>')
+    assert.match(abstractTreeString, /"t":"h1"/)
+    assert.strictEqual(stateString, '{}')
   })
 
   it('stringifyPatchFull should render abstract tree to HTML string and abstract tree string', () => {
     const [rendered, abstractTreeString] = stringifyPatchFull(
       node('h1', 'hello world'),
     )
-    expect(rendered).toBe('<h1> hello world </h1>')
-    expect(abstractTreeString).toMatch(/"t":"h1"/)
+    assert.strictEqual(rendered, '<h1> hello world </h1>')
+    assert.match(abstractTreeString, /"t":"h1"/)
   })
 })

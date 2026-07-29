@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -54,27 +58,27 @@ describe('Memo', () => {
     )
 
     let divs = app.querySelectorAll('div')
-    expect(divs[0].textContent).toBe('without memo, will update: 0')
-    expect(divs[1].textContent).toBe('with memo, will update, use memo input: 0')
-    expect(divs[2].textContent).toBe('with memo, will not update: 0')
-    expect(divs[3].textContent).toBe('with memo function, but only updates half the time: 0')
+    assert.strictEqual(divs[0].textContent, 'without memo, will update: 0')
+    assert.strictEqual(divs[1].textContent, 'with memo, will update, use memo input: 0')
+    assert.strictEqual(divs[2].textContent, 'with memo, will not update: 0')
+    assert.strictEqual(divs[3].textContent, 'with memo function, but only updates half the time: 0')
 
     proxy.count = 1
     await new Promise(resolve => setTimeout(resolve, 0))
 
     divs = app.querySelectorAll('div')
-    expect(divs[0].textContent).toBe('without memo, will update: 1')
-    expect(divs[1].textContent).toBe('with memo, will update, use memo input: 1')
-    expect(divs[2].textContent).toBe('with memo, will not update: 0')
-    expect(divs[3].textContent).toBe('with memo function, but only updates half the time: 0')
+    assert.strictEqual(divs[0].textContent, 'without memo, will update: 1')
+    assert.strictEqual(divs[1].textContent, 'with memo, will update, use memo input: 1')
+    assert.strictEqual(divs[2].textContent, 'with memo, will not update: 0')
+    assert.strictEqual(divs[3].textContent, 'with memo function, but only updates half the time: 0')
 
     proxy.count = 2
     await new Promise(resolve => setTimeout(resolve, 0))
 
     divs = app.querySelectorAll('div')
-    expect(divs[0].textContent).toBe('without memo, will update: 2')
-    expect(divs[1].textContent).toBe('with memo, will update, use memo input: 2')
-    expect(divs[2].textContent).toBe('with memo, will not update: 0')
-    expect(divs[3].textContent).toBe('with memo function, but only updates half the time: 2')
+    assert.strictEqual(divs[0].textContent, 'without memo, will update: 2')
+    assert.strictEqual(divs[1].textContent, 'with memo, will update, use memo input: 2')
+    assert.strictEqual(divs[2].textContent, 'with memo, will not update: 0')
+    assert.strictEqual(divs[3].textContent, 'with memo function, but only updates half the time: 2')
   })
 })

@@ -26,6 +26,21 @@ This mono repository contains several packages, see the overview below:
 
 If you are using the libraries and are running into an problem that you don't know how to solve, or would love to see a particular feature then feel free to [create an issue](https://github.com/doars/staark/issues/new/choose).
 
+### Testing
+
+The test suite requires Node.js 20 or newer. Install the workspace dependencies and run the tests with npm:
+
+```sh
+npm install
+npm test
+```
+
+Run tests again when files change with:
+
+```sh
+npm run test:watch
+```
+
 ## In the wild
 
 - [Toaln](https://github.com/RedKenrok/webapp-toaln#readme) is a simple language learning app which utilises the power of Large Language Models to practise.

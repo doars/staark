@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 import {
@@ -23,7 +27,7 @@ describe('Patch with Stringify', () => {
       state,
     )
 
-    expect(rendered).toBe('<p> Hello there </p>')
+    assert.strictEqual(rendered, '<p> Hello there </p>')
 
     const app = document.createElement('div')
     app.innerHTML = rendered
@@ -32,13 +36,13 @@ describe('Patch with Stringify', () => {
       app,
       abstractTree,
     )
-    expect(typeof(patch)).toBe('function')
+    assert.strictEqual(typeof(patch), 'function')
 
     patch([
       node('p', 'Hello there'),
       node('p', 'General Kenobi'),
     ])
 
-    expect(app.innerHTML).toBe('<p> Hello there </p><p>General Kenobi</p>')
+    assert.strictEqual(app.innerHTML, '<p> Hello there </p><p>General Kenobi</p>')
   })
 })

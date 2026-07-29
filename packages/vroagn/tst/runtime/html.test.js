@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import {
+  after,
+  before,
+  describe,
+  it,
+} from 'node:test'
 
 import {
     create,
@@ -7,12 +14,12 @@ import {
 describe('HTML Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('<html lang="en">\n\n  <body>\n    <h1>Lorem ipsum</h1>\n    <p>Dolor sit amet consectetur adipisicing elit. Nihil soluta doloremque quo fuga.</p>\n  </body>\n\n</html>\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('<html lang="en">\n\n  <body>\n    <h1>Lorem ipsum</h1>\n    <p>Dolor sit amet consectetur adipisicing elit. Nihil soluta doloremque quo fuga.</p>\n  </body>\n\n</html>\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -24,7 +31,7 @@ describe('HTML Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result).toBe('<html lang="en">\n\n  <body>\n    <h1>Lorem ipsum</h1>\n    <p>Dolor sit amet consectetur adipisicing elit. Nihil soluta doloremque quo fuga.</p>\n  </body>\n\n</html>\n')
+    assert.strictEqual(error, null)
+    assert.strictEqual(result, '<html lang="en">\n\n  <body>\n    <h1>Lorem ipsum</h1>\n    <p>Dolor sit amet consectetur adipisicing elit. Nihil soluta doloremque quo fuga.</p>\n  </body>\n\n</html>\n')
   })
 })

@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -15,15 +19,15 @@ describe('Mount', () => {
   it('should return two functions and an object', () => {
     const app = document.createElement('div')
     const result = mount(app, () => [])
-    expect(Array.isArray(result)).toBe(true)
-    expect(typeof(result[0])).toBe('function')
-    expect(typeof(result[1])).toBe('function')
-    expect(typeof(result[2])).toBe('object')
+    assert.strictEqual(Array.isArray(result), true)
+    assert.strictEqual(typeof(result[0]), 'function')
+    assert.strictEqual(typeof(result[1]), 'function')
+    assert.strictEqual(typeof(result[2]), 'object')
   })
 
   it('should mount a simple node', () => {
     const app = document.createElement('div')
     const result = mount(app, () => node('h1', 'hello world'))
-    expect(app.innerHTML).toBe('<h1>hello world</h1>')
+    assert.strictEqual(app.innerHTML, '<h1>hello world</h1>')
   })
 })

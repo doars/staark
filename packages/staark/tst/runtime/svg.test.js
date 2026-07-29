@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -35,6 +39,6 @@ describe('SVG', () => {
         }),
       ]),
     )
-    expect(app.innerHTML).toBe('<svg height="100px" width="100px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L50,50 L0,50 Z" stroke="#0ff" fill="#ff0" stroke-width="2"></path><path d="M50,50 L100,50 L50,100 Z" stroke="#f0f" fill="#0ff" stroke-width="2"></path></svg>')
+    assert.strictEqual(app.innerHTML, '<svg height="100px" width="100px" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M0,0 L50,50 L0,50 Z" stroke="#0ff" fill="#ff0" stroke-width="2"></path><path d="M50,50 L100,50 L50,100 Z" stroke="#f0f" fill="#0ff" stroke-width="2"></path></svg>')
   })
 })

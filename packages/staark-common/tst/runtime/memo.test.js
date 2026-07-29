@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
     memo,
@@ -10,16 +14,16 @@ describe('Memo', () => {
       const render = () => 'rendered'
       const memory = 'data'
       const result = memo(render, memory)
-      expect(result.r).toBe(render)
-      expect(result.m).toBe(memory)
+      assert.strictEqual(result.r, render)
+      assert.strictEqual(result.m, memory)
     })
 
     it('should handle different render functions and memory', () => {
       const render = (state) => state.value
       const memory = { key: 'value' }
       const result = memo(render, memory)
-      expect(result.r).toBe(render)
-      expect(result.m).toEqual({ key: 'value' })
+      assert.strictEqual(result.r, render)
+      assert.deepStrictEqual(result.m, { key: 'value' })
     })
   })
 })

@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
     suffixNameIfMultiple,
@@ -9,31 +13,31 @@ describe('Attribute', () => {
     it('should append [] to name if multiple is true and name does not end with []', () => {
       const attributes = { multiple: true, name: 'test' }
       suffixNameIfMultiple(attributes)
-      expect(attributes.name).toBe('test[]')
+      assert.strictEqual(attributes.name, 'test[]')
     })
 
     it('should not append [] if name already ends with []', () => {
       const attributes = { multiple: true, name: 'test[]' }
       suffixNameIfMultiple(attributes)
-      expect(attributes.name).toBe('test[]')
+      assert.strictEqual(attributes.name, 'test[]')
     })
 
     it('should not append [] if multiple is false', () => {
       const attributes = { multiple: false, name: 'test' }
       suffixNameIfMultiple(attributes)
-      expect(attributes.name).toBe('test')
+      assert.strictEqual(attributes.name, 'test')
     })
 
     it('should not append [] if name is not provided', () => {
       const attributes = { multiple: true }
       suffixNameIfMultiple(attributes)
-      expect(attributes.name).toBeUndefined()
+      assert.strictEqual(attributes.name, undefined)
     })
 
     it('should not append [] if multiple is not true', () => {
       const attributes = { name: 'test' }
       suffixNameIfMultiple(attributes)
-      expect(attributes.name).toBe('test')
+      assert.strictEqual(attributes.name, 'test')
     })
   })
 })

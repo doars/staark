@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -34,8 +38,8 @@ describe('Class', () => {
     ])
 
     const divs = app.querySelectorAll('div')
-    expect(divs[0].className).toBe('class-string')
-    expect(divs[1].className).toBe('class array')
-    expect(divs[2].className).toBe(' class object')
+    assert.strictEqual(divs[0].className, 'class-string')
+    assert.strictEqual(divs[1].className, 'class array')
+    assert.strictEqual(divs[2].className, ' class object')
   })
 })

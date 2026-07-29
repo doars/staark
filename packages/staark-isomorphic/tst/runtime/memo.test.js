@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 
 import {
     memo,
@@ -10,8 +14,8 @@ describe('Memo', () => {
     const render = () => node('div', 'content')
     const memory = { memory: 0 }
     const result = memo(render, memory)
-    expect(result._).toBeDefined()
-    expect(result.r).toBe(render)
-    expect(result.m).toBe(memory)
+    assert.notStrictEqual(result._, undefined)
+    assert.strictEqual(result.r, render)
+    assert.strictEqual(result.m, memory)
   })
 })

@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -34,25 +38,25 @@ describe('Click', () => {
       { clicks: 0 },
     )
 
-    expect(state.clicks).toBe(0)
-    expect(app.querySelector('button')).not.toBeNull()
-    expect(app.querySelector('button').nextElementSibling.tagName).toBe('SPAN')
-    expect(app.textContent).toContain(' clicks: 0')
+    assert.strictEqual(state.clicks, 0)
+    assert.notStrictEqual(app.querySelector('button'), null)
+    assert.strictEqual(app.querySelector('button').nextElementSibling.tagName, 'SPAN')
+    assert.ok(app.textContent.includes(' clicks: 0'))
 
     app.querySelector('button').click()
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.clicks).toBe(1)
-    expect(app.querySelector('button')).not.toBeNull()
-    expect(app.querySelector('button').previousElementSibling.tagName).toBe('SPAN')
-    expect(app.textContent).toContain(' clicks: 1')
+    assert.strictEqual(state.clicks, 1)
+    assert.notStrictEqual(app.querySelector('button'), null)
+    assert.strictEqual(app.querySelector('button').previousElementSibling.tagName, 'SPAN')
+    assert.ok(app.textContent.includes(' clicks: 1'))
 
     app.querySelector('button').click()
     await new Promise(resolve => setTimeout(resolve, 0))
 
-    expect(state.clicks).toBe(2)
-    expect(app.querySelector('button')).not.toBeNull()
-    expect(app.querySelector('button').nextElementSibling.tagName).toBe('SPAN')
-    expect(app.textContent).toContain(' clicks: 2')
+    assert.strictEqual(state.clicks, 2)
+    assert.notStrictEqual(app.querySelector('button'), null)
+    assert.strictEqual(app.querySelector('button').nextElementSibling.tagName, 'SPAN')
+    assert.ok(app.textContent.includes(' clicks: 2'))
   })
 })

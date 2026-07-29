@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Migrate tests from Bun to the Node.js test runner.
+
 ## 1.6.8
 
 - Upgrade dependency.

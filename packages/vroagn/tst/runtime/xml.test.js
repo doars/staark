@@ -1,4 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test'
+import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
+import {
+  after,
+  before,
+  describe,
+  it,
+} from 'node:test'
 
 import {
     create,
@@ -7,12 +14,12 @@ import {
 describe('XML Request', () => {
   let originalFetch
 
-  beforeAll(() => {
+  before(() => {
     originalFetch = globalThis.fetch
-    globalThis.fetch = mock(() => Promise.resolve(new Response('<?xml version="1.0" encoding="UTF-8" ?>\n<root>\n    <Lorem>ipsum</Lorem>\n    <Dolor>sit</Dolor>\n</root>\n')))
+    globalThis.fetch = async () => new Response(Buffer.from('<?xml version="1.0" encoding="UTF-8" ?>\n<root>\n    <Lorem>ipsum</Lorem>\n    <Dolor>sit</Dolor>\n</root>\n'))
   })
 
-  afterAll(() => {
+  after(() => {
     globalThis.fetch = originalFetch
   })
 
@@ -24,7 +31,7 @@ describe('XML Request', () => {
     })
 
     const [error, _response, result] = await request()
-    expect(error).toBe(null)
-    expect(result).toBe('<?xml version="1.0" encoding="UTF-8" ?>\n<root>\n    <Lorem>ipsum</Lorem>\n    <Dolor>sit</Dolor>\n</root>\n')
+    assert.strictEqual(error, null)
+    assert.strictEqual(result, '<?xml version="1.0" encoding="UTF-8" ?>\n<root>\n    <Lorem>ipsum</Lorem>\n    <Dolor>sit</Dolor>\n</root>\n')
   })
 })

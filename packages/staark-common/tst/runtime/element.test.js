@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Text, Window } from 'happy-dom'
 
 import {
@@ -17,7 +21,7 @@ describe('Element', () => {
       mockElement.appendChild(mockText)
 
       const result = childrenToNodes(mockElement)
-      expect(result).toEqual(['Hello World'])
+      assert.deepStrictEqual(result, ['Hello World'])
     })
 
     it('should convert element nodes to node objects', () => {
@@ -27,10 +31,10 @@ describe('Element', () => {
       mockElement.appendChild(mockChildElement)
 
       const result = childrenToNodes(mockElement)
-      expect(result).toHaveLength(1)
-      expect(result[0].t).toBe('DIV')
-      expect(result[0].a).toEqual({ class: 'test' })
-      expect(result[0].c).toEqual([])
+      assert.strictEqual(result.length, 1)
+      assert.strictEqual(result[0].t, 'DIV')
+      assert.deepStrictEqual(result[0].a, { class: 'test' })
+      assert.deepStrictEqual(result[0].c, [])
     })
 
     it('should handle mixed child nodes', () => {
@@ -41,16 +45,16 @@ describe('Element', () => {
       mockElement.appendChild(mockChildElement)
 
       const result = childrenToNodes(mockElement)
-      expect(result).toHaveLength(2)
-      expect(result[0]).toBe('Hello World')
-      expect(result[1].t).toBe('SPAN')
+      assert.strictEqual(result.length, 2)
+      assert.strictEqual(result[0], 'Hello World')
+      assert.strictEqual(result[1].t, 'SPAN')
     })
 
     it('should handle empty childNodes', () => {
       const mockElement = document.createElement('div')
 
       const result = childrenToNodes(mockElement)
-      expect(result).toEqual([])
+      assert.deepStrictEqual(result, [])
     })
   })
 })

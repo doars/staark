@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'bun:test'
+import assert from 'node:assert/strict'
+import {
+  describe,
+  it,
+} from 'node:test'
 import { Window } from 'happy-dom'
 
 const window = new Window()
@@ -12,22 +16,22 @@ import {
 describe('Conditional', () => {
   it('should return true branch when condition is true', () => {
     const result = conditional(true, ['true',], ['false',])
-    expect(result).toEqual(['true'])
+    assert.deepStrictEqual(result, ['true'])
   })
 
   it('should return false branch when condition is false', () => {
     const result = conditional(false, ['true',], ['false',])
-    expect(result).toEqual(['false'])
+    assert.deepStrictEqual(result, ['false'])
   })
 
   it('should return true branch when condition is true as an array', () => {
     const result = conditional(true, 'true', 'false')
-    expect(result).toEqual(['true'])
+    assert.deepStrictEqual(result, ['true'])
   })
 
   it('should return false branch when condition is false as an array', () => {
     const result = conditional(false, 'true', 'false')
-    expect(result).toEqual(['false'])
+    assert.deepStrictEqual(result, ['false'])
   })
 
   it('should handle function content', () => {
@@ -36,6 +40,6 @@ describe('Conditional', () => {
       () => 'function result',
       'false',
     )
-    expect(result).toEqual(['function result'])
+    assert.deepStrictEqual(result, ['function result'])
   })
 })
