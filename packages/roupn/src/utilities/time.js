@@ -1,4 +1,3 @@
-
 /**
  * Calculates time synchronization values based on provided server and sender times.
  *
@@ -10,44 +9,31 @@
  *   adjusted: number,
  * }} An object containing the calculated delay, offset, and adjusted time.
  */
-export const calculateTime = (
-  serverTime,
-  senderTime,
-) => {
-  const receiverTime = Date.now()
+export const calculateTime = (serverTime, senderTime) => {
+	const receiverTime = Date.now();
 
-  if (!serverTime) {
-    return {
-      delay: 0,
-      offset: 0,
-      adjusted: receiverTime,
-    }
-  }
+	if (!serverTime) {
+		return {
+			delay: 0,
+			offset: 0,
+			adjusted: receiverTime,
+		};
+	}
 
-  if (!senderTime) {
-    const offset = serverTime - receiverTime
-    return {
-      delay: 0,
-      offset: offset,
-      adjusted: (
-        receiverTime
-        + offset
-      ),
-    }
-  }
+	if (!senderTime) {
+		const offset = serverTime - receiverTime;
+		return {
+			delay: 0,
+			offset: offset,
+			adjusted: receiverTime + offset,
+		};
+	}
 
-  const delay = receiverTime - senderTime
-  const offset = (
-    (serverTime - senderTime)
-    + (serverTime - receiverTime)
-  ) / 2
-  return {
-    delay: delay,
-    offset: offset,
-    adjusted: (
-      receiverTime
-      - delay
-      + offset
-    ),
-  }
-}
+	const delay = receiverTime - senderTime;
+	const offset = (serverTime - senderTime + (serverTime - receiverTime)) / 2;
+	return {
+		delay: delay,
+		offset: offset,
+		adjusted: receiverTime - delay + offset,
+	};
+};

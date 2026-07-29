@@ -1,5 +1,5 @@
-import { arrayifyOrUndefined } from './array.js'
-import { marker } from './marker.js'
+import { arrayifyOrUndefined } from "./array.js";
+import { marker } from "./marker.js";
 
 /**
  * @typedef {import('./memo.js').MemoAbstract} MemoAbstract
@@ -34,27 +34,21 @@ import { marker } from './marker.js'
  * @param {NodeContent[] | NodeContent} [contents] Abstracts of children.
  * @returns {NodeAbstract} Node abstract representing the given data.
  */
-export const node = (
-  type,
-  attributesOrContents,
-  contents,
-) => {
-  if (
-    attributesOrContents
-    && (
-      typeof (attributesOrContents) !== 'object'
-      || attributesOrContents._ === marker
-      || Array.isArray(attributesOrContents)
-    )
-  ) {
-    contents = attributesOrContents
-    attributesOrContents = undefined
-  }
+export const node = (type, attributesOrContents, contents) => {
+	if (
+		attributesOrContents &&
+		(typeof attributesOrContents !== "object" ||
+			attributesOrContents._ === marker ||
+			Array.isArray(attributesOrContents))
+	) {
+		contents = attributesOrContents;
+		attributesOrContents = undefined;
+	}
 
-  return {
-    _: marker,
-    a: attributesOrContents,
-    c: arrayifyOrUndefined(contents),
-    t: type,
-  }
-}
+	return {
+		_: marker,
+		a: attributesOrContents,
+		c: arrayifyOrUndefined(contents),
+		t: type,
+	};
+};

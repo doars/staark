@@ -1,101 +1,97 @@
-// src/utilities/clone.js
-var cloneRecursive = (value) => {
-  if (value && typeof value === "object") {
-    const clone = Array.isArray(value) ? [] : {};
-    for (const key in value) {
-      clone[key] = cloneRecursive(value[key]);
+(() => {
+  // src/utilities/clone.js
+  var cloneRecursive = (value) => {
+    if (value && typeof value === "object") {
+      const clone = Array.isArray(value) ? [] : {};
+      for (const key in value) {
+        clone[key] = cloneRecursive(value[key]);
+      }
+      return clone;
     }
-    return clone;
-  }
-  return value;
-};
+    return value;
+  };
 
-// src/library/diff.js
-var setValueAtPath = (record, path, value) => {
-  let current = record;
-  for (let i = 0;i < path.length - 1; i++) {
-    const key = path[i];
-    if (!(key in current)) {
-      current[key] = {};
+  // src/library/diff.js
+  var setValueAtPath = (record, path, value) => {
+    let current = record;
+    for (let i = 0; i < path.length - 1; i++) {
+      const key = path[i];
+      if (!(key in current)) {
+        current[key] = {};
+      }
+      current = current[key];
     }
-    current = current[key];
-  }
-  current[path[path.length - 1]] = cloneRecursive(value);
-};
-var deleteValueAtPath = (record, path) => {
-  let current = record;
-  for (let i = 0;i < path.length - 1; i++) {
-    current = current[path[i]];
-    if (!current) {
-      return;
+    current[path[path.length - 1]] = cloneRecursive(value);
+  };
+  var deleteValueAtPath = (record, path) => {
+    let current = record;
+    for (let i = 0; i < path.length - 1; i++) {
+      current = current[path[i]];
+      if (!current) {
+        return;
+      }
     }
-  }
-  if (Array.isArray(current)) {
-    current.splice(parseInt(path[path.length - 1]), 1);
-  } else {
-    delete current[path[path.length - 1]];
-  }
-};
-var determineDiff = (before, after, path = []) => {
-  const changes = [];
-  for (const key in before) {
-    const currentPath = [...path, key];
-    if (!(key in after)) {
-      changes.unshift({
-        type: "delete",
-        path: currentPath,
-        old: cloneRecursive(before[key])
-      });
-    } else if (typeof before[key] === "object" && typeof after[key] === "object") {
-      changes.unshift(...determineDiff(before[key], after[key], currentPath));
-    } else if (before[key] !== after[key]) {
-      changes.unshift({
-        type: "set",
-        path: currentPath,
-        old: cloneRecursive(before[key]),
-        new: cloneRecursive(after[key])
-      });
+    if (Array.isArray(current)) {
+      current.splice(parseInt(path[path.length - 1], 10), 1);
+    } else {
+      delete current[path[path.length - 1]];
     }
-  }
-  for (const key in after) {
-    if (!(key in before)) {
-      changes.unshift({
-        type: "set",
-        path: [...path, key],
-        new: cloneRecursive(after[key])
-      });
+  };
+  var determineDiff = (before, after, path = []) => {
+    const changes = [];
+    for (const key in before) {
+      const currentPath = [...path, key];
+      if (!(key in after)) {
+        changes.unshift({
+          type: "delete",
+          path: currentPath,
+          old: cloneRecursive(before[key])
+        });
+      } else if (typeof before[key] === "object" && typeof after[key] === "object") {
+        changes.unshift(...determineDiff(before[key], after[key], currentPath));
+      } else if (before[key] !== after[key]) {
+        changes.unshift({
+          type: "set",
+          path: currentPath,
+          old: cloneRecursive(before[key]),
+          new: cloneRecursive(after[key])
+        });
+      }
     }
-  }
-  return changes;
-};
-var applyDiff = (state, diff) => {
-  for (const change of diff) {
-    if (change.type === "set") {
-      setValueAtPath(state, change.path, change.new);
-    } else if (change.type === "delete") {
-      deleteValueAtPath(state, change.path);
+    for (const key in after) {
+      if (!(key in before)) {
+        changes.unshift({
+          type: "set",
+          path: [...path, key],
+          new: cloneRecursive(after[key])
+        });
+      }
     }
-  }
-  return state;
-};
-var revertDiff = (state, diff) => {
-  for (const change of diff) {
-    if (change.type === "set") {
-      if (change.old === undefined) {
+    return changes;
+  };
+  var applyDiff = (state, diff) => {
+    for (const change of diff) {
+      if (change.type === "set") {
+        setValueAtPath(state, change.path, change.new);
+      } else if (change.type === "delete") {
         deleteValueAtPath(state, change.path);
-      } else {
+      }
+    }
+    return state;
+  };
+  var revertDiff = (state, diff) => {
+    for (const change of diff) {
+      if (change.type === "set") {
+        if (change.old === void 0) {
+          deleteValueAtPath(state, change.path);
+        } else {
+          setValueAtPath(state, change.path, change.old);
+        }
+      } else if (change.type === "delete") {
         setValueAtPath(state, change.path, change.old);
       }
-    } else if (change.type === "delete") {
-      setValueAtPath(state, change.path, change.old);
     }
-  }
-  return state;
-};
-export {
-  revertDiff,
-  determineDiff,
-  applyDiff
-};
-
-//# debugId=118E922A329D338564756E2164756E21
+    return state;
+  };
+})();
+//# sourceMappingURL=tiedliene.base.js.map

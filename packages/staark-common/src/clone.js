@@ -4,22 +4,13 @@
  * @param {any} value Data to clone.
  * @returns {any} Clone of the data.
  */
-export const cloneRecursive = (
-  value,
-) => {
-  if (
-    value
-    && typeof (value) === 'object'
-  ) {
-    const clone = (
-      Array.isArray(value)
-        ? []
-        : {}
-    )
-    for (const key in value) {
-      clone[key] = cloneRecursive(value[key])
-    }
-    return clone
-  }
-  return value
-}
+export const cloneRecursive = (value) => {
+	if (value && typeof value === "object") {
+		const clone = Array.isArray(value) ? [] : {};
+		for (const key in value) {
+			clone[key] = cloneRecursive(value[key]);
+		}
+		return clone;
+	}
+	return value;
+};

@@ -1,25 +1,14 @@
-import { iife } from '../../../helpers/iife.js'
+import { iife } from "../../../helpers/iife.js";
+import { applyDiff, determineDiff, revertDiff } from "./library/diff.js";
+import { manageState } from "./library/state.js";
+import { cloneRecursive } from "./utilities/clone.js";
 
-import {
-  cloneRecursive,
-} from './utilities/clone.js'
-import {
-  determineDiff,
-  applyDiff,
-  revertDiff,
-} from './library/diff.js'
-import {
-  manageState,
-} from './library/state.js'
+iife(["tiedliene"], {
+	cloneRecursive,
 
-iife([
-  'tiedliene',
-], {
-  cloneRecursive,
+	determineDiff,
+	applyDiff,
+	revertDiff,
 
-  determineDiff,
-  applyDiff,
-  revertDiff,
-
-  manageState,
-})
+	manageState,
+});

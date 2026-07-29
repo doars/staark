@@ -1,6 +1,5 @@
-
 /**
  * @module tiedliene-base
-*/
+ */
 
-export * from './library/diff.js'
+export * from "./library/diff.js";

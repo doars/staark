@@ -1,4 +1,4 @@
-import { arrayify } from './array.js'
+import { arrayify } from "./array.js";
 
 /**
  * @typedef {import('./node.js').NodeContent} NodeContent
@@ -13,18 +13,10 @@ import { arrayify } from './array.js'
  * @param {NodeContent[] | NodeContent | ResolveFunction} [onFalse] The content to return if the condition is false.
  * @returns {NodeContent[]} The resulting content as an array.
  */
-export const conditional = (
-  condition,
-  onTruth,
-  onFalse,
-) => {
-  let result = (
-    condition
-      ? onTruth
-      : onFalse
-  )
-  if (typeof (result) === 'function') {
-    result = result()
-  }
-  return arrayify(result)
-}
+export const conditional = (condition, onTruth, onFalse) => {
+	let result = condition ? onTruth : onFalse;
+	if (typeof result === "function") {
+		result = result();
+	}
+	return arrayify(result);
+};

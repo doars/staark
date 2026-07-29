@@ -6,34 +6,34 @@ import path from 'path'
 
 // Configuration
 const PORT = process.env.PORT || 3000
-const LOG_LEVEL = process.env.SRV_LOG_LEVEL || 2
+const LOG_LEVEL = process.env.SERVE_LOG_LEVEL || 2
 
 const logDebug = (...args) => {
   if (LOG_LEVEL >= 3) {
-    console.debug('[srv:debug]', ...args)
+    console.debug('[serve:debug]', ...args)
   }
 }
 const logInfo = (...args) => {
   if (LOG_LEVEL >= 2) {
-    console.log('[srv:info]', ...args)
+    console.log('[serve:info]', ...args)
   }
 }
 const logWarn = (...args) => {
   if (LOG_LEVEL >= 1) {
-    console.warn('[srv:warn]', ...args)
+    console.warn('[serve:warn]', ...args)
   }
 }
 const logError = (...args) => {
   if (LOG_LEVEL >= 0) {
-    console.error('[srv:error]', ...args)
+    console.error('[serve:error]', ...args)
   }
 }
 
 const targetDirectory = process.argv[2]
 if (!targetDirectory) {
   logInfo('Error: No directory specified.')
-  logInfo('Usage: bun srv.js <directory-to-serve>')
-  logInfo('Example: bun srv.js ./examples')
+  logInfo('Usage: node serve.js <directory-to-serve>')
+  logInfo('Example: node serve.js ./examples')
   process.exit(1)
 }
 

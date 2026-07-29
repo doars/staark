@@ -1,9 +1,5 @@
-import {
-    node,
-} from './node.js'
-import {
-    selectorToTokenizer,
-} from './selector.js'
+import { node } from "./node.js";
+import { selectorToTokenizer } from "./selector.js";
 
 /**
  * @typedef {import('./node.js').NodeAbstract} NodeAbstract
@@ -19,46 +15,41 @@ import {
  * @typedef {Object<string, Fctory>} FctoryCache Factory cache.
  */
 
-export const fctory = /*#__PURE__*/ new Proxy({}, {
-  /**
-   * @param {FctoryCache} target Factory cache.
-   * @param {string} type Type of the nodes to generate.
-   * @returns {Fctory} Function that generates the a node with the given type.
-   */
-  get: (target, type) => {
-    if (target[type]) {
-      return target[type]
-    }
+export const fctory = /*#__PURE__*/ new Proxy(
+	{},
+	{
+		/**
+		 * @param {FctoryCache} target Factory cache.
+		 * @param {string} type Type of the nodes to generate.
+		 * @returns {Fctory} Function that generates the a node with the given type.
+		 */
+		get: (target, type) => {
+			if (target[type]) {
+				return target[type];
+			}
 
-    const typeConverted = (
-      type[0].toLowerCase() + type.substring(1)
-        .replace(
-          /([A-Z])/g,
-          capital => '-' + capital.toLowerCase(),
-        )
-    )
+			const typeConverted =
+				type[0].toLowerCase() +
+				type
+					.substring(1)
+					.replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
 
-     /**
-      * Generates a node with the given type and selector.
-      *
-      * @param {string} [selector] Selector string for attributes.
-      * @param {NodeContent[] | NodeContent} [contents] Contents.
-      * @returns {NodeAbstract} The node abstract.
-      */
-     return target[type] = (
-       selector,
-       contents,
-     ) => {
-      let attributes
-      if (selector) {
-        const [_, _attributes] = selectorToTokenizer(selector)
-        attributes = _attributes
-      }
-      return node(
-        typeConverted,
-        attributes,
-        contents,
-      )
-    }
-  },
-})
+			/**
+			 * Generates a node with the given type and selector.
+			 *
+			 * @param {string} [selector] Selector string for attributes.
+			 * @param {NodeContent[] | NodeContent} [contents] Contents.
+			 * @returns {NodeAbstract} The node abstract.
+			 */
+			// biome-ignore lint/suspicious/noAssignInExpressions: assignment is intentional
+			return (target[type] = (selector, contents) => {
+				let attributes;
+				if (selector) {
+					const [_, _attributes] = selectorToTokenizer(selector);
+					attributes = _attributes;
+				}
+				return node(typeConverted, attributes, contents);
+			});
+		},
+	},
+);

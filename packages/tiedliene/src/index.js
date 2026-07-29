@@ -1,8 +1,7 @@
-
 /**
  * @module tiedliene
-*/
+ */
 
-export * from './utilities/clone.js'
-export * from './library/diff.js'
-export * from './library/state.js'
+export * from "./library/diff.js";
+export * from "./library/state.js";
+export * from "./utilities/clone.js";

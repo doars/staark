@@ -1,19 +1,7 @@
 (() => {
-  // ../../helpers/iife.js
-  var iife = (path, data) => {
-    let subject = window;
-    for (let i = 0;i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
-        subject[path[i]] = {};
-      }
-      subject = subject[path[i]];
-    }
-    subject[path[path.length - 1]] = data;
-  };
-
   // ../staark-common/src/array.js
   var arrayify = (data) => arrayifyOrUndefined(data) || [];
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
+  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
   // ../staark-common/src/conditional.js
   var conditional = (condition, onTruth, onFalse) => {
@@ -31,7 +19,7 @@
   var node = (type, attributesOrContents, contents) => {
     if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
-      attributesOrContents = undefined;
+      attributesOrContents = void 0;
     }
     return {
       _: marker,
@@ -42,15 +30,23 @@
   };
 
   // ../staark-common/src/factory.js
-  var factory = /* @__PURE__ */ new Proxy({}, {
-    get: (target, type) => {
-      if (target[type]) {
-        return target[type];
+  var factory = /* @__PURE__ */ new Proxy(
+    {},
+    {
+      /**
+       * @param {FactoryCache} target Factory cache.
+       * @param {string} type Type of the nodes to generate.
+       * @returns {Factory} Function that generates the a node with the given type.
+       */
+      get: (target, type) => {
+        if (target[type]) {
+          return target[type];
+        }
+        const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+        return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
       }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
-      return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
     }
-  });
+  );
 
   // ../staark-common/src/selector.js
   var BRACKET_CLOSE = "]";
@@ -86,7 +82,7 @@
               attributes.class = tokenA;
               break;
             }
-            attributes.class += " " + tokenA;
+            attributes.class += ` ${tokenA}`;
             break;
           case TokenTypes.id:
             attributes.id = tokenA;
@@ -175,26 +171,34 @@
   };
 
   // ../staark-common/src/fctory.js
-  var fctory = /* @__PURE__ */ new Proxy({}, {
-    get: (target, type) => {
-      if (target[type]) {
-        return target[type];
-      }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
-      return target[type] = (selector, contents) => {
-        let attributes;
-        if (selector) {
-          const [_, _attributes] = selectorToTokenizer(selector);
-          attributes = _attributes;
+  var fctory = /* @__PURE__ */ new Proxy(
+    {},
+    {
+      /**
+       * @param {FctoryCache} target Factory cache.
+       * @param {string} type Type of the nodes to generate.
+       * @returns {Fctory} Function that generates the a node with the given type.
+       */
+      get: (target, type) => {
+        if (target[type]) {
+          return target[type];
         }
-        return node(typeConverted, attributes, contents);
-      };
+        const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+        return target[type] = (selector, contents) => {
+          let attributes;
+          if (selector) {
+            const [_, _attributes] = selectorToTokenizer(selector);
+            attributes = _attributes;
+          }
+          return node(typeConverted, attributes, contents);
+        };
+      }
     }
-  });
+  );
 
   // ../staark-common/src/identifier.js
   var identifierCount = 0;
-  var identifier = (prefix) => prefix + "-" + identifierCount++;
+  var identifier = (prefix) => `${prefix}-${identifierCount++}`;
 
   // ../staark-common/src/match.js
   var match = (key, lookup, fallback) => {
@@ -226,6 +230,18 @@
       c: arrayifyOrUndefined(contents),
       t: type
     };
+  };
+
+  // ../../helpers/iife.js
+  var iife = (path, data) => {
+    let subject = window;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+        subject[path[i]] = {};
+      }
+      subject = subject[path[i]];
+    }
+    subject[path[path.length - 1]] = data;
   };
 
   // ../staark-common/src/clone.js
@@ -266,7 +282,9 @@
         for (const attribute of childNode.attributes) {
           attributes[attribute.name] = attribute.value;
         }
-        abstractChildNodes.push(node(childNode.nodeName, attributes, childrenToNodes(childNode)));
+        abstractChildNodes.push(
+          node(childNode.nodeName, attributes, childrenToNodes(childNode))
+        );
       }
     }
     return abstractChildNodes;
@@ -275,6 +293,13 @@
   // src/library/proxy.js
   var proxify = (root, onChange) => {
     const handler = {
+      /**
+       * Deletes a property from the target object and invokes the onChange callback if the property existed.
+       *
+       * @param {Record<string, any>} target - The target object from which the property will be deleted.
+       * @param {string} key - The key of the property to be deleted.
+       * @returns {boolean} - True if the property was deleted, otherwise false.
+       */
       deleteProperty: (target, key) => {
         if (Reflect.has(target, key)) {
           const deleted = Reflect.deleteProperty(target, key);
@@ -285,6 +310,14 @@
         }
         return true;
       },
+      /**
+       * Sets a property on the target object and invokes the onChange callback if the value has changed.
+       *
+       * @param {Record<string, any>} target - The target object on which the property will be set.
+       * @param {string} key - The key of the property to be set.
+       * @param {any} value - The value to be set.
+       * @returns {boolean} - True if the property was set, otherwise false.
+       */
       set: (target, key, value) => {
         const existingValue = target[key];
         if (existingValue !== value) {
@@ -354,7 +387,7 @@
                     let classNames = "";
                     for (const className in value) {
                       if (value[className]) {
-                        classNames += " " + className;
+                        classNames += ` ${className}`;
                       }
                     }
                     value = classNames;
@@ -362,16 +395,16 @@
                 }
                 element.className = value;
               } else if (name === "style" && typeof value === "object") {
-                for (let styleName in value) {
-                  let styleValue = value[styleName];
+                for (const styleName in value) {
+                  const styleValue = value[styleName];
                   if (styleName.includes("-", 1)) {
                     element.style.setProperty(styleName, styleValue);
                   } else {
                     element.style[styleName] = styleValue;
                   }
                 }
-                if (oldAttributes && oldAttributes[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
-                  for (let styleName in oldAttributes[name]) {
+                if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
+                  for (const styleName in oldAttributes[name]) {
                     if (!value[styleName]) {
                       if (styleName.includes("-", 1)) {
                         element.style.removeProperty(styleName);
@@ -399,7 +432,7 @@
       if (oldAttributes) {
         for (const name in oldAttributes) {
           const value = oldAttributes[name];
-          if (!newAttributes || !newAttributes[name]) {
+          if (!newAttributes?.[name]) {
             if (typeof value === "function") {
               element.removeEventListener(name, oldAttributes[name]);
             } else if (name === "class") {
@@ -415,13 +448,13 @@
         }
       }
     };
-    let oldMemoMap = new WeakMap;
-    let newMemoMap = new WeakMap;
+    let oldMemoMap = /* @__PURE__ */ new WeakMap();
+    let newMemoMap = /* @__PURE__ */ new WeakMap();
     const updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
       let newIndex = 0;
       let newCount = 0;
       if (newChildAbstracts) {
-        for (;newIndex < newChildAbstracts.length; newIndex++) {
+        for (; newIndex < newChildAbstracts.length; newIndex++) {
           const newAbstract = newChildAbstracts[newIndex];
           if (newAbstract.r) {
             let match2 = oldMemoMap.get(newAbstract.r);
@@ -433,23 +466,43 @@
               };
             }
             newMemoMap.set(newAbstract.r, match2);
-            newChildAbstracts.splice(newIndex, 1, ...cloneRecursive(match2.c));
+            newChildAbstracts.splice(
+              newIndex,
+              1,
+              ...cloneRecursive(match2.c)
+            );
             newIndex--;
             continue;
           }
           let matched = false;
           if (oldChildAbstracts) {
-            for (let oldIndex = newIndex - newCount;oldIndex < oldChildAbstracts.length; oldIndex++) {
+            for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
               const oldAbstract = oldChildAbstracts[oldIndex];
               if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
                 matched = true;
                 if (newIndex !== oldIndex + newCount) {
-                  element[setBefore](element.childNodes[oldIndex + newCount], element.childNodes[newIndex]);
-                  oldChildAbstracts.splice(newIndex - newCount, 0, oldChildAbstracts.splice(oldIndex, 1)[0]);
+                  element[setBefore](
+                    element.childNodes[oldIndex + newCount],
+                    element.childNodes[newIndex]
+                  );
+                  oldChildAbstracts.splice(
+                    newIndex - newCount,
+                    0,
+                    oldChildAbstracts.splice(oldIndex, 1)[0]
+                  );
                 }
                 if (newAbstract.t) {
-                  updateAttributes(element.childNodes[newIndex], newAbstract.a, oldAbstract.a);
-                  updateChildren(element.childNodes[newIndex], newAbstract.c, oldAbstract.c, inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg");
+                  updateAttributes(
+                    element.childNodes[newIndex],
+                    newAbstract.a,
+                    oldAbstract.a
+                  );
+                  updateChildren(
+                    element.childNodes[newIndex],
+                    newAbstract.c,
+                    oldAbstract.c,
+                    inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
+                  );
                 } else if (oldAbstract !== newAbstract) {
                   element.childNodes[newIndex].textContent = newAbstract;
                 }
@@ -462,12 +515,15 @@
             if (newAbstract.t) {
               const _inSvg = inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
               if (_inSvg) {
-                newNode = document.createElementNS("http://www.w3.org/2000/svg", newAbstract.t);
+                newNode = document.createElementNS(
+                  "http://www.w3.org/2000/svg",
+                  newAbstract.t
+                );
               } else {
                 newNode = document.createElement(newAbstract.t);
               }
-              updateAttributes(newNode, newAbstract.a, undefined, _inSvg);
-              updateChildren(newNode, newAbstract.c, undefined, _inSvg);
+              updateAttributes(newNode, newAbstract.a, void 0, _inSvg);
+              updateChildren(newNode, newAbstract.c, void 0, _inSvg);
             } else {
               newNode = document.createTextNode(newAbstract);
             }
@@ -479,7 +535,7 @@
       if (oldChildAbstracts) {
         const elementLength = oldChildAbstracts.length + newCount;
         if (elementLength >= newIndex) {
-          for (let i = elementLength - 1;i >= newIndex; i--) {
+          for (let i = elementLength - 1; i >= newIndex; i--) {
             element.childNodes[i].remove();
           }
         }
@@ -489,7 +545,7 @@
     if (typeof oldAbstractTree === "string") {
       try {
         oldAbstractTree = JSON.parse(oldAbstractTree);
-      } catch (error) {
+      } catch {
         oldAbstractTree = null;
       }
     }
@@ -501,11 +557,11 @@
       if (active && !updating && updatePromise) {
         updating = true;
         updatePromise = null;
-        let newAbstractTree = arrayifyOrUndefined(renderView(state));
+        const newAbstractTree = arrayifyOrUndefined(renderView(state));
         updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
         oldAbstractTree = newAbstractTree;
         oldMemoMap = newMemoMap;
-        newMemoMap = new WeakMap;
+        newMemoMap = /* @__PURE__ */ new WeakMap();
         updating = false;
       }
     };
@@ -516,7 +572,7 @@
       () => {
         if (active) {
           active = false;
-          for (let i = _rootElement.childNodes.length - 1;i >= 0; i--) {
+          for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
             _rootElement.childNodes[i].remove();
           }
         }
@@ -526,9 +582,7 @@
   };
 
   // src/index.iife.js
-  iife([
-    "staark"
-  ], {
+  iife(["staark"], {
     conditional,
     factory,
     fctory,
@@ -540,5 +594,4 @@
     node
   });
 })();
-
-//# debugId=E6659AA72C2EA8EA64756E2164756E21
+//# sourceMappingURL=staark.iife.js.map

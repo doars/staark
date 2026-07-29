@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0;i < path.length - 1; i++) {
+    for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -26,7 +26,7 @@
   // src/library/diff.js
   var setValueAtPath = (record, path, value) => {
     let current = record;
-    for (let i = 0;i < path.length - 1; i++) {
+    for (let i = 0; i < path.length - 1; i++) {
       const key = path[i];
       if (!(key in current)) {
         current[key] = {};
@@ -37,14 +37,14 @@
   };
   var deleteValueAtPath = (record, path) => {
     let current = record;
-    for (let i = 0;i < path.length - 1; i++) {
+    for (let i = 0; i < path.length - 1; i++) {
       current = current[path[i]];
       if (!current) {
         return;
       }
     }
     if (Array.isArray(current)) {
-      current.splice(parseInt(path[path.length - 1]), 1);
+      current.splice(parseInt(path[path.length - 1], 10), 1);
     } else {
       delete current[path[path.length - 1]];
     }
@@ -94,7 +94,7 @@
   var revertDiff = (state, diff) => {
     for (const change of diff) {
       if (change.type === "set") {
-        if (change.old === undefined) {
+        if (change.old === void 0) {
           deleteValueAtPath(state, change.path);
         } else {
           setValueAtPath(state, change.path, change.old);
@@ -107,13 +107,10 @@
   };
 
   // src/index.base.iife.js
-  iife([
-    "tiedliene"
-  ], {
+  iife(["tiedliene"], {
     determineDiff,
     applyDiff,
     revertDiff
   });
 })();
-
-//# debugId=7040ABBD2569B73F64756E2164756E21
+//# sourceMappingURL=tiedliene.base.iife.js.map

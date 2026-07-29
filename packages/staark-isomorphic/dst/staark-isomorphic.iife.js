@@ -1,19 +1,7 @@
 (() => {
-  // ../../helpers/iife.js
-  var iife = (path, data) => {
-    let subject = window;
-    for (let i = 0;i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
-        subject[path[i]] = {};
-      }
-      subject = subject[path[i]];
-    }
-    subject[path[path.length - 1]] = data;
-  };
-
   // ../staark-common/src/array.js
   var arrayify = (data) => arrayifyOrUndefined(data) || [];
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : undefined;
+  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
 
   // ../staark-common/src/conditional.js
   var conditional = (condition, onTruth, onFalse) => {
@@ -31,7 +19,7 @@
   var node = (type, attributesOrContents, contents) => {
     if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
-      attributesOrContents = undefined;
+      attributesOrContents = void 0;
     }
     return {
       _: marker,
@@ -42,15 +30,23 @@
   };
 
   // ../staark-common/src/factory.js
-  var factory = /* @__PURE__ */ new Proxy({}, {
-    get: (target, type) => {
-      if (target[type]) {
-        return target[type];
+  var factory = /* @__PURE__ */ new Proxy(
+    {},
+    {
+      /**
+       * @param {FactoryCache} target Factory cache.
+       * @param {string} type Type of the nodes to generate.
+       * @returns {Factory} Function that generates the a node with the given type.
+       */
+      get: (target, type) => {
+        if (target[type]) {
+          return target[type];
+        }
+        const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+        return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
       }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
-      return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
     }
-  });
+  );
 
   // ../staark-common/src/selector.js
   var BRACKET_CLOSE = "]";
@@ -86,7 +82,7 @@
               attributes.class = tokenA;
               break;
             }
-            attributes.class += " " + tokenA;
+            attributes.class += ` ${tokenA}`;
             break;
           case TokenTypes.id:
             attributes.id = tokenA;
@@ -175,26 +171,34 @@
   };
 
   // ../staark-common/src/fctory.js
-  var fctory = /* @__PURE__ */ new Proxy({}, {
-    get: (target, type) => {
-      if (target[type]) {
-        return target[type];
-      }
-      const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => "-" + capital.toLowerCase());
-      return target[type] = (selector, contents) => {
-        let attributes;
-        if (selector) {
-          const [_, _attributes] = selectorToTokenizer(selector);
-          attributes = _attributes;
+  var fctory = /* @__PURE__ */ new Proxy(
+    {},
+    {
+      /**
+       * @param {FctoryCache} target Factory cache.
+       * @param {string} type Type of the nodes to generate.
+       * @returns {Fctory} Function that generates the a node with the given type.
+       */
+      get: (target, type) => {
+        if (target[type]) {
+          return target[type];
         }
-        return node(typeConverted, attributes, contents);
-      };
+        const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+        return target[type] = (selector, contents) => {
+          let attributes;
+          if (selector) {
+            const [_, _attributes] = selectorToTokenizer(selector);
+            attributes = _attributes;
+          }
+          return node(typeConverted, attributes, contents);
+        };
+      }
     }
-  });
+  );
 
   // ../staark-common/src/identifier.js
   var identifierCount = 0;
-  var identifier = (prefix) => prefix + "-" + identifierCount++;
+  var identifier = (prefix) => `${prefix}-${identifierCount++}`;
 
   // ../staark-common/src/match.js
   var match = (key, lookup, fallback) => {
@@ -228,6 +232,18 @@
     };
   };
 
+  // ../../helpers/iife.js
+  var iife = (path, data) => {
+    let subject = window;
+    for (let i = 0; i < path.length - 1; i++) {
+      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+        subject[path[i]] = {};
+      }
+      subject = subject[path[i]];
+    }
+    subject[path[path.length - 1]] = data;
+  };
+
   // src/library/stringify.js
   var SELF_CLOSING = [
     "base",
@@ -247,7 +263,7 @@
     if (attributes) {
       for (const name in attributes) {
         let value = attributes[name];
-        if (value !== null && value !== undefined) {
+        if (value !== null && value !== void 0) {
           const type = typeof value;
           if (type === "boolean") {
             value = value ? "true" : "false";
@@ -262,7 +278,7 @@
                 let classNames = "";
                 for (const className in value) {
                   if (value[className]) {
-                    classNames += " " + className;
+                    classNames += ` ${className}`;
                   }
                 }
                 value = classNames;
@@ -275,19 +291,19 @@
               } else {
                 let styles = "";
                 for (let styleProperty in value) {
-                  let styleValue = value[styleProperty];
+                  const styleValue = value[styleProperty];
                   styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
                   if (Array.isArray(styleValue)) {
-                    styles += ";" + styleProperty + ":" + styleValue.join(" ");
+                    styles += `;${styleProperty}:${styleValue.join(" ")}`;
                   } else if (value) {
-                    styles += ";" + styleProperty + ":" + value;
+                    styles += `;${styleProperty}:${value}`;
                   }
                 }
                 value = styles;
               }
             }
           }
-          rendered += " " + name + '="' + value + '"';
+          rendered += ` ${name}="${value}"`;
         }
       }
     }
@@ -299,7 +315,7 @@
       for (const abstract of abstracts) {
         if (abstract) {
           if (abstract.t) {
-            rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
+            rendered += `<${abstract.t.toLocaleLowerCase()}${renderAttributes(abstract.a)}`;
             if (SELF_CLOSING.includes(abstract.t)) {
               rendered += "/>";
             } else {
@@ -307,10 +323,10 @@
               if (abstract.c) {
                 rendered += renderElements(abstract.c);
               }
-              rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
+              rendered += `</${abstract.t.toLocaleLowerCase()}>`;
             }
           } else {
-            rendered += " " + abstract + " ";
+            rendered += ` ${abstract} `;
           }
         }
       }
@@ -319,10 +335,7 @@
   };
   var stringifyPatch = (abstractTree) => {
     abstractTree = arrayifyOrUndefined(abstractTree);
-    return [
-      renderElements(abstractTree),
-      abstractTree
-    ];
+    return [renderElements(abstractTree), abstractTree];
   };
   var stringify = (renderView, initialState) => {
     if (!initialState) {
@@ -334,7 +347,9 @@
         for (const abstract of abstracts) {
           if (abstract) {
             if (abstract.m) {
-              rendered += renderElements2(arrayifyOrUndefined(abstract.r(initialState, abstract.m)));
+              rendered += renderElements2(
+                arrayifyOrUndefined(abstract.r(initialState, abstract.m))
+              );
             } else if (abstract.t) {
               rendered += "<" + abstract.t.toLocaleLowerCase() + renderAttributes(abstract.a);
               if (SELF_CLOSING.includes(abstract.t)) {
@@ -344,10 +359,10 @@
                 if (abstract.c) {
                   rendered += renderElements2(abstract.c);
                 }
-                rendered += "</" + abstract.t.toLocaleLowerCase() + ">";
+                rendered += `</${abstract.t.toLocaleLowerCase()}>`;
               }
             } else {
-              rendered += " " + abstract + " ";
+              rendered += ` ${abstract} `;
             }
           }
         }
@@ -355,43 +370,34 @@
       return rendered;
     };
     const abstractTree = arrayifyOrUndefined(renderView(initialState));
-    return [
-      renderElements2(abstractTree),
-      abstractTree
-    ];
+    return [renderElements2(abstractTree), abstractTree];
   };
   var customStringify = (data) => {
     if (typeof data === "number" || typeof data === "boolean") {
       return String(data);
     }
     if (typeof data === "string") {
-      return '"' + data.replace(/"/g, "\\\"") + '"';
+      return `"${data.replace(/"/g, '\\"')}"`;
     }
     if (Array.isArray(data)) {
-      return "[" + data.map((item) => customStringify(item)).join(",") + "]";
+      return `[${data.map((item) => customStringify(item)).join(",")}]`;
     }
     if (typeof data === "object") {
       const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
-      const objectContent = keys.map((key) => '"' + key + '":' + customStringify(data[key]) + '"').join(",");
-      return "{" + objectContent + "}";
+      const objectContent = keys.map((key) => `"${key}":${customStringify(data[key])}"`).join(",");
+      return `{${objectContent}}`;
     }
     return "null";
   };
   var stringifyPatchFull = (abstracts) => {
     const [rendered, abstractTree] = stringifyPatch(abstracts);
-    return [
-      rendered,
-      customStringify(abstractTree)
-    ];
+    return [rendered, customStringify(abstractTree)];
   };
   var stringifyFull = (renderView, initialState) => {
     if (!initialState) {
       initialState = {};
     }
-    const [
-      rendered,
-      abstractTree
-    ] = stringify(renderView, initialState);
+    const [rendered, abstractTree] = stringify(renderView, initialState);
     return [
       rendered,
       customStringify(abstractTree),
@@ -400,9 +406,7 @@
   };
 
   // src/index.iife.js
-  iife([
-    "staark"
-  ], {
+  iife(["staark"], {
     conditional,
     factory,
     fctory,
@@ -417,5 +421,4 @@
     stringifyPatchFull
   });
 })();
-
-//# debugId=1AF677BA406E459C64756E2164756E21
+//# sourceMappingURL=staark-isomorphic.iife.js.map

@@ -1,4 +1,4 @@
-import { marker } from './marker.js'
+import { marker } from "./marker.js";
 
 /**
  * @typedef {import('./node.js').NodeContent} NodeContent
@@ -26,11 +26,8 @@ import { marker } from './marker.js'
  * @param {any} memory Remembered data to compare with.
  * @returns {MemoAbstract} Memo abstract object.
  */
-export const memo = (
-  render,
-  memory,
-) => ({
-  _: marker,
-  r: render,
-  m: memory,
-})
+export const memo = (render, memory) => ({
+	_: marker,
+	r: render,
+	m: memory,
+});

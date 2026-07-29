@@ -1,18 +1,24 @@
 {
-  "private": true,
-  "name": "@doars/staark-workspace",
-  "workspaces": [
-    "docs-src/",
-    "packages/*",
-    "performance"
-  ],
-  "type": "module",
-  "scripts": {
-    "build": "bun --filter \"*\" build",
-    "serve": "bun ./scripts/srv.js ./"
-  },
-  "devDependencies": {
-    "brotli-size": "^4.0.0",
-    "happy-dom": "^20.0.11"
-  }
+	"private": true,
+	"name": "@doars/staark-workspace",
+	"workspaces": [
+		"packages/*",
+		"performance"
+	],
+	"type": "module",
+	"scripts": {
+    "build": "npm run build --workspace=./packages",
+    "check": "npm run check --workspace=./packages",
+    "check:write": "npm run check:write --workspace=./packages",
+		"serve": "node ./helpers/serve.js ./"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.6",
+		"esbuild": "^0.28.1",
+		"happy-dom": "^20.11.1"
+	},
+	"allowScripts": {
+		"esbuild@0.28.1": true,
+		"fsevents@2.3.2": true
+	}
 }

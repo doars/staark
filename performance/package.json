@@ -9,22 +9,19 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "benchmark:quick": "bun src/index.js --iterations=10",
-    "benchmark": "bun src/index.js",
-    "build": "NODE_ENV=production bun config.bundle.js",
-    "profile": "bun src/index.js --profile --iterations=1",
-    "sizes": "bun src/index.js --minified --sizes --iterations=0"
+    "benchmark:quick": "node src/index.js --iterations=10",
+    "benchmark": "node src/index.js",
+    "build": "NODE_ENV=production node config.bundle.js",
+    "profile": "node src/index.js --profile --iterations=1",
+    "sizes": "node src/index.js --minified --sizes --iterations=0"
   },
   "devDependencies": {
-    "playwright": "^1.57.0"
+    "playwright": "^1.62.0"
   },
   "dependencies": {
     "@doars/staark-patch": "x",
     "@doars/staark": "x",
     "hyperapp": "^2.0.22",
-    "incremental-dom": "^0.7.0",
-    "mithril": "^2.3.8",
-    "snabbdom": "^3.6.3",
     "superfine": "^8.2.0"
   }
 }

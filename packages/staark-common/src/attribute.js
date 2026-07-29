@@ -1,4 +1,4 @@
-const SUFFIX_MULTIPLE = '[]'
+const SUFFIX_MULTIPLE = "[]";
 
 /**
  * @typedef {Object} MultipleAttributesAttributes that can be multiple.
@@ -11,14 +11,12 @@ const SUFFIX_MULTIPLE = '[]'
  *
  * @param {MultipleAttributes} attributes The attributes object to check mutate.
  */
-export const suffixNameIfMultiple = (
-  attributes,
-) => {
-  if (
-    attributes.multiple
-    && attributes.name
-    && !attributes.name.endsWith(SUFFIX_MULTIPLE)
-  ) {
-    attributes.name += SUFFIX_MULTIPLE
-  }
-}
+export const suffixNameIfMultiple = (attributes) => {
+	if (
+		attributes.multiple &&
+		attributes.name &&
+		!attributes.name.endsWith(SUFFIX_MULTIPLE)
+	) {
+		attributes.name += SUFFIX_MULTIPLE;
+	}
+};

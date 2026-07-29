@@ -1,21 +1,12 @@
 import {
-    applyDiff,
-    cloneRecursive,
-    determineDiff,
-    revertDiff,
-} from '@doars/tiedliene'
-
-import {
-    createClientConnector
-} from './client-connector.js'
-import {
-    STATE_SYNCH,
-    STATE_UPDATE,
-} from './message-types.js'
-
-import {
-    generateCode,
-} from '../utilities/code.js'
+	applyDiff,
+	cloneRecursive,
+	determineDiff,
+	revertDiff,
+} from "@doars/tiedliene";
+import { generateCode } from "../utilities/code.js";
+import { createClientConnector } from "./client-connector.js";
+import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -86,327 +77,253 @@ import {
  * @returns {Synchronizer} The synchronizer instance with state and synchronization methods.
  */
 export const createClientSynchronizer = (
-  options = {},
-  privateState = {},
-  publicState = {},
+	options = {},
+	privateState = {},
+	publicState = {},
 ) => {
-  const connector = createClientConnector(options)
-  const {
-    messageRoom,
-  } = connector
+	const connector = createClientConnector(options);
+	const { messageRoom } = connector;
 
-  const {
-    windowPerUser = 16,
-    synchronisationInterval = 60 * 1e3,
-  } = options
-  const _stateUpdates = []
-  let _synchronisationIntervalId,
-    _messageDelay = 0,
-    _messageOffset = 0,
-    _stateUpdatesWindow = windowPerUser
+	const { windowPerUser = 16, synchronisationInterval = 60 * 1e3 } = options;
+	const _stateUpdates = [];
+	let _synchronisationIntervalId,
+		_messageDelay = 0,
+		_messageOffset = 0,
+		_stateUpdatesWindow = windowPerUser;
 
-  /**
-   * Sends the state delta to other users in the room.
-   *
-   * @param {Array} stateDelta - The array of state changes to send.
-   */
-  const _sendDelta = (
-    stateDelta,
-  ) => {
-    const identifier = generateCode()
-    const previous = (
-      stateDelta.length > 0
-        ? stateDelta[0].identifier
-        : null
-    )
+	/**
+	 * Sends the state delta to other users in the room.
+	 *
+	 * @param {Array} stateDelta - The array of state changes to send.
+	 */
+	const _sendDelta = (stateDelta) => {
+		const identifier = generateCode();
+		const previous = stateDelta.length > 0 ? stateDelta[0].identifier : null;
 
-    // Store the update for reference later.
-    _stateUpdates.unshift({
-      identifier,
-      previous,
-      sender: privateState.userId,
-      stateDelta,
-      time: {
-        adjusted: (
-          Date.now()
-          + _messageDelay
-          - _messageOffset
-        ),
-      },
-    })
-    if (_stateUpdates.length > _stateUpdatesWindow) {
-      _stateUpdates.splice(
-        _stateUpdatesWindow,
-      )
-    }
-    messageRoom({
-      identifier,
-      previous,
-      stateDelta,
-      type: STATE_UPDATE,
-    })
+		// Store the update for reference later.
+		_stateUpdates.unshift({
+			identifier,
+			previous,
+			sender: privateState.userId,
+			stateDelta,
+			time: {
+				adjusted: Date.now() + _messageDelay - _messageOffset,
+			},
+		});
+		if (_stateUpdates.length > _stateUpdatesWindow) {
+			_stateUpdates.splice(_stateUpdatesWindow);
+		}
+		messageRoom({
+			identifier,
+			previous,
+			stateDelta,
+			type: STATE_UPDATE,
+		});
 
-    _updatePreviousState()
-  }
-  /**
-   * Sends the current state delta to other users if the state has changed.
-   */
-  const sendUpdate = (
-  ) => {
-    if (privateState.previousState) {
-      const stateDelta = determineDiff(
-        privateState.previousState,
-        publicState,
-      )
-      if (stateDelta.length > 0) {
-        _sendDelta(
-          stateDelta,
-        )
-      }
-    }
-  }
+		_updatePreviousState();
+	};
+	/**
+	 * Sends the current state delta to other users if the state has changed.
+	 */
+	const sendUpdate = () => {
+		if (privateState.previousState) {
+			const stateDelta = determineDiff(privateState.previousState, publicState);
+			if (stateDelta.length > 0) {
+				_sendDelta(stateDelta);
+			}
+		}
+	};
 
-  /**
-   * Synchronizes the full current state with other users in the room.
-   */
-  const _synchroniseState = (
-  ) => {
-    if (privateState.users.length > 1) {
-      messageRoom({
-        type: STATE_SYNCH,
-        state: cloneRecursive(
-          publicState,
-        ),
-      })
-    }
-  }
+	/**
+	 * Synchronizes the full current state with other users in the room.
+	 */
+	const _synchroniseState = () => {
+		if (privateState.users.length > 1) {
+			messageRoom({
+				type: STATE_SYNCH,
+				state: cloneRecursive(publicState),
+			});
+		}
+	};
 
-  /**
-   * Updates the previous state to match the current public state.
-   */
-  const _updatePreviousState = (
-  ) => {
-    privateState.previousState = cloneRecursive(
-      publicState,
-    )
-  }
+	/**
+	 * Updates the previous state to match the current public state.
+	 */
+	const _updatePreviousState = () => {
+		privateState.previousState = cloneRecursive(publicState);
+	};
 
-  connector.onMessage.addListener(({
-    data,
-    time,
-  }) => {
-    // Check if the message is not from yourself, or is not intended for the current user.
-    if (
-      data.sender === privateState.userId
-      || (
-        data.receiver
-        && data.receiver !== privateState.userId
-      )
-    ) {
-      return
-    }
+	connector.onMessage.addListener(({ data, time }) => {
+		// Check if the message is not from yourself, or is not intended for the current user.
+		if (
+			data.sender === privateState.userId ||
+			(data.receiver && data.receiver !== privateState.userId)
+		) {
+			return;
+		}
 
-    // Update the estimated message delay and offset.
-    _messageDelay = (
-      _messageDelay
-      + time.delay
-    ) / 2
-    _messageOffset = (
-      _messageOffset
-      + time.offset
-    ) / 2
+		// Update the estimated message delay and offset.
+		_messageDelay = (_messageDelay + time.delay) / 2;
+		_messageOffset = (_messageOffset + time.offset) / 2;
 
-    if (data.type === STATE_SYNCH) {
-      // Remove any state updates older than the given synch data.
-      let index = 0
-      for (; index < _stateUpdates.length; index++) {
-        const previousUpdate = _stateUpdates[index]
-        if (previousUpdate.time.adjusted >= time.adjusted) {
-          break
-        }
-      }
-      _stateUpdates.splice(0, index)
+		if (data.type === STATE_SYNCH) {
+			// Remove any state updates older than the given synch data.
+			let index = 0;
+			for (; index < _stateUpdates.length; index++) {
+				const previousUpdate = _stateUpdates[index];
+				if (previousUpdate.time.adjusted >= time.adjusted) {
+					break;
+				}
+			}
+			_stateUpdates.splice(0, index);
 
-      // Replace the existing state with the given state.
-      for (const key in publicState) {
-        delete publicState[key]
-      }
-      for (const key in data.state) {
-        publicState[key] = data.state[key]
-      }
+			// Replace the existing state with the given state.
+			for (const key in publicState) {
+				delete publicState[key];
+			}
+			for (const key in data.state) {
+				publicState[key] = data.state[key];
+			}
 
-      // Apply any newer state updates.
-      for (let index = 0; index < _stateUpdates.length; index++) {
-        applyDiff(
-          publicState,
-          _stateUpdates[index].stateDelta,
-        )
-      }
+			// Apply any newer state updates.
+			for (let index = 0; index < _stateUpdates.length; index++) {
+				applyDiff(publicState, _stateUpdates[index].stateDelta);
+			}
 
-      _updatePreviousState()
-    } else if (data.type === STATE_UPDATE) {
-      let failedToInsert = true
-      for (let index = 0; index < _stateUpdates.length; index++) {
-        const previousUpdate = _stateUpdates[index]
-        if (
-          // If the update's identifier matches the data's previous, we can insert it here.
-          previousUpdate.identifier === data.previous
-          || (
-            // If the previous updates are the same. If the time of this update is newer than the previous one, we can insert it before the previous one.
-            previousUpdate.previous === data.previous
-            && previousUpdate.time.adjusted < time.adjusted
-          )
-        ) {
-          _stateUpdates.splice(index, 0, {
-            ...data,
-            time,
-          })
-          failedToInsert = false
-          break
-        }
-      }
-      if (failedToInsert) {
-        // If the update was not inserted just assume it will make sense later.
-        _stateUpdates.unshift({
-          ...data,
-          time,
-        })
-      }
+			_updatePreviousState();
+		} else if (data.type === STATE_UPDATE) {
+			let failedToInsert = true;
+			for (let index = 0; index < _stateUpdates.length; index++) {
+				const previousUpdate = _stateUpdates[index];
+				if (
+					// If the update's identifier matches the data's previous, we can insert it here.
+					previousUpdate.identifier === data.previous ||
+					// If the previous updates are the same. If the time of this update is newer than the previous one, we can insert it before the previous one.
+					(previousUpdate.previous === data.previous &&
+						previousUpdate.time.adjusted < time.adjusted)
+				) {
+					_stateUpdates.splice(index, 0, {
+						...data,
+						time,
+					});
+					failedToInsert = false;
+					break;
+				}
+			}
+			if (failedToInsert) {
+				// If the update was not inserted just assume it will make sense later.
+				_stateUpdates.unshift({
+					...data,
+					time,
+				});
+			}
 
-      // Undo the state until the new given diff is reached the apply the diff's in order.
-      for (let index = 0; index < _stateUpdates.length; index++) {
-        const update = _stateUpdates[index]
-        if (update.identifier === data.identifier) {
-          // We found the update, we can stop searching.
-          break
-        }
-        revertDiff(
-          publicState,
-          update.stateDelta,
-        )
-      }
+			// Undo the state until the new given diff is reached the apply the diff's in order.
+			for (let index = 0; index < _stateUpdates.length; index++) {
+				const update = _stateUpdates[index];
+				if (update.identifier === data.identifier) {
+					// We found the update, we can stop searching.
+					break;
+				}
+				revertDiff(publicState, update.stateDelta);
+			}
 
-      // Redo the state including the new given diff.
-      for (let index = 0; index < _stateUpdates.length; index++) {
-        const update = _stateUpdates[index]
-        // Revert the previous state to the current state.
-        applyDiff(
-          publicState,
-          update.stateDelta,
-        )
-        if (update.identifier === data.identifier) {
-          // We found the update, we can stop searching.
-          break
-        }
-      }
+			// Redo the state including the new given diff.
+			for (let index = 0; index < _stateUpdates.length; index++) {
+				const update = _stateUpdates[index];
+				// Revert the previous state to the current state.
+				applyDiff(publicState, update.stateDelta);
+				if (update.identifier === data.identifier) {
+					// We found the update, we can stop searching.
+					break;
+				}
+			}
 
-      _updatePreviousState()
-    }
-  })
+			_updatePreviousState();
+		}
+	});
 
-  connector.onConnection.addListener(({
-    state,
-  }) => {
-    privateState.connectionState = state
-  })
+	connector.onConnection.addListener(({ state }) => {
+		privateState.connectionState = state;
+	});
 
-  connector.onRoomJoin.addListener(({
-    creatorId,
-    roomCode,
-    userId,
-    users,
-  }) => {
-    // Set new room data.
-    privateState.creatorId = creatorId
-    privateState.roomCode = roomCode
-    privateState.userId = userId
-    privateState.users = users
-    privateState.verifiedUsers = []
-    privateState.previousState = cloneRecursive(
-      publicState,
-    )
+	connector.onRoomJoin.addListener(({ creatorId, roomCode, userId, users }) => {
+		// Set new room data.
+		privateState.creatorId = creatorId;
+		privateState.roomCode = roomCode;
+		privateState.userId = userId;
+		privateState.users = users;
+		privateState.verifiedUsers = [];
+		privateState.previousState = cloneRecursive(publicState);
 
-    if (userId === creatorId) {
-      privateState.verifiedUsers.push(userId)
+		if (userId === creatorId) {
+			privateState.verifiedUsers.push(userId);
 
-      // Let the creator send resynchronisation messages every once in a well to get all users in sync.
-      _synchronisationIntervalId = setInterval(
-        _synchroniseState,
-        synchronisationInterval,
-      )
-    }
-  })
-  connector.onRoomLeave.addListener((
-  ) => {
-    for (const key in privateState) {
-      delete privateState[key]
-    }
-    if (_synchronisationIntervalId) {
-      clearInterval(_synchronisationIntervalId)
-    }
-  })
+			// Let the creator send resynchronisation messages every once in a well to get all users in sync.
+			_synchronisationIntervalId = setInterval(
+				_synchroniseState,
+				synchronisationInterval,
+			);
+		}
+	});
+	connector.onRoomLeave.addListener(() => {
+		for (const key in privateState) {
+			delete privateState[key];
+		}
+		if (_synchronisationIntervalId) {
+			clearInterval(_synchronisationIntervalId);
+		}
+	});
 
-  connector.onUserJoin.addListener(({
-    userId,
-  }) => {
-    privateState.users.push(
-      userId,
-    )
+	connector.onUserJoin.addListener(({ userId }) => {
+		privateState.users.push(userId);
 
-    // Update the amount state updates to store.
-    _stateUpdatesWindow = windowPerUser + (
-      windowPerUser * privateState.users.length
-    )
-  })
-  connector.onUserVerificationCode.addListener((
-    event
-  ) => {
-    if (event.userId === privateState.creatorId) {
-      privateState.verificationCode = event.code
-    }
-  })
-  connector.onUserVerified.addListener(({
-    userId,
-  }) => {
-    privateState.verifiedUsers.push(
-      userId,
-    )
+		// Update the amount state updates to store.
+		_stateUpdatesWindow =
+			windowPerUser + windowPerUser * privateState.users.length;
+	});
+	connector.onUserVerificationCode.addListener((event) => {
+		if (event.userId === privateState.creatorId) {
+			privateState.verificationCode = event.code;
+		}
+	});
+	connector.onUserVerified.addListener(({ userId }) => {
+		privateState.verifiedUsers.push(userId);
 
-    // Update the amount state updates to store.
-    _stateUpdatesWindow = windowPerUser + (
-      windowPerUser * privateState.users.length
-    )
+		// Update the amount state updates to store.
+		_stateUpdatesWindow =
+			windowPerUser + windowPerUser * privateState.users.length;
 
-    // Synchronise the state when a new user joins, if the user is the creator.
-    if (privateState.userId === privateState.creatorId) {
-      _synchroniseState()
-    }
-  })
-  connector.onUserLeave.addListener(({
-    userId,
-  }) => {
-    for (let index = 0; index < privateState.users.length; index++) {
-      if (privateState.users[index] === userId) {
-        privateState.users.splice(index, 1)
-        break
-      }
-    }
-    for (let index = 0; index < privateState.verifiedUsers.length; index++) {
-      if (privateState.verifiedUsers[index] === userId) {
-        privateState.verifiedUsers.splice(index, 1)
-        break
-      }
-    }
+		// Synchronise the state when a new user joins, if the user is the creator.
+		if (privateState.userId === privateState.creatorId) {
+			_synchroniseState();
+		}
+	});
+	connector.onUserLeave.addListener(({ userId }) => {
+		for (let index = 0; index < privateState.users.length; index++) {
+			if (privateState.users[index] === userId) {
+				privateState.users.splice(index, 1);
+				break;
+			}
+		}
+		for (let index = 0; index < privateState.verifiedUsers.length; index++) {
+			if (privateState.verifiedUsers[index] === userId) {
+				privateState.verifiedUsers.splice(index, 1);
+				break;
+			}
+		}
 
-    // Update the amount state updates to store.
-    _stateUpdatesWindow = windowPerUser + (
-      windowPerUser * privateState.users.length
-    )
-  })
+		// Update the amount state updates to store.
+		_stateUpdatesWindow =
+			windowPerUser + windowPerUser * privateState.users.length;
+	});
 
-  return Object.assign({
-    privateState,
-    publicState,
-    sendUpdate,
-  }, connector)
-}
+	return Object.assign(
+		{
+			privateState,
+			publicState,
+			sendUpdate,
+		},
+		connector,
+	);
+};

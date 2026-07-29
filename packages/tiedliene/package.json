@@ -22,8 +22,10 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "NODE_ENV=development bun config.bundle.js",
-    "build": "NODE_ENV=production bun config.bundle.js"
+    "check": "biome check ./src",
+    "check:write": "biome check --write ./src",
+    "develop": "NODE_ENV=development node config.bundle.js",
+    "build": "NODE_ENV=production node config.bundle.js"
   },
   "files": [
     "dst",

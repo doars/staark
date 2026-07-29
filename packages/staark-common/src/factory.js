@@ -1,6 +1,4 @@
-import {
-    node,
-} from './node.js'
+import { node } from "./node.js";
 
 /**
  * @typedef {import('./node.js').NodeAbstract} NodeAbstract
@@ -19,42 +17,35 @@ import {
  * @typedef {Object} FactoryCache Factory cache
  */
 
-export const factory = /*#__PURE__*/ new Proxy({}, {
-  /**
-   * @param {FactoryCache} target Factory cache.
-   * @param {string} type Type of the nodes to generate.
-   * @returns {Factory} Function that generates the a node with the given type.
-   */
-  get: (
-    target,
-    type,
-  ) => {
-    if (target[type]) {
-      return target[type]
-    }
+export const factory = /*#__PURE__*/ new Proxy(
+	{},
+	{
+		/**
+		 * @param {FactoryCache} target Factory cache.
+		 * @param {string} type Type of the nodes to generate.
+		 * @returns {Factory} Function that generates the a node with the given type.
+		 */
+		get: (target, type) => {
+			if (target[type]) {
+				return target[type];
+			}
 
-    const typeConverted = (
-      type[0].toLowerCase() + type.substring(1)
-        .replace(
-          /([A-Z])/g,
-          capital => '-' + capital.toLowerCase(),
-        )
-    )
+			const typeConverted =
+				type[0].toLowerCase() +
+				type
+					.substring(1)
+					.replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
 
-     /**
-      * Generates a node with the given type.
-      *
-      * @param {NodeAttributes | NodeContent[] | NodeContent} [attributesOrContents] Attributes or contents.
-      * @param {NodeContent[] | NodeContent} [contents] Contents.
-      * @returns {NodeAbstract} The node abstract.
-      */
-     return target[type] = (
-       attributesOrContents,
-       contents,
-     ) => node(
-       typeConverted,
-       attributesOrContents,
-       contents,
-     )
-  },
-})
+			/**
+			 * Generates a node with the given type.
+			 *
+			 * @param {NodeAttributes | NodeContent[] | NodeContent} [attributesOrContents] Attributes or contents.
+			 * @param {NodeContent[] | NodeContent} [contents] Contents.
+			 * @returns {NodeAbstract} The node abstract.
+			 */
+			// biome-ignore lint/suspicious/noAssignInExpressions: assignment is intentional
+			return (target[type] = (attributesOrContents, contents) =>
+				node(typeConverted, attributesOrContents, contents));
+		},
+	},
+);

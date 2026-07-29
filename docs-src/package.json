@@ -1,12 +1,13 @@
 {
   "private": true,
-  "name": "@doars/docs",
+  "name": "@doars/staark-docs",
   "version": "0.0.0",
+  "type": "module",
   "dependencies": {
     "@doars/staark": "x"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.5",
+    "@babel/core": "^7.29.7",
     "@hoast/hoast": "^3.1.0",
     "@hoast/process-custom": "^3.1.0",
     "@hoast/process-postprocess": "^3.3.2",
@@ -22,11 +23,10 @@
     "postcss-preset-env": "^10.5.0",
     "tailwindcss": "^3.4.19"
   },
-  "type": "module",
   "scripts": {
-    "build": "NODE_ENV=production hoast && NODE_ENV=production bun ./config.bundle.js",
+    "build": "NODE_ENV=production hoast && NODE_ENV=production node ./config.bundle.js",
     "develop:hoast": "NODE_ENV=development NODE_OPTIONS='--experimental-loader=@hoast/hoast/loader.js' hoast --watch",
-    "develop:scripts": "NODE_ENV=development bun ./config.bundle.js",
-    "serve": "bun ../helpers/serve.js ../docs/"
+    "develop:scripts": "NODE_ENV=development node ./config.bundle.js",
+    "serve": "node ../helpers/serve.js ../docs/"
   }
 }

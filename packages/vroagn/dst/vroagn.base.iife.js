@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0;i < path.length - 1; i++) {
+    for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -43,8 +43,8 @@
       return normalizeContentType(contentType);
     }
     if (requestHeaders) {
-      if (requestHeaders["Accept"]) {
-        const acceptTypes = requestHeaders["Accept"].split(",");
+      if (requestHeaders.Accept) {
+        const acceptTypes = requestHeaders.Accept.split(",");
         for (const type of acceptTypes) {
           if (type.trim() !== "*/*") {
             return normalizeContentType(type);
@@ -89,7 +89,7 @@
       });
     };
     const sendRequest = async (options) => {
-      if (options.maxRequests !== undefined && totalRequests >= options.maxRequests) {
+      if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
         return [new Error("Maximum request limit reached"), null, null];
       }
       totalRequests++;
@@ -100,14 +100,14 @@
         method: options.method,
         mode: options.mode,
         redirect: options.redirect,
-        body: options.body ? JSON.stringify(options.body) : undefined
+        body: options.body ? JSON.stringify(options.body) : void 0
       };
       let url = (options.domain || "") + (options.path || "");
       if (options.queryParams) {
-        url += "?" + new URLSearchParams(options.queryParams).toString();
+        url += `?${new URLSearchParams(options.queryParams).toString()}`;
       }
       if (options.timeout) {
-        const controller = options.abort || new AbortController;
+        const controller = options.abort || new AbortController();
         config.signal = controller.signal;
         setTimeout(() => controller.abort(), options.timeout);
       }
@@ -147,10 +147,12 @@
                 break;
               case "text/html-partial":
               case "html-partial":
-                result2 = await response2.text();
-                const template = document.createElement("template");
-                template.innerHTML = result2;
-                result2 = template.content.childNodes;
+                {
+                  result2 = await response2.text();
+                  const template = document.createElement("template");
+                  template.innerHTML = result2;
+                  result2 = template.content.childNodes;
+                }
                 break;
               case "text/html":
               case "html":
@@ -171,13 +173,20 @@
               case "text/xml":
               case "xml":
                 result2 = await response2.text();
-                result2 = new DOMParser().parseFromString(result2, "application/xml");
+                result2 = new DOMParser().parseFromString(
+                  result2,
+                  "application/xml"
+                );
                 break;
             }
           }
           return [null, response2, result2];
         } catch (error2) {
-          return [error2 || new Error("Thrown parsing error is falsy"), response2, null];
+          return [
+            error2 || new Error("Thrown parsing error is falsy"),
+            response2,
+            null
+          ];
         }
       };
       const retryRequest = async () => {
@@ -196,15 +205,15 @@
           if (attempt >= retryAttempts) {
             return [new Error("Too many retry attempts"), response2, result2];
           }
-          let delayTime = retryDelay * Math.pow(2, attempt - 1);
+          let delayTime = retryDelay * 2 ** (attempt - 1);
           const retryAfter = response2.headers.get("Retry-After");
           if (retryAfter) {
             const retryAfterSeconds = parseInt(retryAfter, 10);
-            if (!isNaN(retryAfterSeconds)) {
-              delayTime = Math.max(delayTime, retryAfterSeconds * 1000);
+            if (!Number.isNaN(retryAfterSeconds)) {
+              delayTime = Math.max(delayTime, retryAfterSeconds * 1e3);
             } else {
               const retryAfterDate = new Date(retryAfter).getTime();
-              if (!isNaN(retryAfterDate)) {
+              if (!Number.isNaN(retryAfterDate)) {
                 const currentTime = Date.now();
                 delayTime = Math.max(delayTime, retryAfterDate - currentTime);
               }
@@ -264,11 +273,8 @@
   };
 
   // src/index.base.iife.js
-  iife([
-    "vroagn"
-  ], {
+  iife(["vroagn"], {
     create
   });
 })();
-
-//# debugId=2BC33C896393CC7E64756E2164756E21
+//# sourceMappingURL=vroagn.base.iife.js.map

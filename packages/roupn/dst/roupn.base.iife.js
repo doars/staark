@@ -2,7 +2,7 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0;i < path.length - 1; i++) {
+    for (let i = 0; i < path.length - 1; i++) {
       if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
         subject[path[i]] = {};
       }
@@ -10,24 +10,6 @@
     }
     subject[path[path.length - 1]] = data;
   };
-
-  // src/library/message-types.js
-  var CONNECTION_CONNECTED = "CONNECTED";
-  var CONNECTION_CONNECTING = "CONNECTING";
-  var CONNECTION_DISCONNECTED = "DISCONNECTED";
-  var CONNECTION_DISCONNECTING = "DISCONNECTING";
-  var CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
-  var EXCHANGE_0 = "_X0";
-  var EXCHANGE_1 = "_X1";
-  var EXCHANGE_2 = "_X2";
-  var EXCHANGE_3 = "_X3";
-  var EXCHANGE_4 = "_X4";
-  var ROOM_CLOSED = "_RC";
-  var ROOM_JOINED = "_RJ";
-  var USER_JOINED = "_UJ";
-  var USER_KICK = "_UK";
-  var USER_LEFT = "_UL";
-  var USER_VERIFIED = "_UV";
 
   // src/utilities/code.js
   var IDENTIFIABLE_CHARACTERS = "ABCDEFGHKMNPQRSTUVWXYZ23456789";
@@ -49,7 +31,7 @@
     }
     let binary = "";
     const chunkSize = 65536;
-    for (let i = 0;i < bytes.length; i += chunkSize) {
+    for (let i = 0; i < bytes.length; i += chunkSize) {
       const chunk = bytes.subarray(i, i + chunkSize);
       binary += String.fromCharCode(...chunk);
     }
@@ -62,7 +44,7 @@
     }
     let binary = "";
     const chunkSize = 65536;
-    for (let i = 0;i < bytes.length; i += chunkSize) {
+    for (let i = 0; i < bytes.length; i += chunkSize) {
       const chunk = bytes.subarray(i, i + chunkSize);
       binary += String.fromCharCode(...chunk);
     }
@@ -71,20 +53,33 @@
 
   // src/utilities/event.js
   var createEvent = () => {
-    const listeners = new Map;
+    const listeners = /* @__PURE__ */ new Map();
     return {
+      /**
+       * Adds a listener callback for the event.
+       * @param {EventListenerCallback} callback - The listener function to add.
+       * @param {EventListenerOptions} [options] - Optional options for the listener (e.g., { once: true }).
+       */
       addListener: (callback, options) => {
         if (!listeners.has(callback)) {
           listeners.set(callback, options);
         }
       },
+      /**
+       * Removes a listener callback from the event.
+       * @param {EventListenerCallback} callback - The listener function to remove.
+       */
       removeListener: (callback) => {
         listeners.delete(callback);
       },
+      /**
+       * Dispatches the event to all registered listeners.
+       * @param {any} data - Data to pass to each listener callback.
+       */
       dispatch: (data) => {
         for (const [listener, options] of listeners.entries()) {
           listener(data);
-          if (options && options.once) {
+          if (options?.once) {
             listeners.delete(listener);
           }
         }
@@ -99,7 +94,7 @@
     const segments = [];
     for (const key in parts) {
       const value = parts[key];
-      if (value !== null && value !== undefined) {
+      if (value !== null && value !== void 0) {
         segments.push(key + INFIX + stringToBase642(String(value)));
       }
     }
@@ -158,34 +153,39 @@
   var USER_SIGNATURE_ALGORITHM = "RSASSA-PKCS1-v1_5";
   var USER_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
     Promise.all([
-      crypto.subtle.generateKey({
-        name: "RSA-OAEP",
-        modulusLength: 4096,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: { name: "SHA-256" }
-      }, true, ["encrypt", "decrypt"]),
-      crypto.subtle.generateKey({
-        name: "RSASSA-PKCS1-v1_5",
-        modulusLength: 4096,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: { name: "SHA-256" }
-      }, true, ["sign", "verify"]),
-      crypto.subtle.generateKey({
-        name: "ECDH",
-        namedCurve: "P-256"
-      }, true, ["deriveKey"])
-    ]).then(([
-      myEncryptKeys,
-      mySignKeys,
-      myExchangeKeys
-    ]) => {
+      crypto.subtle.generateKey(
+        {
+          name: "RSA-OAEP",
+          modulusLength: 4096,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: { name: "SHA-256" }
+        },
+        true,
+        ["encrypt", "decrypt"]
+      ),
+      crypto.subtle.generateKey(
+        {
+          name: "RSASSA-PKCS1-v1_5",
+          modulusLength: 4096,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: { name: "SHA-256" }
+        },
+        true,
+        ["sign", "verify"]
+      ),
+      crypto.subtle.generateKey(
+        {
+          name: "ECDH",
+          namedCurve: "P-256"
+        },
+        true,
+        ["deriveKey"]
+      )
+    ]).then(([myEncryptKeys, mySignKeys, myExchangeKeys]) => {
       Promise.all([
         crypto.subtle.exportKey("spki", myEncryptKeys.publicKey),
         crypto.subtle.exportKey("spki", mySignKeys.publicKey)
-      ]).then(([
-        myPublicEncryptKey,
-        myPublicSignKey
-      ]) => {
+      ]).then(([myPublicEncryptKey, myPublicSignKey]) => {
         self.postMessage({
           success: true,
           myEncryptKeys,
@@ -208,10 +208,14 @@
     });
   }).toString() + ")";
   var SHARED_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
-    crypto.subtle.generateKey({
-      length: 256,
-      name: "AES-GCM"
-    }, true, ["encrypt", "decrypt"]).then((sharedKey) => {
+    crypto.subtle.generateKey(
+      {
+        length: 256,
+        name: "AES-GCM"
+      },
+      true,
+      ["encrypt", "decrypt"]
+    ).then((sharedKey) => {
       self.postMessage({
         success: true,
         sharedKey
@@ -223,6 +227,24 @@
       });
     });
   }).toString() + ")";
+
+  // src/library/message-types.js
+  var CONNECTION_CONNECTED = "CONNECTED";
+  var CONNECTION_CONNECTING = "CONNECTING";
+  var CONNECTION_DISCONNECTED = "DISCONNECTED";
+  var CONNECTION_DISCONNECTING = "DISCONNECTING";
+  var CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
+  var EXCHANGE_0 = "_X0";
+  var EXCHANGE_1 = "_X1";
+  var EXCHANGE_2 = "_X2";
+  var EXCHANGE_3 = "_X3";
+  var EXCHANGE_4 = "_X4";
+  var ROOM_CLOSED = "_RC";
+  var ROOM_JOINED = "_RJ";
+  var USER_JOINED = "_UJ";
+  var USER_KICK = "_UK";
+  var USER_LEFT = "_UL";
+  var USER_VERIFIED = "_UV";
 
   // src/library/payload-keys.js
   var SERVER_PAYLOAD = "S";
@@ -247,15 +269,19 @@
       httpUrl = "http://localhost:3000",
       wsUrl = "http://localhost:3000",
       messageBufferMaxCount = 50,
-      messageBufferMaxDuration = 60 * 1000
+      messageBufferMaxDuration = 60 * 1e3
     } = options;
-    let _connectionState = CONNECTION_DISCONNECTED, _creatorId, _generatedKeys, _keyGenerationPromise, _myEncryptKeys, _myExchangeKeys, _myId, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _privateData, _privateDataVerify, _publicData, _publicDataVerify, _roomCode, _sharedKey, _sharedMessagesBuffer = [], _socket, _userDerivedKeys = new Map, _userEncryptKeys = new Map, _userSignKeys = new Map, _userVerification = new Map, _userVerified = new Map;
+    let _connectionState = CONNECTION_DISCONNECTED, _creatorId, _generatedKeys, _keyGenerationPromise, _myEncryptKeys, _myExchangeKeys, _myId, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _privateData, _privateDataVerify, _publicData, _publicDataVerify, _roomCode, _sharedKey, _sharedMessagesBuffer = [], _socket, _userDerivedKeys = /* @__PURE__ */ new Map(), _userEncryptKeys = /* @__PURE__ */ new Map(), _userSignKeys = /* @__PURE__ */ new Map(), _userVerification = /* @__PURE__ */ new Map(), _userVerified = /* @__PURE__ */ new Map();
     const _generateMyKeys = () => {
       if (!_generatedKeys && !_keyGenerationPromise) {
         _keyGenerationPromise = new Promise((resolve, reject) => {
-          const worker = new Worker(URL.createObjectURL(new Blob([USER_KEY_GENERATOR], {
-            type: "text/javascript"
-          })));
+          const worker = new Worker(
+            URL.createObjectURL(
+              new Blob([USER_KEY_GENERATOR], {
+                type: "text/javascript"
+              })
+            )
+          );
           worker.addEventListener("message", (event) => {
             if (event.data.success) {
               _myEncryptKeys = event.data.myEncryptKeys;
@@ -312,7 +338,21 @@
       if (!derivedKey) {
         return;
       }
-      _userVerification.set(userId, Array.from(new Uint8Array(await crypto.subtle.digest(HASH_ALGORITHM, new TextEncoder().encode(_roomCode + bufferToBase64(await crypto.subtle.exportKey("raw", derivedKey)))))));
+      _userVerification.set(
+        userId,
+        Array.from(
+          new Uint8Array(
+            await crypto.subtle.digest(
+              HASH_ALGORITHM,
+              new TextEncoder().encode(
+                _roomCode + bufferToBase64(
+                  await crypto.subtle.exportKey("raw", derivedKey)
+                )
+              )
+            )
+          )
+        )
+      );
       onUserVerificationCode.dispatch({
         userId,
         code: getVerificationCode(userId)
@@ -404,10 +444,14 @@
           onError.dispatch(new Error("Missing IV to decrypt message"));
           return;
         }
-        data = await crypto.subtle.decrypt({
-          iv: base64ToBuffer(sharedEncryptionIv),
-          name: SHARED_ENCRYPTION_ALGORITHM
-        }, _sharedKey, base64ToBuffer(sharedEncryptionPayload));
+        data = await crypto.subtle.decrypt(
+          {
+            iv: base64ToBuffer(sharedEncryptionIv),
+            name: SHARED_ENCRYPTION_ALGORITHM
+          },
+          _sharedKey,
+          base64ToBuffer(sharedEncryptionPayload)
+        );
         data = new TextDecoder().decode(data);
         wasEncrypted = true;
       } else if (userEncryptionPayload) {
@@ -421,14 +465,32 @@
           await _generateMyKeys();
         }
         const encryptedPayload = base64ToBuffer(userEncryptionPayload);
-        const payloadData = deserializeMessage(new TextDecoder().decode(await crypto.subtle.decrypt({
-          iv: base64ToBuffer(userEncryptionIv),
-          name: SHARED_ENCRYPTION_ALGORITHM
-        }, await crypto.subtle.importKey("raw", await crypto.subtle.decrypt({
-          name: USER_ENCRYPTION_ALGORITHM
-        }, _myEncryptKeys.privateKey, base64ToBuffer(userEncryptionKey)), {
-          name: SHARED_ENCRYPTION_ALGORITHM
-        }, true, ["encrypt", "decrypt"]), encryptedPayload)));
+        const payloadData = deserializeMessage(
+          new TextDecoder().decode(
+            await crypto.subtle.decrypt(
+              {
+                iv: base64ToBuffer(userEncryptionIv),
+                name: SHARED_ENCRYPTION_ALGORITHM
+              },
+              await crypto.subtle.importKey(
+                "raw",
+                await crypto.subtle.decrypt(
+                  {
+                    name: USER_ENCRYPTION_ALGORITHM
+                  },
+                  _myEncryptKeys.privateKey,
+                  base64ToBuffer(userEncryptionKey)
+                ),
+                {
+                  name: SHARED_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt", "decrypt"]
+              ),
+              encryptedPayload
+            )
+          )
+        );
         wasEncrypted = true;
         if (payloadData.type === EXCHANGE_1) {
           deserializedData = payloadData;
@@ -443,13 +505,18 @@
           const senderPublicKey = _userSignKeys.get(senderId);
           if (!senderPublicKey) {
             onError.dispatch({
-              error: new Error("No public key for " + senderId)
+              error: new Error(`No public key for ${senderId}`)
             });
             return;
           }
-          if (!await crypto.subtle.verify(USER_SIGNATURE_ALGORITHM, senderPublicKey, base64ToBuffer(userEncryptionSignature), encryptedPayload)) {
+          if (!await crypto.subtle.verify(
+            USER_SIGNATURE_ALGORITHM,
+            senderPublicKey,
+            base64ToBuffer(userEncryptionSignature),
+            encryptedPayload
+          )) {
             onError.dispatch({
-              error: new Error("Invalid signature from " + senderId)
+              error: new Error(`Invalid signature from ${senderId}`)
             });
             return;
           }
@@ -466,9 +533,9 @@
       if (!deserializedData) {
         try {
           deserializedData = deserializeMessage(data);
-        } catch (error) {
+        } catch (_error) {
           onError.dispatch({
-            error: new Error("Failed to parse message " + raw)
+            error: new Error(`Failed to parse message ${raw}`)
           });
           return;
         }
@@ -491,18 +558,31 @@
             if (!_generatedKeys) {
               await _generateMyKeys();
             }
-            const myPublicExchangeKey = await crypto.subtle.exportKey(DIFFIE_HELLMAN_EXPORT_FORMAT, _myExchangeKeys.publicKey);
-            _message({
-              type: EXCHANGE_0,
-              publicData: typeof _publicData === "function" ? _publicData() : _publicData,
-              publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
-              publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-              publicSignKey: bufferToBase64(_myPublicSignKey),
-              signature: bufferToBase64(await crypto.subtle.sign(USER_SIGNATURE_ALGORITHM, _mySignKeys.privateKey, myPublicExchangeKey))
-            }, {
-              allowUnencrypted: true,
-              receiver: _creatorId
-            });
+            const myPublicExchangeKey = await crypto.subtle.exportKey(
+              DIFFIE_HELLMAN_EXPORT_FORMAT,
+              _myExchangeKeys.publicKey
+            );
+            _message(
+              {
+                type: EXCHANGE_0,
+                publicData: typeof _publicData === "function" ? _publicData() : _publicData,
+                publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
+                publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+                publicSignKey: bufferToBase64(_myPublicSignKey),
+                // Explicitly add signature manually.
+                signature: bufferToBase64(
+                  await crypto.subtle.sign(
+                    USER_SIGNATURE_ALGORITHM,
+                    _mySignKeys.privateKey,
+                    myPublicExchangeKey
+                  )
+                )
+              },
+              {
+                allowUnencrypted: true,
+                receiver: _creatorId
+              }
+            );
           }
           break;
         case EXCHANGE_0:
@@ -515,18 +595,40 @@
               kickUser(newUserId);
               return;
             }
-            _userEncryptKeys.set(newUserId, await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicEncryptKey), {
-              hash: HASH_ALGORITHM,
-              name: USER_ENCRYPTION_ALGORITHM
-            }, true, ["encrypt"]));
-            const publicSignKey = await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicSignKey), {
-              hash: HASH_ALGORITHM,
-              name: USER_SIGNATURE_ALGORITHM
-            }, true, ["verify"]);
+            _userEncryptKeys.set(
+              newUserId,
+              await crypto.subtle.importKey(
+                PUBLIC_KEY_EXPORT_FORMAT,
+                base64ToBuffer(data.publicEncryptKey),
+                {
+                  hash: HASH_ALGORITHM,
+                  name: USER_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt"]
+              )
+            );
+            const publicSignKey = await crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              base64ToBuffer(data.publicSignKey),
+              {
+                hash: HASH_ALGORITHM,
+                name: USER_SIGNATURE_ALGORITHM
+              },
+              true,
+              ["verify"]
+            );
             const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey);
-            if (!await crypto.subtle.verify(USER_SIGNATURE_ALGORITHM, publicSignKey, base64ToBuffer(data.signature), publicExchangeKeyData)) {
+            if (!await crypto.subtle.verify(
+              USER_SIGNATURE_ALGORITHM,
+              publicSignKey,
+              base64ToBuffer(data.signature),
+              publicExchangeKeyData
+            )) {
               onError.dispatch({
-                error: new Error("Invalid signature for exchange from " + newUserId)
+                error: new Error(
+                  `Invalid signature for exchange from ${newUserId}`
+                )
               });
               return;
             }
@@ -534,26 +636,47 @@
             if (!_generatedKeys) {
               await _generateMyKeys();
             }
-            _userDerivedKeys.set(newUserId, await crypto.subtle.deriveKey({
-              name: DIFFIE_HELLMAN_ALGORITHM,
-              public: await crypto.subtle.importKey(DIFFIE_HELLMAN_EXPORT_FORMAT, publicExchangeKeyData, {
-                name: DIFFIE_HELLMAN_ALGORITHM,
-                namedCurve: DIFFIE_HELLMAN_CURVE
-              }, true, [])
-            }, _myExchangeKeys.privateKey, {
-              length: SHARED_KEY_LENGTH,
-              name: SHARED_ENCRYPTION_ALGORITHM
-            }, true, ["encrypt", "decrypt"]));
-            const myPublicExchangeKey = await crypto.subtle.exportKey(DIFFIE_HELLMAN_EXPORT_FORMAT, _myExchangeKeys.publicKey);
-            _message({
-              type: EXCHANGE_1,
-              publicData: typeof _publicData === "function" ? _publicData() : _publicData,
-              publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
-              publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-              publicSignKey: bufferToBase64(_myPublicSignKey)
-            }, {
-              receiver: newUserId
-            });
+            _userDerivedKeys.set(
+              newUserId,
+              await crypto.subtle.deriveKey(
+                {
+                  name: DIFFIE_HELLMAN_ALGORITHM,
+                  public: await crypto.subtle.importKey(
+                    DIFFIE_HELLMAN_EXPORT_FORMAT,
+                    publicExchangeKeyData,
+                    {
+                      name: DIFFIE_HELLMAN_ALGORITHM,
+                      namedCurve: DIFFIE_HELLMAN_CURVE
+                    },
+                    true,
+                    []
+                  )
+                },
+                _myExchangeKeys.privateKey,
+                {
+                  length: SHARED_KEY_LENGTH,
+                  name: SHARED_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt", "decrypt"]
+              )
+            );
+            const myPublicExchangeKey = await crypto.subtle.exportKey(
+              DIFFIE_HELLMAN_EXPORT_FORMAT,
+              _myExchangeKeys.publicKey
+            );
+            _message(
+              {
+                type: EXCHANGE_1,
+                publicData: typeof _publicData === "function" ? _publicData() : _publicData,
+                publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
+                publicExchangeKey: bufferToBase64(myPublicExchangeKey),
+                publicSignKey: bufferToBase64(_myPublicSignKey)
+              },
+              {
+                receiver: newUserId
+              }
+            );
             _generateVerificationCode(newUserId);
           }
           break;
@@ -566,37 +689,74 @@
               leaveRoom();
               return;
             }
-            const hostPublicSignKey = await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicSignKey), {
-              hash: HASH_ALGORITHM,
-              name: USER_SIGNATURE_ALGORITHM
-            }, true, ["verify"]);
+            const hostPublicSignKey = await crypto.subtle.importKey(
+              PUBLIC_KEY_EXPORT_FORMAT,
+              base64ToBuffer(data.publicSignKey),
+              {
+                hash: HASH_ALGORITHM,
+                name: USER_SIGNATURE_ALGORITHM
+              },
+              true,
+              ["verify"]
+            );
             if (data.publicExchangeKey && data.signature) {
-              if (!await crypto.subtle.verify(USER_SIGNATURE_ALGORITHM, hostPublicSignKey, base64ToBuffer(data.signature), base64ToBuffer(data.publicExchangeKey))) {
+              if (!await crypto.subtle.verify(
+                USER_SIGNATURE_ALGORITHM,
+                hostPublicSignKey,
+                base64ToBuffer(data.signature),
+                base64ToBuffer(data.publicExchangeKey)
+              )) {
                 onError.dispatch({
-                  error: new Error("Invalid signature for exchange from " + _creatorId)
+                  error: new Error(
+                    `Invalid signature for exchange from ${_creatorId}`
+                  )
                 });
                 leaveRoom();
                 return;
               }
             }
             _userSignKeys.set(_creatorId, hostPublicSignKey);
-            _userEncryptKeys.set(_creatorId, await crypto.subtle.importKey(PUBLIC_KEY_EXPORT_FORMAT, base64ToBuffer(data.publicEncryptKey), {
-              hash: HASH_ALGORITHM,
-              name: USER_ENCRYPTION_ALGORITHM
-            }, true, ["encrypt"]));
+            _userEncryptKeys.set(
+              _creatorId,
+              await crypto.subtle.importKey(
+                PUBLIC_KEY_EXPORT_FORMAT,
+                base64ToBuffer(data.publicEncryptKey),
+                {
+                  hash: HASH_ALGORITHM,
+                  name: USER_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt"]
+              )
+            );
             if (!_generatedKeys) {
               await _generateMyKeys();
             }
-            _userDerivedKeys.set(_creatorId, await crypto.subtle.deriveKey({
-              name: DIFFIE_HELLMAN_ALGORITHM,
-              public: await crypto.subtle.importKey(DIFFIE_HELLMAN_EXPORT_FORMAT, base64ToBuffer(data.publicExchangeKey), {
-                name: DIFFIE_HELLMAN_ALGORITHM,
-                namedCurve: DIFFIE_HELLMAN_CURVE
-              }, true, [])
-            }, _myExchangeKeys.privateKey, {
-              length: SHARED_KEY_LENGTH,
-              name: SHARED_ENCRYPTION_ALGORITHM
-            }, true, ["encrypt", "decrypt"]));
+            _userDerivedKeys.set(
+              _creatorId,
+              await crypto.subtle.deriveKey(
+                {
+                  name: DIFFIE_HELLMAN_ALGORITHM,
+                  public: await crypto.subtle.importKey(
+                    DIFFIE_HELLMAN_EXPORT_FORMAT,
+                    base64ToBuffer(data.publicExchangeKey),
+                    {
+                      name: DIFFIE_HELLMAN_ALGORITHM,
+                      namedCurve: DIFFIE_HELLMAN_CURVE
+                    },
+                    true,
+                    []
+                  )
+                },
+                _myExchangeKeys.privateKey,
+                {
+                  length: SHARED_KEY_LENGTH,
+                  name: SHARED_ENCRYPTION_ALGORITHM
+                },
+                true,
+                ["encrypt", "decrypt"]
+              )
+            );
             _generateVerificationCode(_creatorId);
           }
           break;
@@ -615,12 +775,15 @@
               leaveRoom();
               return;
             }
-            _message({
-              type: EXCHANGE_3,
-              privateData: _privateData
-            }, {
-              receiver: _creatorId
-            });
+            _message(
+              {
+                type: EXCHANGE_3,
+                privateData: _privateData
+              },
+              {
+                receiver: _creatorId
+              }
+            );
           }
           break;
         case EXCHANGE_3:
@@ -646,12 +809,17 @@
               kickUser(userId);
               return;
             }
-            _message({
-              type: EXCHANGE_4,
-              sharedKey: bufferToBase64(await crypto.subtle.exportKey("raw", _sharedKey))
-            }, {
-              receiver: userId
-            });
+            _message(
+              {
+                type: EXCHANGE_4,
+                sharedKey: bufferToBase64(
+                  await crypto.subtle.exportKey("raw", _sharedKey)
+                )
+              },
+              {
+                receiver: userId
+              }
+            );
             onUserVerified.dispatch({
               userId
             });
@@ -669,20 +837,25 @@
               });
               return;
             }
-            _sharedKey = await crypto.subtle.importKey("raw", base64ToBuffer(data.sharedKey), {
-              name: SHARED_ENCRYPTION_ALGORITHM
-            }, true, ["encrypt", "decrypt"]);
+            _sharedKey = await crypto.subtle.importKey(
+              "raw",
+              base64ToBuffer(data.sharedKey),
+              {
+                name: SHARED_ENCRYPTION_ALGORITHM
+              },
+              true,
+              ["encrypt", "decrypt"]
+            );
             onUserVerified.dispatch({
               userId: _myId
             });
             if (_sharedMessagesBuffer.length > 0) {
               const now = Date.now();
-              _sharedMessagesBuffer = _sharedMessagesBuffer.filter((item) => now - item.time < messageBufferMaxDuration);
+              _sharedMessagesBuffer = _sharedMessagesBuffer.filter(
+                (item) => now - item.time < messageBufferMaxDuration
+              );
               while (_sharedMessagesBuffer.length > 0) {
-                const {
-                  parts: parts2,
-                  raw: raw2
-                } = _sharedMessagesBuffer.shift();
+                const { parts: parts2, raw: raw2 } = _sharedMessagesBuffer.shift();
                 _processMessage(parts2, raw2, true);
               }
             }
@@ -738,27 +911,47 @@
       if (receiver) {
         const receiverPublicKey = _userEncryptKeys.get(receiver);
         if (receiverPublicKey) {
-          const tempKey = await crypto.subtle.generateKey({
-            name: SHARED_ENCRYPTION_ALGORITHM,
-            length: 256
-          }, true, ["encrypt", "decrypt"]);
+          const tempKey = await crypto.subtle.generateKey(
+            {
+              name: SHARED_ENCRYPTION_ALGORITHM,
+              length: 256
+            },
+            true,
+            ["encrypt", "decrypt"]
+          );
           const iv = crypto.getRandomValues(new Uint8Array(12));
-          const encryptedPayload = await crypto.subtle.encrypt({
-            iv,
-            name: SHARED_ENCRYPTION_ALGORITHM
-          }, tempKey, new TextEncoder().encode(message));
+          const encryptedPayload = await crypto.subtle.encrypt(
+            {
+              iv,
+              name: SHARED_ENCRYPTION_ALGORITHM
+            },
+            tempKey,
+            new TextEncoder().encode(message)
+          );
           if (!_generatedKeys) {
             await _generateMyKeys();
           }
           parts[USER_ENCRYPTION_IV] = bufferToBase64(iv);
-          parts[USER_ENCRYPTION_KEY] = bufferToBase64(await crypto.subtle.encrypt({
-            name: USER_ENCRYPTION_ALGORITHM
-          }, receiverPublicKey, await crypto.subtle.exportKey("raw", tempKey)));
+          parts[USER_ENCRYPTION_KEY] = bufferToBase64(
+            await crypto.subtle.encrypt(
+              {
+                name: USER_ENCRYPTION_ALGORITHM
+              },
+              receiverPublicKey,
+              await crypto.subtle.exportKey("raw", tempKey)
+            )
+          );
           parts[USER_ENCRYPTION_PAYLOAD] = bufferToBase64(encryptedPayload);
-          parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(await crypto.subtle.sign(USER_SIGNATURE_ALGORITHM, _mySignKeys.privateKey, encryptedPayload));
+          parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(
+            await crypto.subtle.sign(
+              USER_SIGNATURE_ALGORITHM,
+              _mySignKeys.privateKey,
+              encryptedPayload
+            )
+          );
         } else if (!options2.allowUnencrypted) {
           onError.dispatch({
-            error: new Error("No public key for " + receiver)
+            error: new Error(`No public key for ${receiver}`)
           });
           return false;
         } else {
@@ -770,10 +963,16 @@
       } else if (_sharedKey) {
         const iv = crypto.getRandomValues(new Uint8Array(12));
         parts[SHARED_ENCRYPTION_IV] = bufferToBase64(iv);
-        parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(await crypto.subtle.encrypt({
-          iv,
-          name: SHARED_ENCRYPTION_ALGORITHM
-        }, _sharedKey, new TextEncoder().encode(message)));
+        parts[SHARED_ENCRYPTION_PAYLOAD] = bufferToBase64(
+          await crypto.subtle.encrypt(
+            {
+              iv,
+              name: SHARED_ENCRYPTION_ALGORITHM
+            },
+            _sharedKey,
+            new TextEncoder().encode(message)
+          )
+        );
       } else {
         onError.dispatch(new Error("Trying to send without valid destination"));
         return false;
@@ -793,7 +992,7 @@
       }
       const hashArray = _userVerification.get(userId);
       let code = "";
-      for (let i = 0;i < codeLength; i++) {
+      for (let i = 0; i < codeLength; i++) {
         const index = hashArray[i] % IDENTIFIABLE_CHARACTERS.length;
         code += IDENTIFIABLE_CHARACTERS[index];
       }
@@ -815,6 +1014,12 @@
       closeRoom: () => messageServer({
         type: ROOM_CLOSED
       }),
+      /**
+       * Creates a new room and joins it.
+       *
+       * @param {Object<string, any>} [options={}] - Options for creating the room.
+       * @returns {Object<string, any>|undefined} Room creation data or undefined if failed.
+       */
       createRoom: async (options2 = {}) => {
         if (_connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
           return;
@@ -828,9 +1033,13 @@
         }
         try {
           await new Promise((resolve, reject) => {
-            const worker = new Worker(URL.createObjectURL(new Blob([SHARED_KEY_GENERATOR], {
-              type: "text/javascript"
-            })));
+            const worker = new Worker(
+              URL.createObjectURL(
+                new Blob([SHARED_KEY_GENERATOR], {
+                  type: "text/javascript"
+                })
+              )
+            );
             worker.addEventListener("message", (event) => {
               if (event.data.success) {
                 _sharedKey = event.data.sharedKey;
@@ -874,6 +1083,12 @@
         _joinRoom(data.roomCode, data.creatorSecret);
         return data;
       },
+      /**
+       * Joins an existing room.
+       *
+       * @param {string} roomCode - The code of the room to join.
+       * @param {Object<string, any>} [options={}] - Options for joining the room.
+       */
       joinRoom: (roomCode, options2 = {}) => {
         if (options2.publicData) {
           _publicData = options2.publicData;
@@ -886,6 +1101,13 @@
       leaveRoom,
       kickUser,
       getVerificationCode,
+      /**
+       * Verifies a user with the provided verification code.
+       *
+       * @param {string} userId - The ID of the user to verify.
+       * @param {string} code - The verification code.
+       * @returns {boolean} True if the verification was successful, false otherwise.
+       */
       verifyUser: async (userId, code) => {
         if (_myId !== _creatorId || !code) {
           return false;
@@ -899,23 +1121,23 @@
         if (!derivedKey) {
           return false;
         }
-        _message({
-          type: EXCHANGE_2,
-          privateData: _privateData
-        }, {
-          receiver: userId
-        });
+        _message(
+          {
+            type: EXCHANGE_2,
+            privateData: _privateData
+          },
+          {
+            receiver: userId
+          }
+        );
         return true;
       }
     };
   };
 
   // src/index.base.iife.js
-  iife([
-    "roupn"
-  ], {
+  iife(["roupn"], {
     createClientConnector
   });
 })();
-
-//# debugId=8C326FF8BC2C36A664756E2164756E21
+//# sourceMappingURL=roupn.base.iife.js.map

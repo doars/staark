@@ -22,9 +22,11 @@
     "access": "public"
   },
   "scripts": {
-    "develop": "NODE_ENV=development bun config.bundle.js",
-    "build": "NODE_ENV=production bun config.bundle.js",
-    "start:example": "bun --watch ./exm/server.js"
+    "check": "biome check ./src",
+    "check:write": "biome check --write ./src",
+    "develop": "NODE_ENV=development node config.bundle.js",
+    "build": "NODE_ENV=production node config.bundle.js",
+    "start:example": "node ./exm/server.js"
   },
   "files": [
     "dst",
@@ -37,6 +39,6 @@
   },
   "devDependencies": {
     "@doars/staark": "x",
-    "ws": "^8.18.3"
+    "ws": "^8.21.1"
   }
 }
