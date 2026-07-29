@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Preserve cycles and shared references in recursive clones, ignore inherited
-  properties, and cache object pairs during recursive equality checks.
+  properties, safely clone `DataView` values, and compare binary views by their
+  visible bytes.
 
 ## 1.5.9 (unreleased)
 

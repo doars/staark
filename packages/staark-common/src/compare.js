@@ -57,10 +57,24 @@ export const equalRecursive = (valueA, valueB, compared = new WeakMap()) => {
 		return true;
 	}
 	if (ArrayBuffer.isView(valueA)) {
-		if (!ArrayBuffer.isView(valueB) || valueA.length !== valueB.length)
+		if (
+			!ArrayBuffer.isView(valueB) ||
+			valueA.constructor !== valueB.constructor ||
+			valueA.byteLength !== valueB.byteLength
+		)
 			return false;
-		for (let index = 0; index < valueA.length; index++) {
-			if (valueA[index] !== valueB[index]) return false;
+		const bytesA = new Uint8Array(
+			valueA.buffer,
+			valueA.byteOffset,
+			valueA.byteLength,
+		);
+		const bytesB = new Uint8Array(
+			valueB.buffer,
+			valueB.byteOffset,
+			valueB.byteLength,
+		);
+		for (let index = 0; index < bytesA.length; index++) {
+			if (bytesA[index] !== bytesB[index]) return false;
 		}
 		return true;
 	}

@@ -7,8 +7,6 @@
 - Escape server-rendered text and attribute values, validate emitted names, and
   use one renderer for `stringify` and `stringifyPatch`.
 
-## Unreleased
-
 - Migrate tests from Bun to the Node.js test runner.
 - Fix invalid abstract tree JSON returned by full stringification functions.
 

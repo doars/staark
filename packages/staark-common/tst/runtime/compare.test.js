@@ -76,5 +76,15 @@ describe('Compare', () => {
       valueB.value = false
       assert.strictEqual(equalRecursive(valueA, valueB), false)
     })
+
+    it('compares DataView values by constructor and visible bytes', () => {
+      const valueA = new DataView(new Uint8Array([0, 1, 2]).buffer, 1)
+      const valueB = new DataView(new Uint8Array([1, 2]).buffer)
+      const valueC = new DataView(new Uint8Array([1, 3]).buffer)
+
+      assert.strictEqual(equalRecursive(valueA, valueB), true)
+      assert.strictEqual(equalRecursive(valueA, valueC), false)
+      assert.strictEqual(equalRecursive(valueA, new Uint8Array([1, 2])), false)
+    })
   })
 })

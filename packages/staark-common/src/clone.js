@@ -38,7 +38,15 @@ export const cloneRecursive = (value, clones = new WeakMap()) => {
 		return clone;
 	}
 	if (ArrayBuffer.isView(value)) {
-		const clone = new value.constructor(value);
+		const clone =
+			value instanceof DataView
+				? new DataView(
+						value.buffer.slice(
+							value.byteOffset,
+							value.byteOffset + value.byteLength,
+						),
+					)
+				: new value.constructor(value);
 		clones.set(value, clone);
 		return clone;
 	}

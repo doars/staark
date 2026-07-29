@@ -218,6 +218,39 @@ describe('Creator authentication', () => {
     )
     connector.removeRoom(secondRoom.roomCode)
   })
+
+  it('preserves the room after an unauthenticated creator disconnects', () => {
+    const connector = createServerConnector()
+    const room = connector.createRoom()
+    const attackerConnection = createConnection()
+    connector.joinRoom(room.roomCode, attackerConnection, true)
+    attackerConnection.dispatch('message', {
+      data: `A:${stringToBase64('wrong')}`,
+    })
+    attackerConnection.dispatch('close')
+    attackerConnection.dispatch('error')
+
+    const storedRoom = connector.getRoom(room.roomCode)
+    assert.ok(storedRoom)
+    assert.strictEqual(storedRoom.creatorTokenDigest.length, 32)
+    assert.deepStrictEqual(storedRoom.users.get(room.userId), {
+      connection: null,
+      verified: false,
+    })
+
+    const creatorConnection = createConnection()
+    const [success] = connector.joinRoom(
+      room.roomCode,
+      creatorConnection,
+      true,
+    )
+    assert.strictEqual(success, true)
+    creatorConnection.dispatch('message', {
+      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+    })
+    assert.strictEqual(storedRoom.users.get(room.userId).verified, true)
+    connector.removeRoom(room.roomCode)
+  })
 })
 
 describe('Transport and origin policy', () => {

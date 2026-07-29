@@ -68,5 +68,18 @@ describe('Clone', () => {
       assert.strictEqual(cloned.first, cloned.second)
       assert.strictEqual(Object.hasOwn(cloned, 'inherited'), false)
     })
+
+    it('clones DataView values and their visible byte range', () => {
+      const buffer = new Uint8Array([0, 1, 2, 3]).buffer
+      const original = new DataView(buffer, 1, 2)
+      const cloned = cloneRecursive(original)
+
+      assert.ok(cloned instanceof DataView)
+      assert.notStrictEqual(cloned, original)
+      assert.notStrictEqual(cloned.buffer, original.buffer)
+      assert.strictEqual(cloned.byteLength, 2)
+      assert.strictEqual(cloned.getUint8(0), 1)
+      assert.strictEqual(cloned.getUint8(1), 2)
+    })
   })
 })

@@ -14,8 +14,6 @@
   frame concurrency polling with a runtime-neutral FIFO queue.
 - Clear timeout resources deterministically and retry thrown network errors.
 
-## Unreleased
-
 - Migrate tests from Bun to the Node.js test runner.
 - Return request failures through the documented result tuple and always release concurrency slots.
 - Expand request tests for configuration, custom parsers, and error handling.

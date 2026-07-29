@@ -8,6 +8,8 @@
 - Add per-connection message, byte, and handshake budgets and close slow
   consumers without disrupting healthy recipients.
 - Replace creator URL secrets with digested, single-use first-message tokens.
+- Preserve creator reservations when an unauthenticated creator connection
+  closes or fails authentication.
 - Require secure non-loopback client URLs and same-origin WebSocket upgrades by
   default, with explicit origin, subprotocol, and development overrides.
 - Add protocol versioning, message-shape checks, state-delta limits, pending-user

@@ -533,12 +533,29 @@ export const createServerConnector = (options = {}) => {
 			onAuthenticated?.();
 		}
 
-		connection.addEventListener("close", () => {
+		let disconnected = false;
+		const disconnect = () => {
+			if (disconnected) {
+				return;
+			}
+			disconnected = true;
+
+			const room = _rooms.get(roomCode);
+			if (
+				_isCreator &&
+				!userData.verified &&
+				room?.users.get(userId) === userData
+			) {
+				room.users.set(userId, {
+					connection: null,
+					verified: false,
+				});
+				return;
+			}
 			leaveRoom(roomCode, userId);
-		});
-		connection.addEventListener("error", () => {
-			leaveRoom(roomCode, userId);
-		});
+		};
+		connection.addEventListener("close", disconnect);
+		connection.addEventListener("error", disconnect);
 
 		connection.addEventListener("message", (event) => {
 			try {
