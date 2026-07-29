@@ -32,7 +32,12 @@
       return clone2;
     }
     if (ArrayBuffer.isView(value)) {
-      const clone2 = new value.constructor(value);
+      const clone2 = value instanceof DataView ? new DataView(
+        value.buffer.slice(
+          value.byteOffset,
+          value.byteOffset + value.byteLength
+        )
+      ) : new value.constructor(value);
       clones.set(value, clone2);
       return clone2;
     }
@@ -80,6 +85,85 @@
     return diff;
   };
   var isContainer = (value) => value !== null && typeof value === "object" && (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+  var valuesEqual = (before, after, compared = /* @__PURE__ */ new WeakMap()) => {
+    if (Object.is(before, after)) {
+      return true;
+    }
+    if (!before || !after || typeof before !== "object" || typeof after !== "object") {
+      return false;
+    }
+    let comparedAfter = compared.get(before);
+    if (comparedAfter?.has(after)) {
+      return true;
+    }
+    if (!comparedAfter) {
+      comparedAfter = /* @__PURE__ */ new WeakSet();
+      compared.set(before, comparedAfter);
+    }
+    comparedAfter.add(after);
+    if (before instanceof Date || after instanceof Date) {
+      return before instanceof Date && after instanceof Date && before.getTime() === after.getTime();
+    }
+    if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
+      if (!ArrayBuffer.isView(before) || !ArrayBuffer.isView(after) || before.constructor !== after.constructor || before.byteLength !== after.byteLength) {
+        return false;
+      }
+      const beforeBytes = new Uint8Array(
+        before.buffer,
+        before.byteOffset,
+        before.byteLength
+      );
+      const afterBytes = new Uint8Array(
+        after.buffer,
+        after.byteOffset,
+        after.byteLength
+      );
+      for (let index = 0; index < beforeBytes.length; index++) {
+        if (beforeBytes[index] !== afterBytes[index]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (before instanceof Map || after instanceof Map) {
+      if (!(before instanceof Map) || !(after instanceof Map) || before.size !== after.size) {
+        return false;
+      }
+      const unmatchedEntries = [...after];
+      for (const [beforeKey, beforeValue] of before) {
+        let matchIndex = -1;
+        for (let index = 0; index < unmatchedEntries.length; index++) {
+          const [afterKey, afterValue] = unmatchedEntries[index];
+          if (valuesEqual(beforeKey, afterKey, /* @__PURE__ */ new WeakMap()) && valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())) {
+            matchIndex = index;
+            break;
+          }
+        }
+        if (matchIndex < 0) {
+          return false;
+        }
+        unmatchedEntries.splice(matchIndex, 1);
+      }
+      return true;
+    }
+    if (before instanceof Set || after instanceof Set) {
+      if (!(before instanceof Set) || !(after instanceof Set) || before.size !== after.size) {
+        return false;
+      }
+      const unmatchedValues = [...after];
+      for (const beforeValue of before) {
+        const matchIndex = unmatchedValues.findIndex(
+          (afterValue) => valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())
+        );
+        if (matchIndex < 0) {
+          return false;
+        }
+        unmatchedValues.splice(matchIndex, 1);
+      }
+      return true;
+    }
+    return false;
+  };
   var getKey = (current, component) => {
     if (Array.isArray(current)) {
       if (typeof component === "number" && component >= 0 || typeof component === "string" && ARRAY_INDEX.test(component)) {
@@ -177,11 +261,11 @@
           path: currentPath,
           old: cloneRecursive(before[key])
         });
-      } else if (before[key] && after[key] && typeof before[key] === "object" && typeof after[key] === "object") {
+      } else if (isContainer(before[key]) && isContainer(after[key])) {
         changes.unshift(
           ...determineDiff(before[key], after[key], currentPath, compared)
         );
-      } else if (before[key] !== after[key]) {
+      } else if (!valuesEqual(before[key], after[key])) {
         changes.unshift({
           type: "set",
           path: currentPath,

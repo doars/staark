@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add deterministic concatenation-versus-fragment rendering benchmarks and
+  retain concatenation after it won every measured fixture with lower memory.
 - Escape server-rendered text and attribute values, validate emitted names, and
   use one renderer for `stringify` and `stringifyPatch`.
 

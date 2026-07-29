@@ -36,6 +36,10 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  *
  * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user. Used in case of rollbacks.
  * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for a full state synchronisation.
+ * @property {number} [maxDiffChanges=1000] - Maximum changes accepted in one state update.
+ * @property {number} [maxDiffPathDepth=32] - Maximum path depth accepted in a state update.
+ * @property {number} [maxDiffValueBytes=196608] - Maximum serialized value size in a change.
+ * @property {number} [maxSerializedStateBytes=1048576] - Maximum serialized synchronized state size.
  */
 
 /**
@@ -84,7 +88,56 @@ export const createClientSynchronizer = (
 	const connector = createClientConnector(options);
 	const { messageRoom } = connector;
 
-	const { windowPerUser = 16, synchronisationInterval = 60 * 1e3 } = options;
+	const {
+		windowPerUser = 16,
+		synchronisationInterval = 60 * 1e3,
+		maxDiffChanges = 1000,
+		maxDiffPathDepth = 32,
+		maxDiffValueBytes = 192 * 1024,
+		maxSerializedStateBytes = 1024 * 1024,
+	} = options;
+	for (const [name, value] of [
+		["maxDiffChanges", maxDiffChanges],
+		["maxDiffPathDepth", maxDiffPathDepth],
+		["maxDiffValueBytes", maxDiffValueBytes],
+		["maxSerializedStateBytes", maxSerializedStateBytes],
+	]) {
+		if (!Number.isInteger(value) || value <= 0) {
+			throw new TypeError(`${name} must be a positive integer`);
+		}
+	}
+	const serializedBytes = (value) => {
+		const serialized = JSON.stringify(value);
+		if (serialized === undefined) {
+			throw new TypeError("invalid_serialized_value");
+		}
+		return new TextEncoder().encode(serialized).byteLength;
+	};
+	const validateStateDelta = (stateDelta) => {
+		if (!Array.isArray(stateDelta) || stateDelta.length > maxDiffChanges) {
+			throw new TypeError("invalid_state_delta");
+		}
+		for (const change of stateDelta) {
+			if (
+				!change ||
+				typeof change !== "object" ||
+				(change.type !== "set" && change.type !== "delete") ||
+				!Array.isArray(change.path) ||
+				change.path.length === 0 ||
+				change.path.length > maxDiffPathDepth
+			) {
+				throw new TypeError("invalid_state_delta");
+			}
+			if (
+				(Object.hasOwn(change, "new") &&
+					serializedBytes(change.new) > maxDiffValueBytes) ||
+				(Object.hasOwn(change, "old") &&
+					serializedBytes(change.old) > maxDiffValueBytes)
+			) {
+				throw new TypeError("state_delta_value_too_large");
+			}
+		}
+	};
 	const _stateUpdates = [];
 	let _synchronisationIntervalId,
 		_messageDelay = 0,
@@ -159,6 +212,19 @@ export const createClientSynchronizer = (
 			data.sender === privateState.userId ||
 			(data.receiver && data.receiver !== privateState.userId)
 		) {
+			return;
+		}
+		try {
+			if (data.type === STATE_UPDATE) {
+				validateStateDelta(data.stateDelta);
+			} else if (
+				data.type === STATE_SYNCH &&
+				serializedBytes(data.state) > maxSerializedStateBytes
+			) {
+				throw new TypeError("synchronized_state_too_large");
+			}
+		} catch (error) {
+			connector.onError.dispatch({ error });
 			return;
 		}
 

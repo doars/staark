@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Coordinate limited and unlimited requests through one strict FIFO scheduler,
+  including completion and queued-abort draining.
+- Add `createTrustedHTML` and `trustedTypesPolicy` HTML parsing options with
+  initial and per-call precedence.
+- Preserve platform objects such as `AbortController` while cloning request
+  option records.
 - Reject prototype-related keys in object-producing parsers and build parser
   dictionaries without prototypes.
 - Settle debounced callers through one trailing request and replace animation

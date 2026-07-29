@@ -157,7 +157,10 @@ When creating a request instance, you can pass an options object to configure th
 
 The full list of create options:
 
-- `{number} maxConcurrency = 0` The maximum number of concurrent requests allowed. Requests exceeding this limit are queued until one completes. Zero means unlimited.
+- `{number} maxConcurrency` The maximum number of concurrent requests allowed. It must be a positive integer. Omit it for unlimited concurrency. Initial and per-call limits share one strict FIFO queue.
+- `{number} maxRequests` The maximum number of fetches started by this request instance. Debounced and queued calls consume the limit when their fetch starts.
+- `{function} createTrustedHTML` Converts the complete response string before an `html` or `html-partial` parsing sink. The callback may return `TrustedHTML` from an application policy.
+- `{object} trustedTypesPolicy` A Trusted Types policy with a callable `createHTML` method. A per-call callback takes precedence over a per-call policy, then the initial callback and policy.
 
 The full list of send options:
 
@@ -199,6 +202,26 @@ The following types will be automatically parsed and determined.
 - The type `html` will be parsed as a HTML document. A `Content-Type` or `Accepts` headers of `text/html` or a file extension of `html` are also parsed as a HTML document.
 - The type `html-partial` will be parsed as partial HTML content. A `Content-Type` or `Accepts` headers of `text/html-partial` are also parsed as partial HTML content.
 - The type `svg` will be parsed as a SVG document. A `Content-Type` or `Accepts` headers of `image/svg+xml` or a file extension of `svg` are also parsed as a SVG document.
+
+> `html` and `html-partial` parse trusted content and do not sanitize it. Using
+> either mode asserts that you trust the response origin and content. For
+> untrusted HTML, sanitize with a maintained sanitizer inside your application's
+> Trusted Types policy and pass that policy with `trustedTypesPolicy`. A
+> `TrustedHTML` value only reflects the policy that created it; it does not
+> sanitize content by itself.
+
+```JavaScript
+const policy = trustedTypes.createPolicy('vroagn', {
+  createHTML: (html) => DOMPurify.sanitize(html, {
+    RETURN_TRUSTED_TYPE: false,
+  }),
+})
+
+const request = create({
+  trustedTypesPolicy: policy,
+  type: 'html-partial',
+})
+```
 
 ## Installation
 

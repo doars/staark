@@ -32,6 +32,7 @@ import {
 	EXCHANGE_2,
 	EXCHANGE_3,
 	EXCHANGE_4,
+	PROTOCOL_VERSION,
 	ROOM_CLOSED,
 	ROOM_JOINED,
 	USER_JOINED,
@@ -40,6 +41,7 @@ import {
 	USER_VERIFIED,
 } from "./message-types.js";
 import {
+	CREATOR_AUTHENTICATION,
 	SERVER_PAYLOAD,
 	SERVER_TIME,
 	SHARED_ENCRYPTION_IV,
@@ -76,6 +78,7 @@ import {
  *
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
+ * @property {boolean} [allowInsecureNonLoopback=false] - Allows insecure HTTP and WebSocket URLs outside loopback for development.
  */
 
 /**
@@ -119,7 +122,53 @@ export const createClientConnector = (options = {}) => {
 
 		messageBufferMaxCount = 50,
 		messageBufferMaxDuration = 60 * 1000,
+		allowInsecureNonLoopback = false,
+		maxEncodedMessageBytes = 256 * 1024,
+		maxProtocolSegments = 16,
+		maxProtocolKeyBytes = 64,
+		maxDecodedFieldBytes = 192 * 1024,
+		maxTotalDecodedBytes = 256 * 1024,
 	} = options;
+	for (const [name, value] of [
+		["maxEncodedMessageBytes", maxEncodedMessageBytes],
+		["maxProtocolSegments", maxProtocolSegments],
+		["maxProtocolKeyBytes", maxProtocolKeyBytes],
+		["maxDecodedFieldBytes", maxDecodedFieldBytes],
+		["maxTotalDecodedBytes", maxTotalDecodedBytes],
+	]) {
+		if (!Number.isInteger(value) || value <= 0) {
+			throw new TypeError(`${name} must be a positive integer`);
+		}
+	}
+	const allowedProtocolKeys = new Set([
+		SERVER_PAYLOAD,
+		SERVER_TIME,
+		SHARED_ENCRYPTION_IV,
+		SHARED_ENCRYPTION_PAYLOAD,
+		USER,
+		USER_DIRECT_PAYLOAD,
+		USER_ENCRYPTION_IV,
+		USER_ENCRYPTION_KEY,
+		USER_ENCRYPTION_PAYLOAD,
+		USER_ENCRYPTION_SIGNATURE,
+	]);
+	const isLoopback = (hostname) =>
+		hostname === "localhost" ||
+		hostname === "::1" ||
+		hostname === "[::1]" ||
+		/^127(?:\.\d{1,3}){3}$/.test(hostname);
+	for (const configuredUrl of [httpUrl, wsUrl]) {
+		const url = new URL(configuredUrl);
+		if (
+			(url.protocol === "http:" || url.protocol === "ws:") &&
+			!isLoopback(url.hostname) &&
+			!allowInsecureNonLoopback
+		) {
+			throw new TypeError(
+				"Insecure non-loopback URLs require allowInsecureNonLoopback",
+			);
+		}
+	}
 
 	let _connectionState = CONNECTION_DISCONNECTED,
 		_creatorId,
@@ -318,11 +367,11 @@ export const createClientConnector = (options = {}) => {
 	 *
 	 * @param {string} roomCode - The code of the room to join.
 	 * @param {string|null} [password=null] - Optional password for the room.
-	 * @param {string|null} [creatorSecret=null] - Optional creator secret for verifying this user is the creator of the room.
+	 * @param {string|null} [creatorConnectionToken=null] - Optional single-use token for authenticating the creator connection.
 	 */
-	const _joinRoom = (roomCode, creatorSecret = null) => {
+	const _joinRoom = (roomCode, creatorConnectionToken = null) => {
 		if (
-			!creatorSecret &&
+			!creatorConnectionToken &&
 			_connectionState &&
 			_connectionState !== CONNECTION_DISCONNECTED
 		) {
@@ -334,11 +383,21 @@ export const createClientConnector = (options = {}) => {
 
 		const url = new URL(wsUrl + joinRoomEndpoint);
 		url.searchParams.append("code", _roomCode);
-		if (creatorSecret) {
-			url.searchParams.append("creator", creatorSecret);
+		if (creatorConnectionToken) {
+			url.searchParams.append("creator", "1");
 		}
 
 		_socket = new WebSocket(url.toString());
+		if (creatorConnectionToken) {
+			_socket.addEventListener("open", () => {
+				_socket.send(
+					encode(
+						{ [CREATOR_AUTHENTICATION]: creatorConnectionToken },
+						stringToBase64,
+					),
+				);
+			});
+		}
 
 		_socket.addEventListener("close", (event) => {
 			onRoomLeave.dispatch({
@@ -356,7 +415,28 @@ export const createClientConnector = (options = {}) => {
 		});
 
 		_socket.addEventListener("message", async (event) => {
-			_processMessage(decode(event.data, base64ToString), event.data);
+			try {
+				if (
+					typeof event.data !== "string" ||
+					new TextEncoder().encode(event.data).byteLength >
+						maxEncodedMessageBytes
+				) {
+					throw new RangeError("message_too_large");
+				}
+				_processMessage(
+					decode(event.data, base64ToString, {
+						allowedKeys: allowedProtocolKeys,
+						maxDecodedFieldBytes,
+						maxKeyBytes: maxProtocolKeyBytes,
+						maxSegments: maxProtocolSegments,
+						maxTotalDecodedBytes,
+					}),
+					event.data,
+				);
+			} catch (error) {
+				onError.dispatch({ error });
+				_socket.close(1008, "invalid_protocol_message");
+			}
 		});
 	};
 
@@ -524,6 +604,13 @@ export const createClientConnector = (options = {}) => {
 
 		switch (data.type) {
 			case ROOM_JOINED:
+				if (data.protocolVersion !== PROTOCOL_VERSION) {
+					onError.dispatch({
+						error: new Error("unsupported_protocol_version"),
+					});
+					leaveRoom();
+					return;
+				}
 				_creatorId = data.creatorId;
 				_myId = data.userId;
 
@@ -1180,7 +1267,7 @@ export const createClientConnector = (options = {}) => {
 
 			_myId = data.userId;
 
-			_joinRoom(data.roomCode, data.creatorSecret);
+			_joinRoom(data.roomCode, data.creatorConnectionToken);
 
 			return data;
 		},

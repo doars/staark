@@ -33,6 +33,8 @@ import { getType } from "../utilities/type.js";
  * @property {number[]} [retryCodes] The HTTP status codes that should trigger a retry.
  * @property {number} [retryDelay] The delay between retry attempts.
  * @property {number} [maximumRetryDelay] Maximum delay between retry attempts.
+ * @property {(html: string) => any} [createTrustedHTML] Converts trusted response text for HTML parsing sinks.
+ * @property {{createHTML: (html: string) => any}} [trustedTypesPolicy] Trusted Types policy used for HTML parsing sinks.
  **/
 
 /**
@@ -53,6 +55,25 @@ const DEFAULT_VALUES = {
  * @returns {(sendOptions: SendOptions) => Promise<[Error | null, Response | null, any]>} The request handler.
  */
 export const create = (initialOptions) => {
+	const validateTrustedHTMLOptions = (options) => {
+		if (
+			Object.hasOwn(options, "createTrustedHTML") &&
+			typeof options.createTrustedHTML !== "function"
+		) {
+			throw new TypeError("createTrustedHTML must be a function");
+		}
+		if (
+			Object.hasOwn(options, "trustedTypesPolicy") &&
+			(typeof options.trustedTypesPolicy !== "object" ||
+				options.trustedTypesPolicy === null ||
+				typeof options.trustedTypesPolicy.createHTML !== "function")
+		) {
+			throw new TypeError("trustedTypesPolicy.createHTML must be a function");
+		}
+	};
+	validateTrustedHTMLOptions(initialOptions);
+	const initialCreateTrustedHTML = initialOptions.createTrustedHTML;
+	const initialTrustedTypesPolicy = initialOptions.trustedTypesPolicy;
 	initialOptions = {
 		...DEFAULT_VALUES,
 		...cloneRecursive(initialOptions),
@@ -90,15 +111,26 @@ export const create = (initialOptions) => {
 	 * @param {number} debounceValue The debounce time in milliseconds.
 	 * @returns {Promise<void>} A promise that resolves after the debounce time.
 	 */
-	const acquireConcurrency = (maximum, signal) =>
-		new Promise((resolve, reject) => {
-			if (activeRequests < maximum) {
-				activeRequests++;
-				resolve();
+	const drainConcurrencyQueue = () => {
+		while (concurrencyQueue.length > 0) {
+			const queued = concurrencyQueue[0];
+			if (activeRequests >= queued.maximum) {
 				return;
 			}
+			concurrencyQueue.shift();
+			queued.signal?.removeEventListener("abort", queued.abort);
+			if (queued.signal?.aborted) {
+				continue;
+			}
+			activeRequests++;
+			queued.resolve();
+		}
+	};
 
+	const acquireConcurrency = (maximum, signal) =>
+		new Promise((resolve, reject) => {
 			const queued = {
+				maximum,
 				reject,
 				resolve,
 				signal,
@@ -110,6 +142,7 @@ export const create = (initialOptions) => {
 					reject(
 						signal.reason || new DOMException("Request aborted", "AbortError"),
 					);
+					drainConcurrencyQueue();
 				}
 			};
 			queued.abort = abort;
@@ -119,18 +152,12 @@ export const create = (initialOptions) => {
 				return;
 			}
 			signal?.addEventListener("abort", abort, { once: true });
+			drainConcurrencyQueue();
 		});
 
 	const releaseConcurrency = () => {
-		while (concurrencyQueue.length > 0) {
-			const queued = concurrencyQueue.shift();
-			queued.signal?.removeEventListener("abort", queued.abort);
-			if (!queued.signal?.aborted) {
-				queued.resolve();
-				return;
-			}
-		}
 		activeRequests--;
+		drainConcurrencyQueue();
 	};
 
 	/**
@@ -218,6 +245,19 @@ export const create = (initialOptions) => {
 					}
 				}
 				if (!foundParser) {
+					const createTrustedHTML = Object.hasOwn(
+						options,
+						"perCallCreateTrustedHTML",
+					)
+						? options.perCallCreateTrustedHTML
+						: Object.hasOwn(options, "perCallTrustedTypesPolicy")
+							? options.perCallTrustedTypesPolicy.createHTML.bind(
+									options.perCallTrustedTypesPolicy,
+								)
+							: initialCreateTrustedHTML ||
+								initialTrustedTypesPolicy?.createHTML.bind(
+									initialTrustedTypesPolicy,
+								);
 					switch (type.toLowerCase()) {
 						case "arraybuffer":
 							result = await response.arrayBuffer();
@@ -236,16 +276,44 @@ export const create = (initialOptions) => {
 						case "text/html-partial":
 						case "html-partial":
 							{
-								result = await response.text();
+								const responseText = await response.text();
+								result = createTrustedHTML
+									? createTrustedHTML(responseText)
+									: responseText;
 								const template = document.createElement("template");
-								template.innerHTML = result;
+								try {
+									template.innerHTML = result;
+								} catch (error) {
+									if (!createTrustedHTML) {
+										throw new Error(
+											"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
+											{ cause: error },
+										);
+									}
+									throw error;
+								}
 								result = template.content.childNodes;
 							}
 							break;
 						case "text/html":
 						case "html":
-							result = await response.text();
-							result = new DOMParser().parseFromString(result, "text/html");
+							{
+								const responseText = await response.text();
+								result = createTrustedHTML
+									? createTrustedHTML(responseText)
+									: responseText;
+								try {
+									result = new DOMParser().parseFromString(result, "text/html");
+								} catch (error) {
+									if (!createTrustedHTML) {
+										throw new Error(
+											"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
+											{ cause: error },
+										);
+									}
+									throw error;
+								}
+							}
 							break;
 						case "application/json":
 						case "text/json":
@@ -355,8 +423,8 @@ export const create = (initialOptions) => {
 			await throttle(options.throttle);
 		}
 
-		const maximum = options.maxConcurrency;
-		if (maximum !== undefined && (!Number.isInteger(maximum) || maximum <= 0)) {
+		const maximum = options.maxConcurrency ?? Infinity;
+		if (maximum !== Infinity && (!Number.isInteger(maximum) || maximum <= 0)) {
 			return [
 				new TypeError("maxConcurrency must be a positive integer"),
 				null,
@@ -367,11 +435,7 @@ export const create = (initialOptions) => {
 		const signal = options.abort?.signal || options.abort;
 		let acquired = false;
 		try {
-			if (maximum !== undefined) {
-				await acquireConcurrency(maximum, signal);
-			} else {
-				activeRequests++;
-			}
+			await acquireConcurrency(maximum, signal);
 			acquired = true;
 			return await sendRequest(options);
 		} catch (error) {
@@ -381,10 +445,8 @@ export const create = (initialOptions) => {
 				null,
 			];
 		} finally {
-			if (acquired && maximum !== undefined) {
+			if (acquired) {
 				releaseConcurrency();
-			} else if (acquired) {
-				activeRequests--;
 			}
 		}
 	};
@@ -396,10 +458,21 @@ export const create = (initialOptions) => {
 	 * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
 	 */
 	return (sendOptions = {}) => {
+		try {
+			validateTrustedHTMLOptions(sendOptions);
+		} catch (error) {
+			return Promise.resolve([error, null, null]);
+		}
 		const options = {
 			...initialOptions,
 			...cloneRecursive(sendOptions),
 		};
+		if (Object.hasOwn(sendOptions, "createTrustedHTML")) {
+			options.perCallCreateTrustedHTML = sendOptions.createTrustedHTML;
+		}
+		if (Object.hasOwn(sendOptions, "trustedTypesPolicy")) {
+			options.perCallTrustedTypesPolicy = sendOptions.trustedTypesPolicy;
+		}
 		if (initialOptions.headers) {
 			options.headers = {
 				...initialOptions.headers,

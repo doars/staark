@@ -80,7 +80,7 @@
   var INFIX = ":";
   var encode = (parts, stringToBase642) => {
     const segments = [];
-    for (const key in parts) {
+    for (const key of Object.keys(parts)) {
       const value = parts[key];
       if (value !== null && value !== void 0) {
         segments.push(key + INFIX + stringToBase642(String(value)));
@@ -88,16 +88,58 @@
     }
     return segments.join(DELIMITER);
   };
-  var decode = (message, base64ToString2) => {
-    const parts = {};
+  var decode = (message, base64ToString2, options = {}) => {
+    if (typeof message !== "string") {
+      throw new TypeError("protocol_message_not_string");
+    }
+    const {
+      allowedKeys,
+      maxDecodedFieldBytes = Infinity,
+      maxKeyBytes = Infinity,
+      maxSegments = Infinity,
+      maxTotalDecodedBytes = Infinity
+    } = options;
+    const parts = /* @__PURE__ */ Object.create(null);
     const segments = message.split(DELIMITER);
+    if (segments.length > maxSegments) {
+      throw new RangeError("protocol_too_many_segments");
+    }
+    let totalDecodedBytes = 0;
     for (const segment of segments) {
       const index = segment.indexOf(INFIX);
-      if (index > 0) {
-        const key = segment.substring(0, index);
-        const value = segment.substring(index + 1);
-        parts[key] = base64ToString2(value);
+      if (index <= 0) {
+        throw new TypeError("protocol_missing_separator");
       }
+      const key = segment.substring(0, index);
+      const value = segment.substring(index + 1);
+      if (new TextEncoder().encode(key).byteLength > maxKeyBytes) {
+        throw new RangeError("protocol_key_too_large");
+      }
+      if (allowedKeys && !allowedKeys.has(key)) {
+        throw new TypeError("protocol_unknown_key");
+      }
+      if (Object.hasOwn(parts, key)) {
+        throw new TypeError("protocol_duplicate_key");
+      }
+      if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+        value
+      )) {
+        throw new TypeError("protocol_invalid_base64");
+      }
+      const maximumEncodedLength = Math.ceil(maxDecodedFieldBytes / 3) * 4;
+      if (value.length > maximumEncodedLength) {
+        throw new RangeError("protocol_field_too_large");
+      }
+      const decodedValue = base64ToString2(value);
+      const decodedBytes = new TextEncoder().encode(decodedValue).byteLength;
+      if (decodedBytes > maxDecodedFieldBytes) {
+        throw new RangeError("protocol_field_too_large");
+      }
+      totalDecodedBytes += decodedBytes;
+      if (totalDecodedBytes > maxTotalDecodedBytes) {
+        throw new RangeError("protocol_message_too_large");
+      }
+      parts[key] = decodedValue;
     }
     return parts;
   };
@@ -222,6 +264,7 @@
   var CONNECTION_DISCONNECTED = "DISCONNECTED";
   var CONNECTION_DISCONNECTING = "DISCONNECTING";
   var CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
+  var PROTOCOL_VERSION = 1;
   var EXCHANGE_0 = "_X0";
   var EXCHANGE_1 = "_X1";
   var EXCHANGE_2 = "_X2";
@@ -237,6 +280,7 @@
   // src/library/payload-keys.js
   var SERVER_PAYLOAD = "S";
   var SERVER_TIME = "T";
+  var CREATOR_AUTHENTICATION = "A";
   var SHARED_ENCRYPTION_PAYLOAD = "E";
   var SHARED_ENCRYPTION_IV = "I";
   var USER = "U";
@@ -257,8 +301,46 @@
       httpUrl = "http://localhost:3000",
       wsUrl = "http://localhost:3000",
       messageBufferMaxCount = 50,
-      messageBufferMaxDuration = 60 * 1e3
+      messageBufferMaxDuration = 60 * 1e3,
+      allowInsecureNonLoopback = false,
+      maxEncodedMessageBytes = 256 * 1024,
+      maxProtocolSegments = 16,
+      maxProtocolKeyBytes = 64,
+      maxDecodedFieldBytes = 192 * 1024,
+      maxTotalDecodedBytes = 256 * 1024
     } = options;
+    for (const [name, value] of [
+      ["maxEncodedMessageBytes", maxEncodedMessageBytes],
+      ["maxProtocolSegments", maxProtocolSegments],
+      ["maxProtocolKeyBytes", maxProtocolKeyBytes],
+      ["maxDecodedFieldBytes", maxDecodedFieldBytes],
+      ["maxTotalDecodedBytes", maxTotalDecodedBytes]
+    ]) {
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new TypeError(`${name} must be a positive integer`);
+      }
+    }
+    const allowedProtocolKeys = /* @__PURE__ */ new Set([
+      SERVER_PAYLOAD,
+      SERVER_TIME,
+      SHARED_ENCRYPTION_IV,
+      SHARED_ENCRYPTION_PAYLOAD,
+      USER,
+      USER_DIRECT_PAYLOAD,
+      USER_ENCRYPTION_IV,
+      USER_ENCRYPTION_KEY,
+      USER_ENCRYPTION_PAYLOAD,
+      USER_ENCRYPTION_SIGNATURE
+    ]);
+    const isLoopback = (hostname) => hostname === "localhost" || hostname === "::1" || hostname === "[::1]" || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+    for (const configuredUrl of [httpUrl, wsUrl]) {
+      const url = new URL(configuredUrl);
+      if ((url.protocol === "http:" || url.protocol === "ws:") && !isLoopback(url.hostname) && !allowInsecureNonLoopback) {
+        throw new TypeError(
+          "Insecure non-loopback URLs require allowInsecureNonLoopback"
+        );
+      }
+    }
     let _connectionState = CONNECTION_DISCONNECTED, _creatorId, _generatedKeys, _keyGenerationPromise, _myEncryptKeys, _myExchangeKeys, _myId, _myPublicEncryptKey, _myPublicSignKey, _mySignKeys, _privateData, _privateDataVerify, _publicData, _publicDataVerify, _roomCode, _sharedKey, _sharedMessagesBuffer = [], _socket, _userDerivedKeys = /* @__PURE__ */ new Map(), _userEncryptKeys = /* @__PURE__ */ new Map(), _userSignKeys = /* @__PURE__ */ new Map(), _userVerification = /* @__PURE__ */ new Map(), _userVerified = /* @__PURE__ */ new Map();
     const _generateMyKeys = () => {
       if (!_generatedKeys && !_keyGenerationPromise) {
@@ -367,18 +449,28 @@
       type: USER_KICK,
       userId
     });
-    const _joinRoom = (roomCode, creatorSecret = null) => {
-      if (!creatorSecret && _connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
+    const _joinRoom = (roomCode, creatorConnectionToken = null) => {
+      if (!creatorConnectionToken && _connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
         return;
       }
       _setConnectionState(CONNECTION_CONNECTING);
       _roomCode = roomCode;
       const url = new URL(wsUrl + joinRoomEndpoint);
       url.searchParams.append("code", _roomCode);
-      if (creatorSecret) {
-        url.searchParams.append("creator", creatorSecret);
+      if (creatorConnectionToken) {
+        url.searchParams.append("creator", "1");
       }
       _socket = new WebSocket(url.toString());
+      if (creatorConnectionToken) {
+        _socket.addEventListener("open", () => {
+          _socket.send(
+            encode(
+              { [CREATOR_AUTHENTICATION]: creatorConnectionToken },
+              stringToBase64
+            )
+          );
+        });
+      }
       _socket.addEventListener("close", (event) => {
         onRoomLeave.dispatch({
           event
@@ -392,7 +484,24 @@
         leaveRoom();
       });
       _socket.addEventListener("message", async (event) => {
-        _processMessage(decode(event.data, base64ToString), event.data);
+        try {
+          if (typeof event.data !== "string" || new TextEncoder().encode(event.data).byteLength > maxEncodedMessageBytes) {
+            throw new RangeError("message_too_large");
+          }
+          _processMessage(
+            decode(event.data, base64ToString, {
+              allowedKeys: allowedProtocolKeys,
+              maxDecodedFieldBytes,
+              maxKeyBytes: maxProtocolKeyBytes,
+              maxSegments: maxProtocolSegments,
+              maxTotalDecodedBytes
+            }),
+            event.data
+          );
+        } catch (error) {
+          onError.dispatch({ error });
+          _socket.close(1008, "invalid_protocol_message");
+        }
       });
     };
     const _processMessage = async (parts, raw, isBuffered = false) => {
@@ -531,6 +640,13 @@
       data = deserializedData;
       switch (data.type) {
         case ROOM_JOINED:
+          if (data.protocolVersion !== PROTOCOL_VERSION) {
+            onError.dispatch({
+              error: new Error("unsupported_protocol_version")
+            });
+            leaveRoom();
+            return;
+          }
           _creatorId = data.creatorId;
           _myId = data.userId;
           onRoomJoin.dispatch({
@@ -1068,7 +1184,7 @@
         let data = await response.text();
         data = deserializeMessage(data);
         _myId = data.userId;
-        _joinRoom(data.roomCode, data.creatorSecret);
+        _joinRoom(data.roomCode, data.creatorConnectionToken);
         return data;
       },
       /**

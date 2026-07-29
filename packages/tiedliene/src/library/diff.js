@@ -73,6 +73,111 @@ const isContainer = (value) =>
 		Object.getPrototypeOf(value) === Object.prototype ||
 		Object.getPrototypeOf(value) === null);
 
+const valuesEqual = (before, after, compared = new WeakMap()) => {
+	if (Object.is(before, after)) {
+		return true;
+	}
+	if (
+		!before ||
+		!after ||
+		typeof before !== "object" ||
+		typeof after !== "object"
+	) {
+		return false;
+	}
+	let comparedAfter = compared.get(before);
+	if (comparedAfter?.has(after)) {
+		return true;
+	}
+	if (!comparedAfter) {
+		comparedAfter = new WeakSet();
+		compared.set(before, comparedAfter);
+	}
+	comparedAfter.add(after);
+	if (before instanceof Date || after instanceof Date) {
+		return (
+			before instanceof Date &&
+			after instanceof Date &&
+			before.getTime() === after.getTime()
+		);
+	}
+	if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
+		if (
+			!ArrayBuffer.isView(before) ||
+			!ArrayBuffer.isView(after) ||
+			before.constructor !== after.constructor ||
+			before.byteLength !== after.byteLength
+		) {
+			return false;
+		}
+		const beforeBytes = new Uint8Array(
+			before.buffer,
+			before.byteOffset,
+			before.byteLength,
+		);
+		const afterBytes = new Uint8Array(
+			after.buffer,
+			after.byteOffset,
+			after.byteLength,
+		);
+		for (let index = 0; index < beforeBytes.length; index++) {
+			if (beforeBytes[index] !== afterBytes[index]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	if (before instanceof Map || after instanceof Map) {
+		if (
+			!(before instanceof Map) ||
+			!(after instanceof Map) ||
+			before.size !== after.size
+		) {
+			return false;
+		}
+		const unmatchedEntries = [...after];
+		for (const [beforeKey, beforeValue] of before) {
+			let matchIndex = -1;
+			for (let index = 0; index < unmatchedEntries.length; index++) {
+				const [afterKey, afterValue] = unmatchedEntries[index];
+				if (
+					valuesEqual(beforeKey, afterKey, new WeakMap()) &&
+					valuesEqual(beforeValue, afterValue, new WeakMap())
+				) {
+					matchIndex = index;
+					break;
+				}
+			}
+			if (matchIndex < 0) {
+				return false;
+			}
+			unmatchedEntries.splice(matchIndex, 1);
+		}
+		return true;
+	}
+	if (before instanceof Set || after instanceof Set) {
+		if (
+			!(before instanceof Set) ||
+			!(after instanceof Set) ||
+			before.size !== after.size
+		) {
+			return false;
+		}
+		const unmatchedValues = [...after];
+		for (const beforeValue of before) {
+			const matchIndex = unmatchedValues.findIndex((afterValue) =>
+				valuesEqual(beforeValue, afterValue, new WeakMap()),
+			);
+			if (matchIndex < 0) {
+				return false;
+			}
+			unmatchedValues.splice(matchIndex, 1);
+		}
+		return true;
+	}
+	return false;
+};
+
 /**
  * Convert and validate a path component for its parent container.
  *
@@ -236,17 +341,12 @@ export const determineDiff = (
 				path: currentPath,
 				old: cloneRecursive(before[key]),
 			});
-		} else if (
-			before[key] &&
-			after[key] &&
-			typeof before[key] === "object" &&
-			typeof after[key] === "object"
-		) {
+		} else if (isContainer(before[key]) && isContainer(after[key])) {
 			// If both are objects, recurse deeper.
 			changes.unshift(
 				...determineDiff(before[key], after[key], currentPath, compared),
 			);
-		} else if (before[key] !== after[key]) {
+		} else if (!valuesEqual(before[key], after[key])) {
 			// If the value has changed, record the new and old value.
 			changes.unshift({
 				type: "set",

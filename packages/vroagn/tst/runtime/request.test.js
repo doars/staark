@@ -218,4 +218,128 @@ describe('Request scheduling', () => {
     assert.throws(() => create({ maxConcurrency: 0 }), TypeError)
     assert.throws(() => create({ maxConcurrency: 1.5 }), TypeError)
   })
+
+  it('drains a limited request after an unlimited request completes', async () => {
+    const started = []
+    const releases = []
+    const request = create({
+      fetch: async (url) => {
+        started.push(url)
+        await new Promise((resolve) => releases.push(resolve))
+        return new Response('done')
+      },
+      type: 'text',
+    })
+
+    const unlimited = request({ path: '/unlimited' })
+    const limited = request({ maxConcurrency: 1, path: '/limited' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(started, ['/unlimited'])
+
+    releases.shift()()
+    await unlimited
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(started, ['/unlimited', '/limited'])
+    releases.shift()()
+    await limited
+  })
+
+  it('removes an aborted queue head and admits the next request', async () => {
+    const started = []
+    const releases = []
+    const request = create({
+      fetch: async (url) => {
+        started.push(url)
+        await new Promise((resolve) => releases.push(resolve))
+        return new Response('done')
+      },
+      maxConcurrency: 1,
+      type: 'text',
+    })
+    const abort = new AbortController()
+
+    const first = request({ path: '/first' })
+    const aborted = request({ abort, path: '/aborted' })
+    const third = request({ path: '/third' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    abort.abort()
+    const [abortError] = await aborted
+    assert.strictEqual(abortError.name, 'AbortError')
+    releases.shift()()
+    await first
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepStrictEqual(started, ['/first', '/third'])
+    releases.shift()()
+    await third
+  })
+})
+
+describe('Trusted HTML parsing', () => {
+  it('passes callback output to the partial HTML sink without coercion', async () => {
+    const trustedValue = { trusted: true }
+    const received = []
+    const originalDocument = globalThis.document
+    globalThis.document = {
+      createElement: () => ({
+        content: { childNodes: ['parsed'] },
+        set innerHTML(value) {
+          received.push(value)
+        },
+      }),
+    }
+    try {
+      const request = create({
+        createTrustedHTML: (html) => {
+          assert.strictEqual(html, '<p>trusted</p>')
+          return trustedValue
+        },
+        fetch: async () => new Response('<p>trusted</p>'),
+        type: 'html-partial',
+      })
+      const [error, _response, result] = await request({})
+
+      assert.strictEqual(error, null)
+      assert.deepStrictEqual(result, ['parsed'])
+      assert.strictEqual(received[0], trustedValue)
+    } finally {
+      globalThis.document = originalDocument
+    }
+  })
+
+  it('uses per-call callback before initial and per-call policies', async () => {
+    const calls = []
+    const originalDocument = globalThis.document
+    globalThis.document = {
+      createElement: () => ({
+        content: { childNodes: [] },
+        set innerHTML(_value) {},
+      }),
+    }
+    try {
+      const request = create({
+        createTrustedHTML: () => calls.push('initial callback'),
+        fetch: async () => new Response('<p>trusted</p>'),
+        type: 'html-partial',
+      })
+      await request({
+        createTrustedHTML: (html) => {
+          calls.push('per-call callback')
+          return html
+        },
+        trustedTypesPolicy: {
+          createHTML: () => calls.push('per-call policy'),
+        },
+      })
+      assert.deepStrictEqual(calls, ['per-call callback'])
+    } finally {
+      globalThis.document = originalDocument
+    }
+  })
+
+  it('rejects invalid trusted HTML options', async () => {
+    assert.throws(() => create({ createTrustedHTML: true }), TypeError)
+    const request = create({ fetch: async () => new Response('ok') })
+    const [error] = await request({ trustedTypesPolicy: {} })
+    assert(error instanceof TypeError)
+  })
 })

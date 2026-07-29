@@ -30,7 +30,52 @@ The server is responsible for creating rooms and relaying messages between users
 - `serializeMessage` (`Function`): Function to serialize messages. Default: `JSON.stringify`.
 - `createRoomEndpoint` (`string`): Endpoint for creating a room. Default: `'/create-room'`.
 - `joinRoomEndpoint` (`string`): Endpoint for joining a room. Default: `'/join-room'`.
-- `maxUsersPerRoom` (`number`): Absolute maximum users allowed per room. Default: `50`.
+- `maxUsersPerRoom` (`number`): Absolute maximum users allowed per room. Default: `16`.
+- `maxRooms` (`number`): Maximum number of active rooms. Default: `1000`.
+- `creatorJoinTimeout` (`number`): Milliseconds before an unclaimed room is removed. Default: `30000`. Set to `0` to disable.
+- `roomIdleTimeout` (`number`): Milliseconds before an inactive room is removed. Default: `1800000`. Set to `0` to disable.
+- `roomCreationsPerAddress` (`number`): Per-address room creation attempts per minute. Default: `10`.
+- `roomCreationsGlobal` (`number`): Global room creation attempts per minute. Default: `100`.
+- `getRemoteAddress(request)` (`Function`): Returns the address used for rate limiting. The default reads only `request.socket.remoteAddress`; forwarding headers are never trusted automatically.
+- `authorizeRoomCreation({ request, remoteAddress })` (`Function`): Synchronously authorizes an attempt. Return `false` to respond with `403`; thrown errors produce `500`.
+- `maxEncodedMessageBytes` (`number`): Maximum encoded WebSocket message size. Default: `262144`.
+- `maxProtocolSegments` (`number`): Maximum protocol segments per message. Default: `16`.
+- `maxProtocolKeyBytes` (`number`): Maximum UTF-8 segment-key size. Default: `64`.
+- `maxDecodedFieldBytes` (`number`): Maximum decoded bytes per field. Default: `196608`.
+- `maxTotalDecodedBytes` (`number`): Maximum decoded bytes across fields. Default: `262144`.
+- `maxSocketBufferedAmount` (`number`): Buffered bytes before a slow consumer is closed. Default: `1048576`.
+- `connectionMessages` (`number`): Messages allowed per connection rate window. Default: `60`.
+- `directMessages`, `broadcastMessages`, and `serverMessages` (`number`): Independent per-category messages allowed per connection rate window. Each defaults to `60`.
+- `connectionMessageBytes` (`number`): Encoded bytes allowed per connection rate window. Default: `1048576`.
+- `connectionRateWindow` (`number`): Connection rate window in milliseconds. Default: `10000`.
+- `handshakeMessages` (`number`): Pending-handshake messages allowed per minute. Default: `10`.
+- `maxPendingUsersPerRoom` (`number`): Maximum reserved and unverified users. Default: `8`.
+- `handshakeTimeout` (`number`): Milliseconds before an unverified peer is removed. Default: `30000`. Set to `0` to disable.
+- `validateOrigin({ origin, request })` (`Function`): Upgrade origin policy. It defaults to exact same-origin validation and rejects missing origins.
+- `allowedWebSocketProtocols` (`string[]`): Optional WebSocket subprotocol allowlist.
+
+Production deployments should terminate TLS at the application or reverse
+proxy and configure an additional reverse-proxy rate limit for the room creation
+endpoint. Only configure `getRemoteAddress` to use forwarding headers when the
+request came through a trusted proxy that replaces those headers.
+
+Construct the WebSocket server with a transport-level `maxPayload` no larger
+than the connector's logical encoded-message limit:
+
+```JavaScript
+const socketServer = new WebSocketServer({
+  maxPayload: 256 * 1024,
+  noServer: true,
+})
+```
+
+Production clients must use `https:` and `wss:` URLs. Plain `http:` and `ws:`
+are accepted only for `localhost`, `127.0.0.0/8`, and `::1`, unless the explicit
+`allowInsecureNonLoopback` development option is enabled. Terminate TLS at the
+application or a trusted reverse proxy. Creator credentials are sent as a
+single-use first protocol message and never appear in the WebSocket URL. If an
+older deployment logged creator query parameters, redact those historical
+access logs.
 
 > For a complete example see the [server.js in the example directory](./exm/server.js).
 
@@ -51,6 +96,7 @@ The synchronizer works with two state objects. A private state, this object hold
 - `wsUrl` (`string`): Base WebSocket URL for room connections. Default: `'http://localhost:3000'`.
 - `messageBufferMaxCount` (`number`): The maximum number of messages to store in the buffer. Default: `50`.
 - `messageBufferMaxDuration` (`number`): The maximum duration in milliseconds to store a message in the buffer. Default: `60000`.
+- `allowInsecureNonLoopback` (`boolean`): Development-only override for non-loopback `http:` or `ws:` URLs. Default: `false`.
 
 When creating or joining a room, you can provide the following options:
 
@@ -64,6 +110,10 @@ When creating or joining a room, you can provide the following options:
 - All createClientConnector options.
 - `windowPerUser` (`number`): Number of state updates to keep per joined user. Used in case of rollbacks. Default: `16`.
 - `synchronisationInterval` (`number`): Interval in milliseconds for a full state synchronisation. Default: `60000`.
+- `maxDiffChanges` (`number`): Maximum changes accepted in one state update. Default: `1000`.
+- `maxDiffPathDepth` (`number`): Maximum accepted state-delta path depth. Default: `32`.
+- `maxDiffValueBytes` (`number`): Maximum serialized value size per state change. Default: `196608`.
+- `maxSerializedStateBytes` (`number`): Maximum serialized full-state synchronization size. Default: `1048576`.
 
 > For a complete example see the [client.js in the example directory](./exm/client.js).
 

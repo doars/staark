@@ -32,7 +32,12 @@
       return clone2;
     }
     if (ArrayBuffer.isView(value)) {
-      const clone2 = new value.constructor(value);
+      const clone2 = value instanceof DataView ? new DataView(
+        value.buffer.slice(
+          value.byteOffset,
+          value.byteOffset + value.byteLength
+        )
+      ) : new value.constructor(value);
       clones.set(value, clone2);
       return clone2;
     }
@@ -80,6 +85,85 @@
     return diff;
   };
   var isContainer = (value) => value !== null && typeof value === "object" && (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+  var valuesEqual = (before, after, compared = /* @__PURE__ */ new WeakMap()) => {
+    if (Object.is(before, after)) {
+      return true;
+    }
+    if (!before || !after || typeof before !== "object" || typeof after !== "object") {
+      return false;
+    }
+    let comparedAfter = compared.get(before);
+    if (comparedAfter?.has(after)) {
+      return true;
+    }
+    if (!comparedAfter) {
+      comparedAfter = /* @__PURE__ */ new WeakSet();
+      compared.set(before, comparedAfter);
+    }
+    comparedAfter.add(after);
+    if (before instanceof Date || after instanceof Date) {
+      return before instanceof Date && after instanceof Date && before.getTime() === after.getTime();
+    }
+    if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
+      if (!ArrayBuffer.isView(before) || !ArrayBuffer.isView(after) || before.constructor !== after.constructor || before.byteLength !== after.byteLength) {
+        return false;
+      }
+      const beforeBytes = new Uint8Array(
+        before.buffer,
+        before.byteOffset,
+        before.byteLength
+      );
+      const afterBytes = new Uint8Array(
+        after.buffer,
+        after.byteOffset,
+        after.byteLength
+      );
+      for (let index = 0; index < beforeBytes.length; index++) {
+        if (beforeBytes[index] !== afterBytes[index]) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (before instanceof Map || after instanceof Map) {
+      if (!(before instanceof Map) || !(after instanceof Map) || before.size !== after.size) {
+        return false;
+      }
+      const unmatchedEntries = [...after];
+      for (const [beforeKey, beforeValue] of before) {
+        let matchIndex = -1;
+        for (let index = 0; index < unmatchedEntries.length; index++) {
+          const [afterKey, afterValue] = unmatchedEntries[index];
+          if (valuesEqual(beforeKey, afterKey, /* @__PURE__ */ new WeakMap()) && valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())) {
+            matchIndex = index;
+            break;
+          }
+        }
+        if (matchIndex < 0) {
+          return false;
+        }
+        unmatchedEntries.splice(matchIndex, 1);
+      }
+      return true;
+    }
+    if (before instanceof Set || after instanceof Set) {
+      if (!(before instanceof Set) || !(after instanceof Set) || before.size !== after.size) {
+        return false;
+      }
+      const unmatchedValues = [...after];
+      for (const beforeValue of before) {
+        const matchIndex = unmatchedValues.findIndex(
+          (afterValue) => valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())
+        );
+        if (matchIndex < 0) {
+          return false;
+        }
+        unmatchedValues.splice(matchIndex, 1);
+      }
+      return true;
+    }
+    return false;
+  };
   var getKey = (current, component) => {
     if (Array.isArray(current)) {
       if (typeof component === "number" && component >= 0 || typeof component === "string" && ARRAY_INDEX.test(component)) {
@@ -177,11 +261,11 @@
           path: currentPath,
           old: cloneRecursive(before[key])
         });
-      } else if (before[key] && after[key] && typeof before[key] === "object" && typeof after[key] === "object") {
+      } else if (isContainer(before[key]) && isContainer(after[key])) {
         changes.unshift(
           ...determineDiff(before[key], after[key], currentPath, compared)
         );
-      } else if (before[key] !== after[key]) {
+      } else if (!valuesEqual(before[key], after[key])) {
         changes.unshift({
           type: "set",
           path: currentPath,
@@ -214,13 +298,68 @@
 
   // src/library/state.js
   var manageState = (state, options) => {
-    state = cloneRecursive(state);
     options = Object.assign(
       {
-        maximumHistory: 50
+        clone: cloneRecursive,
+        maximumHistory: 50,
+        snapshot: "clone"
       },
       options
     );
+    if (!Number.isInteger(options.maximumHistory) || options.maximumHistory < 0) {
+      throw new TypeError("maximumHistory must be a non-negative integer");
+    }
+    if (options.snapshot !== "clone" && options.snapshot !== "reference") {
+      throw new TypeError("snapshot must be clone or reference");
+    }
+    if (typeof options.clone !== "function") {
+      throw new TypeError("clone must be a function");
+    }
+    const validateState = (value, visited = /* @__PURE__ */ new WeakSet()) => {
+      if (typeof value === "function") {
+        throw new TypeError("Unsupported state value: function");
+      }
+      if (!value || typeof value !== "object" || visited.has(value)) {
+        return;
+      }
+      visited.add(value);
+      if (value instanceof WeakMap || value instanceof WeakSet || typeof Node !== "undefined" && value instanceof Node) {
+        throw new TypeError("Unsupported state value");
+      }
+      if (Object.getOwnPropertySymbols(value).length > 0) {
+        throw new TypeError("Unsupported symbol-keyed state");
+      }
+      if (value instanceof Date || ArrayBuffer.isView(value)) {
+        return;
+      }
+      if (value instanceof Map) {
+        for (const [key, entryValue] of value) {
+          validateState(key, visited);
+          validateState(entryValue, visited);
+        }
+        return;
+      }
+      if (value instanceof Set) {
+        for (const entryValue of value) {
+          validateState(entryValue, visited);
+        }
+        return;
+      }
+      const prototype = Object.getPrototypeOf(value);
+      if (!Array.isArray(value) && prototype !== Object.prototype && prototype !== null) {
+        throw new TypeError("Unsupported custom state instance");
+      }
+      for (const key of Object.keys(value)) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (descriptor?.get || descriptor?.set) {
+          throw new TypeError("Unsupported enumerable state accessor");
+        }
+        validateState(value[key], visited);
+      }
+    };
+    validateState(state);
+    state = options.clone(state);
+    const snapshot = () => options.snapshot === "reference" ? state : options.clone(state);
     const undoStack = [];
     const redoStack = [];
     return {
@@ -230,7 +369,7 @@
        * @returns {Record<string, any>} The current state.
        */
       get: () => {
-        return cloneRecursive(state);
+        return snapshot();
       },
       /**
        * Sets the state and returns the new state.
@@ -239,17 +378,19 @@
        * @returns {Record<string, any>} The new state.
        */
       set: (newState) => {
-        newState = cloneRecursive(newState);
+        validateState(newState);
         const diffs = determineDiff(state, newState);
         if (diffs.length > 0) {
-          undoStack.push(diffs);
-          if (options.maximumHistory && undoStack.length > options.maximumHistory) {
+          if (options.maximumHistory > 0) {
+            undoStack.push(diffs);
+          }
+          if (options.maximumHistory > 0 && undoStack.length > options.maximumHistory) {
             undoStack.splice(0, undoStack.length - options.maximumHistory);
           }
           redoStack.splice(0);
         }
-        state = newState;
-        return cloneRecursive(state);
+        state = applyDiff(state, diffs);
+        return snapshot();
       },
       /**
        * Undoes the last change and returns the new state.
@@ -267,7 +408,7 @@
             state = revertDiff(state, lastDiffs);
           }
         }
-        return cloneRecursive(state);
+        return snapshot();
       },
       /**
        * Redoes the last change and returns the new state.
@@ -285,7 +426,7 @@
             state = applyDiff(state, diffs);
           }
         }
-        return cloneRecursive(state);
+        return snapshot();
       }
     };
   };

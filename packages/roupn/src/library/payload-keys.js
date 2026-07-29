@@ -1,5 +1,6 @@
 export const SERVER_PAYLOAD = "S";
 export const SERVER_TIME = "T";
+export const CREATOR_AUTHENTICATION = "A";
 
 export const SHARED_ENCRYPTION_PAYLOAD = "E";
 export const SHARED_ENCRYPTION_IV = "I";
