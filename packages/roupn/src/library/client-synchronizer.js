@@ -319,12 +319,10 @@ export const createClientSynchronizer = (
 		privateState.roomCode = roomCode;
 		privateState.userId = userId;
 		privateState.users = users;
-		privateState.verifiedUsers = [];
+		privateState.verifiedUsers = [creatorId];
 		privateState.previousState = cloneRecursive(publicState);
 
 		if (userId === creatorId) {
-			privateState.verifiedUsers.push(userId);
-
 			// Let the creator send resynchronisation messages every once in a well to get all users in sync.
 			_synchronisationIntervalId = setInterval(
 				_synchroniseState,

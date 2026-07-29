@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Mark the room creator as verified for every connected client.
 - Bound encoded and decoded protocol messages, reject malformed segments, and
   use null-prototype decoded records.
 - Add per-connection message, byte, and handshake budgets and close slow

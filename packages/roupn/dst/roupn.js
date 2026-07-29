@@ -1733,10 +1733,9 @@
       privateState.roomCode = roomCode;
       privateState.userId = userId;
       privateState.users = users;
-      privateState.verifiedUsers = [];
+      privateState.verifiedUsers = [creatorId];
       privateState.previousState = cloneRecursive(publicState);
       if (userId === creatorId) {
-        privateState.verifiedUsers.push(userId);
         _synchronisationIntervalId = setInterval(
           _synchroniseState,
           synchronisationInterval
