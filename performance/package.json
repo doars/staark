@@ -1,27 +1,29 @@
 {
-  "author": {
-    "name": "Ron Dekker",
-    "website": "https://rondekker.nl/en-gb"
-  },
-  "name": "@doars/staark-benchmarks",
-  "private": true,
-  "version": "0.0.0",
-  "license": "MIT",
-  "type": "module",
-  "scripts": {
-    "benchmark:quick": "node src/index.js --iterations=10",
-    "benchmark": "node src/index.js",
-    "build": "NODE_ENV=production node config.bundle.js",
-    "profile": "node src/index.js --profile --iterations=1",
-    "sizes": "node src/index.js --minified --sizes --iterations=0"
-  },
-  "devDependencies": {
-    "playwright": "^1.62.0"
-  },
-  "dependencies": {
-    "@doars/staark-patch": "x",
-    "@doars/staark": "x",
-    "hyperapp": "^2.0.22",
-    "superfine": "^8.2.0"
-  }
+	"author": {
+		"name": "Ron Dekker",
+		"website": "https://rondekker.nl/en-gb"
+	},
+	"name": "@doars/staark-benchmarks",
+	"private": true,
+	"version": "0.0.0",
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"benchmark:quick": "node src/index.js --iterations=10",
+		"benchmark": "node src/index.js",
+		"build": "NODE_ENV=production node config.bundle.js",
+		"check": "biome check ./src ./benchmarks/**/*.js",
+		"check:write": "biome check --write ./src ./benchmarks/**/*.js",
+		"profile": "node src/index.js --profile --iterations=1",
+		"sizes": "npm run build && node src/index.js --minified --sizes --iterations=0"
+	},
+	"devDependencies": {
+		"playwright": "^1.62.0"
+	},
+	"dependencies": {
+		"@doars/staark-patch": "x",
+		"@doars/staark": "x",
+		"hyperapp": "^2.0.22",
+		"superfine": "^8.2.0"
+	}
 }

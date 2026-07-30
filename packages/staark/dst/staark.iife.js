@@ -29,25 +29,6 @@
     };
   };
 
-  // ../staark-common/src/factory.js
-  var factory = /* @__PURE__ */ new Proxy(
-    {},
-    {
-      /**
-       * @param {FactoryCache} target Factory cache.
-       * @param {string} type Type of the nodes to generate.
-       * @returns {Factory} Function that generates the a node with the given type.
-       */
-      get: (target, type) => {
-        if (target[type]) {
-          return target[type];
-        }
-        const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
-        return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
-      }
-    }
-  );
-
   // ../staark-common/src/selector.js
   var BRACKET_CLOSE = "]";
   var BRACKET_OPEN = "[";
@@ -56,12 +37,7 @@
   var HASH = "#";
   var QUOTE_SINGLE = "'";
   var QUOTE_DOUBLE = '"';
-  var TokenTypes = {
-    attribute: 0,
-    class: 1,
-    id: 2,
-    type: 3
-  };
+  var propertyNameToType = (propertyName) => propertyName[0].toLowerCase() + propertyName.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
   var selectorToTokenizer = (selector) => {
     const length = selector.length;
     let i = 0;
@@ -69,25 +45,25 @@
     const attributes = {};
     let tokenA = "";
     let tokenB = true;
-    let tokenType = TokenTypes.type;
+    let tokenType;
     const storeToken = () => {
       if (tokenA) {
         switch (tokenType) {
-          case TokenTypes.attribute:
+          case BRACKET_OPEN:
             attributes[tokenA] = tokenB === true ? true : tokenB;
             tokenB = true;
             break;
-          case TokenTypes.class:
+          case DOT:
             if (!attributes.class) {
               attributes.class = tokenA;
               break;
             }
             attributes.class += ` ${tokenA}`;
             break;
-          case TokenTypes.id:
+          case HASH:
             attributes.id = tokenA;
             break;
-          case TokenTypes.type:
+          default:
             type = tokenA;
             break;
         }
@@ -152,15 +128,15 @@
       i++;
       if (character === HASH) {
         storeToken();
-        tokenType = TokenTypes.id;
+        tokenType = HASH;
         continue;
       } else if (character === DOT) {
         storeToken();
-        tokenType = TokenTypes.class;
+        tokenType = DOT;
         continue;
       } else if (character === BRACKET_OPEN) {
         storeToken();
-        tokenType = TokenTypes.attribute;
+        tokenType = BRACKET_OPEN;
         parseAttribute();
         continue;
       }
@@ -169,6 +145,25 @@
     storeToken();
     return [type, attributes];
   };
+
+  // ../staark-common/src/factory.js
+  var factory = /* @__PURE__ */ new Proxy(
+    {},
+    {
+      /**
+       * @param {FactoryCache} target Factory cache.
+       * @param {string} type Type of the nodes to generate.
+       * @returns {Factory} Function that generates the a node with the given type.
+       */
+      get: (target, type) => {
+        if (target[type]) {
+          return target[type];
+        }
+        const typeConverted = propertyNameToType(type);
+        return target[type] = (attributesOrContents, contents) => node(typeConverted, attributesOrContents, contents);
+      }
+    }
+  );
 
   // ../staark-common/src/fctory.js
   var fctory = /* @__PURE__ */ new Proxy(
@@ -183,12 +178,11 @@
         if (target[type]) {
           return target[type];
         }
-        const typeConverted = type[0].toLowerCase() + type.substring(1).replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+        const typeConverted = propertyNameToType(type);
         return target[type] = (selector, contents) => {
           let attributes;
           if (selector) {
-            const [_, _attributes] = selectorToTokenizer(selector);
-            attributes = _attributes;
+            attributes = selectorToTokenizer(selector)[1];
           }
           return node(typeConverted, attributes, contents);
         };
@@ -421,14 +415,15 @@
       }
     };
     const add = (target) => {
-      if (proxies.has(target)) {
-        return proxies.get(target);
+      let proxy = proxies.get(target);
+      if (proxy) {
+        return proxy;
       }
       const prototype = Object.getPrototypeOf(target);
       if (!Array.isArray(target) && prototype !== Object.prototype && prototype !== null) {
         return target;
       }
-      const proxy = new Proxy(target, handler);
+      proxy = new Proxy(target, handler);
       proxies.set(target, proxy);
       for (const key of Object.keys(target)) {
         if (target[key] && typeof target[key] === "object") {
@@ -461,10 +456,10 @@
       if (newAttributes) {
         for (const name of Object.keys(newAttributes)) {
           let value = newAttributes[name];
+          const oldValue = oldAttributes?.[name];
           if (value !== null && value !== void 0 && value !== false) {
             const type = typeof value;
             if (type === "function") {
-              const oldValue = oldAttributes?.[name];
               if (oldValue?.f === value) {
                 newAttributes[name] = oldValue;
               } else {
@@ -502,8 +497,8 @@
                     element.style[styleName] = styleValue;
                   }
                 }
-                if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
-                  for (const styleName of Object.keys(oldAttributes[name])) {
+                if (oldValue && typeof oldValue === "object" && !Array.isArray(oldValue)) {
+                  for (const styleName of Object.keys(oldValue)) {
                     if (!Object.hasOwn(value, styleName)) {
                       if (styleName.includes("-", 1)) {
                         element.style.removeProperty(styleName);
@@ -514,9 +509,7 @@
                   }
                 }
               } else {
-                if (value === true) {
-                  value = "true";
-                } else if (type !== "string") {
+                if (type !== "string") {
                   value = value.toString();
                 }
                 element.setAttribute(name, value);
@@ -534,7 +527,7 @@
           const newValue = newAttributes?.[name];
           if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
             if (typeof value === "function") {
-              element.removeEventListener(name, oldAttributes[name]);
+              element.removeEventListener(name, value);
             } else if (name === "class") {
               element.className = "";
             } else if (name === "style") {
@@ -561,8 +554,7 @@
             if (!match2 || !equalRecursive(match2.m, newAbstract.m)) {
               match2 = {
                 c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
-                m: newAbstract.m,
-                r: newAbstract.r
+                m: newAbstract.m
               };
             }
             newMemoMap.set(newAbstract.r, match2);
@@ -622,7 +614,7 @@
               } else {
                 newNode = document.createElement(newAbstract.t);
               }
-              updateAttributes(newNode, newAbstract.a, void 0, _inSvg);
+              updateAttributes(newNode, newAbstract.a);
               updateChildren(newNode, newAbstract.c, void 0, _inSvg);
             } else {
               newNode = document.createTextNode(newAbstract);
@@ -633,15 +625,12 @@
         }
       }
       if (oldChildAbstracts) {
-        const elementLength = oldChildAbstracts.length + newCount;
-        if (elementLength >= newIndex) {
-          for (let i = elementLength - 1; i >= newIndex; i--) {
-            element.childNodes[i].remove();
-          }
+        for (let i = oldChildAbstracts.length + newCount - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove();
         }
       }
     };
-    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
+    rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
     if (typeof oldAbstractTree === "string") {
       try {
         oldAbstractTree = JSON.parse(oldAbstractTree);
@@ -650,7 +639,7 @@
       }
     }
     if (!oldAbstractTree) {
-      oldAbstractTree = childrenToNodes(_rootElement);
+      oldAbstractTree = childrenToNodes(rootElement);
     }
     let active = true, updating = false;
     const updateAbstracts = () => {
@@ -659,7 +648,7 @@
         updatePromise = null;
         try {
           const newAbstractTree = arrayifyOrUndefined(renderView(state));
-          updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+          updateChildren(rootElement, newAbstractTree, oldAbstractTree);
           oldAbstractTree = newAbstractTree;
           oldMemoMap = newMemoMap;
           newMemoMap = /* @__PURE__ */ new WeakMap();
@@ -676,8 +665,8 @@
         if (active) {
           active = false;
           updatePromise = null;
-          for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
-            _rootElement.childNodes[i].remove();
+          for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
+            rootElement.childNodes[i].remove();
           }
         }
       },

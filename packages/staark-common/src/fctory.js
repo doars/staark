@@ -1,5 +1,5 @@
 import { node } from "./node.js";
-import { selectorToTokenizer } from "./selector.js";
+import { propertyNameToType, selectorToTokenizer } from "./selector.js";
 
 /**
  * @typedef {import('./node.js').NodeAbstract} NodeAbstract
@@ -28,11 +28,7 @@ export const fctory = /*#__PURE__*/ new Proxy(
 				return target[type];
 			}
 
-			const typeConverted =
-				type[0].toLowerCase() +
-				type
-					.substring(1)
-					.replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+			const typeConverted = propertyNameToType(type);
 
 			/**
 			 * Generates a node with the given type and selector.
@@ -45,8 +41,7 @@ export const fctory = /*#__PURE__*/ new Proxy(
 			return (target[type] = (selector, contents) => {
 				let attributes;
 				if (selector) {
-					const [_, _attributes] = selectorToTokenizer(selector);
-					attributes = _attributes;
+					attributes = selectorToTokenizer(selector)[1];
 				}
 				return node(typeConverted, attributes, contents);
 			});

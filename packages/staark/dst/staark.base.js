@@ -203,14 +203,15 @@
       }
     };
     const add = (target) => {
-      if (proxies.has(target)) {
-        return proxies.get(target);
+      let proxy = proxies.get(target);
+      if (proxy) {
+        return proxy;
       }
       const prototype = Object.getPrototypeOf(target);
       if (!Array.isArray(target) && prototype !== Object.prototype && prototype !== null) {
         return target;
       }
-      const proxy = new Proxy(target, handler);
+      proxy = new Proxy(target, handler);
       proxies.set(target, proxy);
       for (const key of Object.keys(target)) {
         if (target[key] && typeof target[key] === "object") {
@@ -243,10 +244,10 @@
       if (newAttributes) {
         for (const name of Object.keys(newAttributes)) {
           let value = newAttributes[name];
+          const oldValue = oldAttributes?.[name];
           if (value !== null && value !== void 0 && value !== false) {
             const type = typeof value;
             if (type === "function") {
-              const oldValue = oldAttributes?.[name];
               if (oldValue?.f === value) {
                 newAttributes[name] = oldValue;
               } else {
@@ -284,8 +285,8 @@
                     element.style[styleName] = styleValue;
                   }
                 }
-                if (oldAttributes?.[name] && typeof oldAttributes[name] === "object" && !Array.isArray(oldAttributes[name])) {
-                  for (const styleName of Object.keys(oldAttributes[name])) {
+                if (oldValue && typeof oldValue === "object" && !Array.isArray(oldValue)) {
+                  for (const styleName of Object.keys(oldValue)) {
                     if (!Object.hasOwn(value, styleName)) {
                       if (styleName.includes("-", 1)) {
                         element.style.removeProperty(styleName);
@@ -296,9 +297,7 @@
                   }
                 }
               } else {
-                if (value === true) {
-                  value = "true";
-                } else if (type !== "string") {
+                if (type !== "string") {
                   value = value.toString();
                 }
                 element.setAttribute(name, value);
@@ -316,7 +315,7 @@
           const newValue = newAttributes?.[name];
           if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
             if (typeof value === "function") {
-              element.removeEventListener(name, oldAttributes[name]);
+              element.removeEventListener(name, value);
             } else if (name === "class") {
               element.className = "";
             } else if (name === "style") {
@@ -343,8 +342,7 @@
             if (!match || !equalRecursive(match.m, newAbstract.m)) {
               match = {
                 c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
-                m: newAbstract.m,
-                r: newAbstract.r
+                m: newAbstract.m
               };
             }
             newMemoMap.set(newAbstract.r, match);
@@ -404,7 +402,7 @@
               } else {
                 newNode = document.createElement(newAbstract.t);
               }
-              updateAttributes(newNode, newAbstract.a, void 0, _inSvg);
+              updateAttributes(newNode, newAbstract.a);
               updateChildren(newNode, newAbstract.c, void 0, _inSvg);
             } else {
               newNode = document.createTextNode(newAbstract);
@@ -415,15 +413,12 @@
         }
       }
       if (oldChildAbstracts) {
-        const elementLength = oldChildAbstracts.length + newCount;
-        if (elementLength >= newIndex) {
-          for (let i = elementLength - 1; i >= newIndex; i--) {
-            element.childNodes[i].remove();
-          }
+        for (let i = oldChildAbstracts.length + newCount - 1; i >= newIndex; i--) {
+          element.childNodes[i].remove();
         }
       }
     };
-    const _rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
+    rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
     if (typeof oldAbstractTree === "string") {
       try {
         oldAbstractTree = JSON.parse(oldAbstractTree);
@@ -432,7 +427,7 @@
       }
     }
     if (!oldAbstractTree) {
-      oldAbstractTree = childrenToNodes(_rootElement);
+      oldAbstractTree = childrenToNodes(rootElement);
     }
     let active = true, updating = false;
     const updateAbstracts = () => {
@@ -441,7 +436,7 @@
         updatePromise = null;
         try {
           const newAbstractTree = arrayifyOrUndefined(renderView(state));
-          updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+          updateChildren(rootElement, newAbstractTree, oldAbstractTree);
           oldAbstractTree = newAbstractTree;
           oldMemoMap = newMemoMap;
           newMemoMap = /* @__PURE__ */ new WeakMap();
@@ -458,8 +453,8 @@
         if (active) {
           active = false;
           updatePromise = null;
-          for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
-            _rootElement.childNodes[i].remove();
+          for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
+            rootElement.childNodes[i].remove();
           }
         }
       },

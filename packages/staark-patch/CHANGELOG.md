@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Reduce minified bundle size by simplifying attribute and child reconciliation.
+
 ## 1.4.12
 
 - Preserve numeric zero values in DOM attributes and style objects.

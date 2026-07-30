@@ -1,3 +1,3 @@
-import * as superfine from 'superfine'
+import * as superfine from "superfine";
 
-window.superfine = superfine
+window.superfine = superfine;

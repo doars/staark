@@ -1,12 +1,3 @@
-// Import minifier.
-import babel from '@babel/core'
-
-const BABEL_OPTIONS = {
-  comments: false,
-  compact: true,
-  retainLines: false,
-}
-
 /**
  * Converts almost any data type to a string.
  * @param {any} data Data to render as a string.
@@ -14,110 +5,105 @@ const BABEL_OPTIONS = {
  * @param {boolean} unwrap If a function is given should it convert that function into inline code that gets invoked ran or a function definition.
  * @returns {string} Resulting stringified data.
  */
-export const anyToString = (
-  data,
-  asCode = false,
-  unwrap = true,
-) => {
-  switch (typeof (data)) {
-    default:
-      if (asCode) {
-        if (data === null) {
-          return 'null'
-        }
-        return 'undefined'
-      }
+export const anyToString = (data, asCode = false, unwrap = true) => {
+	switch (typeof data) {
+		case "boolean":
+			return data ? "true" : "false";
 
-      return ''
+		case "function":
+			// Convert function into text.
+			data = `${data}`;
 
-    case 'boolean':
-      return data ? 'true' : 'false'
+			// Skip if it is a class.
+			if (unwrap && data.startsWith("class")) {
+				return;
+			}
 
-    case 'function':
-      // Convert function into text.
-      data = '' + data
+			// Remove wrapper code.
+			if (unwrap) {
+				// Remove all until first closing parenthesis.
+				// function ({a, b}) { return a + b }
+				//                 ^
+				const indexStart = data.indexOf(")") + 1;
+				data = data.substring(indexStart);
+				// Remove all outside of curly brackets.
+				// function ({a, b}) { return a + b }
+				//                   ^              ^
+				data = data.substring(data.indexOf("{") + 1, data.lastIndexOf("}"));
+				data = data.trim();
+			}
 
-      // Skip if it is a class.
-      if (unwrap && data.startsWith('class')) {
-        return
-      }
+			return data;
 
-      // Remove wrapper code.
-      if (unwrap) {
-        // Remove all until first closing parenthesis.
-        // function ({a, b}) { return a + b }
-        //                 ^
-        const indexStart = data.indexOf(')') + 1
-        data = data.substring(indexStart)
-        // Remove all outside of curly brackets.
-        // function ({a, b}) { return a + b }
-        //                   ^              ^
-        data = data.substring(data.indexOf('{') + 1, data.lastIndexOf('}'))
-        // Process code so it fits on a single line.
-        data = babel.transformSync(data, BABEL_OPTIONS).code
-      }
+		case "number":
+			return `${data}`;
 
-      return data
+		case "object": {
+			if (Array.isArray(data)) {
+				data = data
+					.map((value) => {
+						return anyToString(value, true, false) ?? "null";
+					})
+					.join(asCode ? "," : " ");
 
-    case 'number':
-      return '' + data
+				if (asCode) {
+					data = `[${data}]`;
+				}
 
-    case 'object':
-      if (Array.isArray(data)) {
-        data = data
-          .map((value) => {
-            return anyToString(value, true, false) ?? 'null'
-          })
-          .join(asCode ? ',' : ' ')
+				return data;
+			}
 
-        if (asCode) {
-          data = '[' + data + ']'
-        }
+			let result = [];
+			for (const key in data) {
+				if (!Object.hasOwn(data, key)) {
+					continue;
+				}
 
-        return data
-      }
+				let value = anyToString(data[key], true, !asCode) ?? "null";
 
-      let result = []
-      for (const key in data) {
-        if (!Object.prototype.hasOwnProperty.call(data, key)) {
-          continue
-        }
+				if (asCode) {
+					value = `${key}:${value}`;
+				} else {
+					value = `${key}="${value}"`;
+				}
 
-        let value = anyToString(data[key], true, !asCode) ?? 'null'
+				result.push(value);
+			}
+			result = result.join(asCode ? "," : " ");
 
-        if (asCode) {
-          value = key + ':' + value
-        } else {
-          value = key + '="' + value + '"'
-        }
+			if (asCode) {
+				result = `{${result}}`;
+			}
 
-        result.push(value)
-      }
-      result = result.join(asCode ? ',' : ' ')
+			return result;
+		}
 
-      if (asCode) {
-        result = '{' + result + '}'
-      }
+		case "string":
+			if (asCode) {
+				data = `'${data}'`;
+			}
 
-      return result
+			return data;
 
-    case 'string':
-      if (asCode) {
-        data = '\'' + data + '\''
-      }
+		default:
+			if (asCode) {
+				if (data === null) {
+					return "null";
+				}
+				return "undefined";
+			}
 
-      return data
-  }
-}
+			return "";
+	}
+};
 
-export const escapeHtmlCharacters = (
-  string,
-) => string.replace(
-  /[\u00A0-\u9999<>&]/g,
-  (character) => '&#' + character.charCodeAt(0) + ';',
-)
+export const escapeHtmlCharacters = (string) =>
+	string.replace(
+		/[\u00A0-\u9999<>&]/g,
+		(character) => `&#${character.charCodeAt(0)};`,
+	);
 
 export default {
-  anyToString,
-  escapeHtmlCharacters,
-}
+	anyToString,
+	escapeHtmlCharacters,
+};

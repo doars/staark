@@ -34,24 +34,24 @@ Build size for IIFE builds.
 
 ```
 hyperapp
-Minified           3.76KB
-Min+gzip           1.84KB    48.90%
-Min+brotli         1.65KB    43.78%
+Minified           3.58KB
+Min+gzip           1.74KB    48.72%
+Min+brotli         1.56KB    43.66%
 
 staark
-Minified           3.71KB
-Min+gzip           1.79KB    48.22%
-Min+brotli         1.59KB    42.91%
+Minified           5.02KB
+Min+gzip           2.09KB    41.72%
+Min+brotli         1.92KB    38.16%
 
 staark-patch
-Minified           2.46KB
-Min+gzip           1.24KB    50.52%
-Min+brotli         1.08KB    43.85%
+Minified           2.39KB
+Min+gzip           1.15KB    48.16%
+Min+brotli         1.03KB    43.17%
 
 superfine
-Minified           2.51KB
-Min+gzip           1.27KB    50.52%
-Min+brotli         1.13KB    45.01%
+Minified           2.34KB
+Min+gzip           1.18KB    50.38%
+Min+brotli         1.05KB    44.95%
 ```
 
 ### reorder
@@ -61,17 +61,17 @@ When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook 
 ```
 staark-patch
 - reorder
-  Setup time     x̄3.22ms,   ∧3.00ms,   ∨3.70ms,   ±0.94%
-  Setup memory   x̄0.16MB,   ∧0.16MB,   ∨0.16MB,   ±0.00%
-  Run time       x̄3.85ms,   ∧3.50ms,   ∨4.50ms,   ±1.03%
-  Run memory     x̄0.11MB,   ∧0.10MB,   ∨0.11MB,   ±0.26%
+  Setup time     x̄3.01ms,   ∧2.70ms,   ∨3.60ms,   ±0.90%
+  Setup memory   x̄0.17MB,   ∧0.17MB,   ∨0.17MB,   ±0.00%
+  Run time       x̄3.91ms,   ∧3.40ms,   ∨4.70ms,   ±0.90%
+  Run memory     x̄0.11MB,   ∧0.11MB,   ∨0.11MB,   ±0.01%
 
 superfine
 - reorder
-  Setup time     x̄3.12ms,   ∧2.70ms,   ∨3.50ms,   ±1.05%
+  Setup time     x̄3.01ms,   ∧2.70ms,   ∨3.70ms,   ±1.05%
   Setup memory   x̄0.24MB,   ∧0.24MB,   ∨0.24MB,   ±0.02%
-  Run time       x̄3.06ms,   ∧2.10ms,   ∨6.30ms,   ±3.74%
-  Run memory     x̄0.23MB,   ∧0.20MB,   ∨0.76MB,   ±4.60%
+  Run time       x̄3.31ms,   ∧2.00ms,   ∨4.20ms,   ±1.67%
+  Run memory     x̄0.23MB,   ∧0.20MB,   ∨0.71MB,   ±4.59%
 ```
 
 ### todo_app
@@ -81,31 +81,31 @@ When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook 
 ```
 hyperapp
 - todo_app
-  Setup time    x̄23.98ms,  ∧14.50ms,  ∨36.70ms,   ±4.46%
-  Setup memory   x̄0.99MB,   ∧0.97MB,   ∨1.00MB,   ±0.09%
-  Run time       x̄8.07ms,   ∧7.10ms,  ∨24.10ms,   ±5.61%
-  Run memory     x̄1.02MB,   ∧1.01MB,   ∨1.04MB,   ±0.17%
+  Setup time    x̄21.19ms,  ∧15.40ms,  ∨28.40ms,   ±1.93%
+  Setup memory   x̄1.03MB,   ∧1.00MB,   ∨1.04MB,   ±0.13%
+  Run time       x̄7.20ms,   ∧6.70ms,   ∨8.80ms,   ±0.76%
+  Run memory     x̄1.05MB,   ∧1.03MB,   ∨1.06MB,   ±0.18%
 
 staark
 - todo_app
-  Setup time    x̄14.54ms,  ∧13.50ms,  ∨16.60ms,   ±0.86%
-  Setup memory   x̄1.05MB,   ∧1.05MB,   ∨1.06MB,   ±0.04%
-  Run time       x̄8.36ms,   ∧7.50ms,  ∨10.00ms,   ±1.13%
-  Run memory     x̄0.66MB,   ∧0.64MB,   ∨0.80MB,   ±1.06%
+  Setup time    x̄17.01ms,  ∧15.90ms,  ∨19.90ms,   ±0.66%
+  Setup memory   x̄0.77MB,   ∧0.73MB,   ∨0.81MB,   ±0.39%
+  Run time      x̄10.98ms,  ∧10.40ms,  ∨13.50ms,   ±0.75%
+  Run memory     x̄0.54MB,   ∧0.50MB,   ∨0.56MB,   ±0.59%
 
 staark-patch
 - todo_app
-  Setup time    x̄13.10ms,  ∧12.30ms,  ∨14.60ms,   ±0.78%
-  Setup memory   x̄0.80MB,   ∧0.79MB,   ∨0.81MB,   ±0.09%
-  Run time       x̄6.53ms,   ∧5.90ms,   ∨7.30ms,   ±0.93%
-  Run memory     x̄0.51MB,   ∧0.50MB,   ∨0.52MB,   ±0.12%
+  Setup time    x̄14.50ms,  ∧13.70ms,  ∨16.10ms,   ±0.58%
+  Setup memory   x̄0.76MB,   ∧0.75MB,   ∨0.77MB,   ±0.12%
+  Run time       x̄8.58ms,   ∧7.90ms,  ∨10.10ms,   ±0.77%
+  Run memory     x̄1.06MB,   ∧1.03MB,   ∨1.07MB,   ±0.17%
 
 superfine
 - todo_app
-  Setup time    x̄13.69ms,  ∧12.80ms,  ∨15.90ms,   ±0.85%
-  Setup memory   x̄0.97MB,   ∧0.97MB,   ∨1.00MB,   ±0.09%
-  Run time       x̄5.53ms,   ∧5.10ms,   ∨7.20ms,   ±1.21%
-  Run memory     x̄0.89MB,   ∧0.88MB,   ∨0.91MB,   ±0.11%
+  Setup time    x̄13.18ms,  ∧12.20ms,  ∨15.50ms,   ±1.15%
+  Setup memory   x̄0.98MB,   ∧0.97MB,   ∨1.02MB,   ±0.10%
+  Run time       x̄5.20ms,   ∧4.70ms,   ∨6.10ms,   ±1.12%
+  Run memory     x̄0.89MB,   ∧0.89MB,   ∨0.97MB,   ±0.21%
 ```
 
 > For staark the base build is used which does not include added functions such as `factory` and `nde` Making the comparison with Hyperapp well suited.

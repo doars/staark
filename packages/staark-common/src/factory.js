@@ -1,4 +1,5 @@
 import { node } from "./node.js";
+import { propertyNameToType } from "./selector.js";
 
 /**
  * @typedef {import('./node.js').NodeAbstract} NodeAbstract
@@ -30,11 +31,7 @@ export const factory = /*#__PURE__*/ new Proxy(
 				return target[type];
 			}
 
-			const typeConverted =
-				type[0].toLowerCase() +
-				type
-					.substring(1)
-					.replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
+			const typeConverted = propertyNameToType(type);
 
 			/**
 			 * Generates a node with the given type.

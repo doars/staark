@@ -3,7 +3,7 @@
 tiedliene is a teensy-tiny yet powerful state management utility designed to keep your application state consistent and manageable. With a focus on simplicity and efficiency, tiedliene enables you to track, apply, revert, and even manage undo/redo operations for state changes. It's perfect for applications that require precise control over state transitions without the overhead of more complex libraries.
 
 - Offers a simple set of functions, making it **easy to understand** and integrate into your application.
-- Comes in at **half a kilobyte** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Comes in at **less than a kilobyte and a half** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Uses an **naive diffing algorithm** to ensure that state changes are applied in full.
 - Allows you to not only revert state changes but also provides built-in **undo and redo** capabilities.
 

@@ -62,8 +62,9 @@ export const proxify = (root, onChange) => {
 	 * @returns {Record<string, any>} - The proxified object.
 	 */
 	const add = (target) => {
-		if (proxies.has(target)) {
-			return proxies.get(target);
+		let proxy = proxies.get(target);
+		if (proxy) {
+			return proxy;
 		}
 		const prototype = Object.getPrototypeOf(target);
 		if (
@@ -74,7 +75,7 @@ export const proxify = (root, onChange) => {
 			return target;
 		}
 
-		const proxy = new Proxy(target, handler);
+		proxy = new Proxy(target, handler);
 		proxies.set(target, proxy);
 		// Recursively create proxies for each property.
 		for (const key of Object.keys(target)) {

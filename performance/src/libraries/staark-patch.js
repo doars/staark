@@ -1,3 +1,3 @@
-import * as staarkPatch from '@doars/staark-patch/src/index.base.js'
+import * as staarkPatch from "@doars/staark-patch/src/index.base.js";
 
-window.staarkPatch = staarkPatch
+window.staarkPatch = staarkPatch;

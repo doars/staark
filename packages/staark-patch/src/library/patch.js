@@ -19,10 +19,10 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 	if (newAttributes) {
 		for (const name of Object.keys(newAttributes)) {
 			let value = newAttributes[name];
+			const oldValue = oldAttributes?.[name];
 			if (value !== null && value !== undefined && value !== false) {
 				const type = typeof value;
 				if (type === "function") {
-					const oldValue = oldAttributes?.[name];
 					if (oldValue !== value) {
 						if (oldValue) {
 							element.removeEventListener(name, oldValue);
@@ -59,11 +59,11 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 
 						// Remove old styles.
 						if (
-							oldAttributes?.[name] &&
-							typeof oldAttributes[name] === "object" &&
-							!Array.isArray(oldAttributes[name])
+							oldValue &&
+							typeof oldValue === "object" &&
+							!Array.isArray(oldValue)
 						) {
-							for (const styleName of Object.keys(oldAttributes[name])) {
+							for (const styleName of Object.keys(oldValue)) {
 								if (!Object.hasOwn(value, styleName)) {
 									if (styleName.includes("-", 1)) {
 										element.style.removeProperty(styleName);
@@ -75,9 +75,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 						}
 					} else {
 						// Ensure it is of type string.
-						if (value === true) {
-							value = "true";
-						} else if (type !== "string") {
+						if (type !== "string") {
 							value = value.toString();
 						}
 						element.setAttribute(name, value);
@@ -93,6 +91,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 	// Cleanup old attributes.
 	if (oldAttributes) {
 		for (const name of Object.keys(oldAttributes)) {
+			const value = oldAttributes[name];
 			const newValue = newAttributes?.[name];
 			if (
 				!Object.hasOwn(newAttributes || {}, name) ||
@@ -100,8 +99,8 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 				newValue === undefined ||
 				newValue === false
 			) {
-				if (typeof oldAttributes[name] === "function") {
-					element.removeEventListener(name, oldAttributes[name]);
+				if (typeof value === "function") {
+					element.removeEventListener(name, value);
 				} else if (name === "class") {
 					element.className = "";
 				} else if (name === "style") {
@@ -223,16 +222,17 @@ export const prepare = (rootElement, oldAbstractTree) => {
 
 		// Remove old elements.
 		if (oldChildAbstracts) {
-			const elementLength = oldChildAbstracts.length + newCount;
-			if (elementLength >= newIndex) {
-				for (let i = elementLength - 1; i >= newIndex; i--) {
-					element.childNodes[i].remove();
-				}
+			for (
+				let i = oldChildAbstracts.length + newCount - 1;
+				i >= newIndex;
+				i--
+			) {
+				element.childNodes[i].remove();
 			}
 		}
 	};
 
-	const _rootElement =
+	rootElement =
 		typeof rootElement === "string"
 			? document.querySelector(rootElement) ||
 				document.body.appendChild(document.createElement("div"))
@@ -246,12 +246,12 @@ export const prepare = (rootElement, oldAbstractTree) => {
 		}
 	}
 	if (!oldAbstractTree) {
-		oldAbstractTree = childrenToNodes(_rootElement);
+		oldAbstractTree = childrenToNodes(rootElement);
 	}
 
 	return (newAbstractTree) => {
 		newAbstractTree = arrayifyOrUndefined(newAbstractTree);
-		updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+		updateChildren(rootElement, newAbstractTree, oldAbstractTree);
 		oldAbstractTree = newAbstractTree;
 	};
 };

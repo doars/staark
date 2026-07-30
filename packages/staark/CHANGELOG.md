@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Reduce the minified bundle size of factory, selector, mounting, and state proxy helpers.
+
 ## 1.7.16
 
 - Migrate tests from Bun to the Node.js test runner.

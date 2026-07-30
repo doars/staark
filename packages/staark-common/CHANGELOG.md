@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Reduce minified bundle size by sharing element type conversion and simplifying selector parser state.
+
 ## 1.5.9
 
 - Fix cloning `null` type.

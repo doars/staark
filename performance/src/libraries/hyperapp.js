@@ -1,3 +1,3 @@
-import * as hyperapp from 'hyperapp/index.js'
+import * as hyperapp from "hyperapp/index.js";
 
-window.hyperapp = hyperapp
+window.hyperapp = hyperapp;

@@ -1,7 +1,196 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-@import 'tailwindcss/screens';
-
 @import './fonts.css';
 @import './custom.css';
+
+/* Design tokens */
+:root {
+  --color-ink: #222;
+  --color-ink-soft: #555;
+  --color-line: #ddd;
+  --color-surface: #fff;
+  --font-display: 'Fira Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Fira Mono', ui-monospace, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --measure: 1024px;
+  --radius: .75rem;
+  --space-xs: .5rem;
+  --space-s: .75rem;
+  --space-m: 1rem;
+  --space-l: 2rem;
+  --space-xl: 4rem;
+  --space-2xl: 6rem;
+}
+
+/* Global CSS */
+*,
+::before,
+::after {
+  box-sizing: border-box;
+}
+
+html {
+  line-height: 1.5;
+  scroll-behavior: smooth;
+  tab-size: 4;
+}
+
+body {
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1.75;
+  margin: 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+pre {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  background: linear-gradient(to top right, #222, #888);
+  background-clip: text;
+  color: transparent;
+  font-family: var(--font-display);
+  font-weight: 900;
+  line-height: 1.25;
+  margin-block: .875rem;
+}
+
+h1 { font-size: 2.4287138039rem; }
+h2 { font-size: 2.1119250469rem; }
+h3 { font-size: 1.8364565625rem; }
+h4 { font-size: 1.59691875rem; }
+h5 { font-size: 1.388625rem; }
+h6 { font-size: 1.2075rem; }
+
+p {
+  color: var(--color-ink-soft);
+  font-size: 1.05rem;
+  font-weight: 400;
+  margin-block: .875rem;
+}
+
+a {
+  color: inherit;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+a:active,
+a:focus,
+a:hover {
+  text-decoration: underline;
+}
+
+b {
+  font-weight: 600;
+}
+
+button,
+input {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+ol,
+ul {
+  margin: 0;
+  padding: 0;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  line-height: 1;
+  overflow-wrap: break-word;
+}
+
+pre {
+  line-height: 1.25;
+  overflow-x: auto;
+}
+
+svg {
+  display: block;
+  vertical-align: middle;
+}
+
+svg.icon,
+svg.ionicon {
+  display: inline-block;
+  height: 1em;
+  vertical-align: middle;
+  width: 1em;
+}
+
+a > svg.icon,
+a > svg.ionicon {
+  font-size: 1.59691875rem;
+}
+
+main section ol {
+  list-style: decimal;
+}
+
+main section ol,
+main section ul {
+  padding-inline-start: var(--space-l);
+}
+
+::selection {
+  background-color: #676767;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media (min-width: 512px) {
+  h1 { font-size: 2.7930208745rem; }
+  h2 { font-size: 2.4287138039rem; }
+  h3 { font-size: 2.1119250469rem; }
+  h4 { font-size: 1.8364565625rem; }
+  h5 { font-size: 1.59691875rem; }
+  h6 { font-size: 1.388625rem; }
+  p { font-size: 1.2075rem; }
+}
+
+@media (min-width: 768px) {
+  h1 { font-size: 3.2119740057rem; }
+  h2 { font-size: 2.7930208745rem; }
+  h3 { font-size: 2.4287138039rem; }
+  h4 { font-size: 2.1119250469rem; }
+  h5 { font-size: 1.8364565625rem; }
+  h6 { font-size: 1.59691875rem; }
+  p { font-size: 1.388625rem; }
+}

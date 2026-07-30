@@ -1,12 +1,13 @@
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { gzip } from "node:zlib";
-import { sync as brotliSizeSync } from "brotli-size";
 import { chromium } from "playwright";
 
+const execFileAsync = promisify(execFile);
 const gzipAsync = promisify(gzip);
 
 const ARGUMENT_BENCHMARK = "--benchmark=";
@@ -88,7 +89,7 @@ const calculateStats = (items) => {
 
 async function runBenchmark(
 	browser,
-	helpersCode,
+	_helpersCode,
 	libraryCode,
 	benchmarkCode,
 	profilePath,
@@ -277,17 +278,20 @@ async function runBenchmark(
 }
 
 async function runBenchmarks() {
-	const browser = await chromium.launch({
-		headless: true,
-		args: [
-			"--disable-background-timer-throttling",
-			"--disable-features=V8IdleTasks",
-			"--enable-benchmarking",
-			"--enable-precise-memory-info",
-			"--js-flags=--expose-gc --max-old-space-size=16384",
-			"--no-cpu-throttling",
-		],
-	});
+	const browser =
+		options.iterations > 0
+			? await chromium.launch({
+					headless: true,
+					args: [
+						"--disable-background-timer-throttling",
+						"--disable-features=V8IdleTasks",
+						"--enable-benchmarking",
+						"--enable-precise-memory-info",
+						"--js-flags=--expose-gc --max-old-space-size=16384",
+						"--no-cpu-throttling",
+					],
+				})
+			: null;
 
 	const helpersCode = await fsPromises.readFile(
 		path.join(projectDirectory, "src", "helpers.js"),
@@ -326,6 +330,9 @@ async function runBenchmarks() {
 			DIRECTORY_LIBRARY,
 			`${libraryName + (options.minified ? ".min" : "")}.js`,
 		);
+		if (!fs.existsSync(libraryPath)) {
+			throw new Error(`Library bundle does not exist: ${libraryPath}`);
+		}
 		let libraryCode,
 			librarySize = 0,
 			libraryBrotliSize = 0,
@@ -343,7 +350,11 @@ async function runBenchmarks() {
 			libraryCode = lines.join("\n");
 
 			if (options.minified) {
-				libraryBrotliSize = brotliSizeSync(libraryCode);
+				const brotliPath = `${libraryPath}.br`;
+				await fsPromises.rm(brotliPath).catch(() => {});
+				await execFileAsync("brotli", [libraryPath]);
+				libraryBrotliSize = (await fsPromises.stat(brotliPath)).size;
+				await fsPromises.rm(brotliPath).catch(() => {});
 				libraryGzipSize = (await gzipAsync(libraryCode)).length;
 			}
 
@@ -485,7 +496,9 @@ async function runBenchmarks() {
 		}
 	}
 
-	await browser.close();
+	if (browser) {
+		await browser.close();
+	}
 }
 
 runBenchmarks();

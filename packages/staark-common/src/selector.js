@@ -7,18 +7,20 @@ const QUOTE_SINGLE = "'";
 const QUOTE_DOUBLE = '"';
 
 /**
- * @enum {number} TokenTypes.
- */
-const TokenTypes = {
-	attribute: 0,
-	class: 1,
-	id: 2,
-	type: 3,
-};
-
-/**
  * @typedef {Object.<string, any>} Attributes Attributes.
  */
+
+/**
+ * Converts a factory property name to an element type.
+ *
+ * @param {string} propertyName Factory property name.
+ * @returns {string} Element type.
+ */
+export const propertyNameToType = (propertyName) =>
+	propertyName[0].toLowerCase() +
+	propertyName
+		.substring(1)
+		.replace(/([A-Z])/g, (capital) => `-${capital.toLowerCase()}`);
 
 /**
  * Tokenize a selector into a type and its attributes.
@@ -36,19 +38,19 @@ export const selectorToTokenizer = (selector) => {
 
 	let tokenA = "";
 	let tokenB = true;
-	let tokenType = TokenTypes.type;
+	let tokenType;
 	/**
 	 * Stores the current token based on its type into the attributes or type.
 	 */
 	const storeToken = () => {
 		if (tokenA) {
 			switch (tokenType) {
-				case TokenTypes.attribute:
+				case BRACKET_OPEN:
 					attributes[tokenA] = tokenB === true ? true : tokenB;
 					tokenB = true;
 					break;
 
-				case TokenTypes.class:
+				case DOT:
 					if (!attributes.class) {
 						attributes.class = tokenA;
 						break;
@@ -56,11 +58,11 @@ export const selectorToTokenizer = (selector) => {
 					attributes.class += ` ${tokenA}`;
 					break;
 
-				case TokenTypes.id:
+				case HASH:
 					attributes.id = tokenA;
 					break;
 
-				case TokenTypes.type:
+				default:
 					type = tokenA;
 					break;
 			}
@@ -151,15 +153,15 @@ export const selectorToTokenizer = (selector) => {
 
 		if (character === HASH) {
 			storeToken();
-			tokenType = TokenTypes.id;
+			tokenType = HASH;
 			continue;
 		} else if (character === DOT) {
 			storeToken();
-			tokenType = TokenTypes.class;
+			tokenType = DOT;
 			continue;
 		} else if (character === BRACKET_OPEN) {
 			storeToken();
-			tokenType = TokenTypes.attribute;
+			tokenType = BRACKET_OPEN;
 			parseAttribute();
 			continue;
 		}

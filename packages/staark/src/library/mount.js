@@ -8,7 +8,6 @@ import { proxify } from "./proxy.js";
  * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
  * @typedef {import('@doars/staark-common/src/node.js').NodeAttributes} NodeAttributes
  * @typedef {import('@doars/staark-common/src/node.js').NodeAttributeListener} NodeAttributeListener
- * @typedef {import('@doars/staark-common/src/memo.js').MemoFunction} MemoFunction
  * @typedef {import('@doars/staark-common/src/memo.js').MemoAbstract} MemoAbstract
  * @typedef {import('@doars/staark-common/src/node.js').NodeAbstract} NodeAbstract
  */
@@ -17,7 +16,6 @@ import { proxify } from "./proxy.js";
  * @typedef {Object} MemoData
  * @property {NodeContent[]} c Remembered abstract tree after rendering.
  * @property {any} m Remembered data to compare with.
- * @property {MemoFunction} r Render function to generated abstract tree.
  */
 
 /**
@@ -66,10 +64,10 @@ export const mount = (
 		if (newAttributes) {
 			for (const name of Object.keys(newAttributes)) {
 				let value = newAttributes[name];
+				const oldValue = oldAttributes?.[name];
 				if (value !== null && value !== undefined && value !== false) {
 					const type = typeof value;
 					if (type === "function") {
-						const oldValue = oldAttributes?.[name];
 						if (oldValue?.f === value) {
 							newAttributes[name] = oldValue;
 						} else {
@@ -111,11 +109,11 @@ export const mount = (
 							}
 
 							if (
-								oldAttributes?.[name] &&
-								typeof oldAttributes[name] === "object" &&
-								!Array.isArray(oldAttributes[name])
+								oldValue &&
+								typeof oldValue === "object" &&
+								!Array.isArray(oldValue)
 							) {
-								for (const styleName of Object.keys(oldAttributes[name])) {
+								for (const styleName of Object.keys(oldValue)) {
 									if (!Object.hasOwn(value, styleName)) {
 										if (styleName.includes("-", 1)) {
 											element.style.removeProperty(styleName);
@@ -126,9 +124,7 @@ export const mount = (
 								}
 							}
 						} else {
-							if (value === true) {
-								value = "true";
-							} else if (type !== "string") {
+							if (type !== "string") {
 								value = value.toString();
 							}
 							element.setAttribute(name, value);
@@ -152,7 +148,7 @@ export const mount = (
 					newValue === false
 				) {
 					if (typeof value === "function") {
-						element.removeEventListener(name, oldAttributes[name]);
+						element.removeEventListener(name, value);
 					} else if (name === "class") {
 						element.className = "";
 					} else if (name === "style") {
@@ -193,7 +189,6 @@ export const mount = (
 						match = {
 							c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
 							m: newAbstract.m,
-							r: newAbstract.r,
 						};
 					}
 
@@ -270,7 +265,7 @@ export const mount = (
 						} else {
 							newNode = document.createElement(newAbstract.t);
 						}
-						updateAttributes(newNode, newAbstract.a, undefined, _inSvg);
+						updateAttributes(newNode, newAbstract.a);
 						updateChildren(newNode, newAbstract.c, undefined, _inSvg);
 					} else {
 						newNode = document.createTextNode(newAbstract);
@@ -283,16 +278,17 @@ export const mount = (
 		}
 
 		if (oldChildAbstracts) {
-			const elementLength = oldChildAbstracts.length + newCount;
-			if (elementLength >= newIndex) {
-				for (let i = elementLength - 1; i >= newIndex; i--) {
-					element.childNodes[i].remove();
-				}
+			for (
+				let i = oldChildAbstracts.length + newCount - 1;
+				i >= newIndex;
+				i--
+			) {
+				element.childNodes[i].remove();
 			}
 		}
 	};
 
-	const _rootElement =
+	rootElement =
 		typeof rootElement === "string"
 			? document.querySelector(rootElement) ||
 				document.body.appendChild(document.createElement("div"))
@@ -306,7 +302,7 @@ export const mount = (
 		}
 	}
 	if (!oldAbstractTree) {
-		oldAbstractTree = childrenToNodes(_rootElement);
+		oldAbstractTree = childrenToNodes(rootElement);
 	}
 
 	let active = true,
@@ -320,7 +316,7 @@ export const mount = (
 			updatePromise = null;
 			try {
 				const newAbstractTree = arrayifyOrUndefined(renderView(state));
-				updateChildren(_rootElement, newAbstractTree, oldAbstractTree);
+				updateChildren(rootElement, newAbstractTree, oldAbstractTree);
 				oldAbstractTree = newAbstractTree;
 				oldMemoMap = newMemoMap;
 				newMemoMap = new WeakMap();
@@ -339,8 +335,8 @@ export const mount = (
 				active = false;
 				updatePromise = null;
 
-				for (let i = _rootElement.childNodes.length - 1; i >= 0; i--) {
-					_rootElement.childNodes[i].remove();
+				for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
+					rootElement.childNodes[i].remove();
 				}
 			}
 		},

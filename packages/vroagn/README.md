@@ -2,7 +2,7 @@
 
 A teensy-tiny library for managing network requests.
 
-- Comes in at **a kilobyte and half** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Comes in at **two kilobytes** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has features like **throttling, debouncing, delays, retries, and more**, making it easier to manage and control network traffic.
 - Designed to be used with front-end frameworks such as [`@doars/staark`](https://github.com/doars/staark/tree/main/packages/staark#readme).
 
