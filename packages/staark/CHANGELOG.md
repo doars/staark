@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+- Document the package API for language models in `llms.txt`.
+- Preserve keyed DOM element identity when inserting, removing, or reordering siblings, including keyed nodes returned by memoized views.
 - Reduce the minified bundle size of factory, selector, mounting, and state proxy helpers.
+- Renamed `AI.md` to `llms.txt`.
+- Treat `key` as reconciliation metadata instead of writing it to the DOM.
 
 ## 1.7.16
 

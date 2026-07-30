@@ -158,7 +158,7 @@ export default () => {
 				r("h2", "Comes in at a tiny size."),
 				r(
 					"p",
-					"Due to the minimal philosophy and simple concepts, the libraries are compressed to just a few kilobytes, with staark at 1.9kB.",
+					"Due to the minimal philosophy and simple concepts, the libraries are compressed to just a few kilobytes, with staark at 2kB.",
 				),
 			]),
 

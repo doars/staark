@@ -6,11 +6,17 @@ window.benchmark = {
 		const { h, text, patch } = window.superfine;
 
 		const todos = [];
+		window.updatedTodos = [];
 		for (let i = 0; i < complexity * 100; i++) {
 			todos.push({
 				text: "original",
 				id: i,
 				completed: false,
+			});
+			window.updatedTodos.push({
+				text: "updated",
+				id: i,
+				completed: i % 2 === 0,
 			});
 		}
 		state = {
@@ -25,7 +31,7 @@ window.benchmark = {
 		const addTodo = () => {
 			state.todos.push({
 				text: state.value,
-				id: state.value + state.counter++,
+				id: `${state.value}-${state.counter++}`,
 				completed: false,
 			});
 			state.value = "";
@@ -34,7 +40,7 @@ window.benchmark = {
 		const completeTodo = (event) => {
 			const id = event.target.parentNode.getAttribute("data-id");
 			state.todos.forEach((todo) => {
-				if (todo.id !== id) {
+				if (`${todo.id}` === id) {
 					todo.completed = !todo.completed;
 				}
 			});
@@ -43,7 +49,7 @@ window.benchmark = {
 		const deleteTodo = (event) => {
 			const id = event.target.parentNode.getAttribute("data-id");
 			state.todos.splice(
-				state.todos.findIndex((todo) => todo.id === id),
+				state.todos.findIndex((todo) => `${todo.id}` === id),
 				1,
 			);
 			update();
@@ -119,23 +125,24 @@ window.benchmark = {
 		update();
 	},
 
-	run: async ({ complexity }) => {
-		const todos = [];
-		for (let i = 0; i < complexity * 100; i++) {
-			todos.push({
-				text: "updated",
-				id: i,
-				completed: i % 2 === 0,
-			});
-		}
-		state.todos = todos;
+	run: async () => {
+		state.todos = window.updatedTodos;
 
 		update();
+	},
+
+	verify: ({ complexity, rootNode }, functionName) => {
+		window.benchmarkHelpers.verifyTodos(
+			rootNode,
+			100 * complexity,
+			functionName === "run",
+		);
 	},
 
 	cleanup: async ({ rootNode }) => {
 		update = null;
 		state = null;
+		window.updatedTodos = null;
 
 		for (let i = rootNode.childNodes.length - 1; i >= 0; i--) {
 			rootNode.childNodes[i].remove();

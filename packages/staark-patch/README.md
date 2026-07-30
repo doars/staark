@@ -54,6 +54,22 @@ const update = () => {
 
 As you can read above, update re-renders the view with the current value of `state.count` whenever the button is clicked. Despite patch being stateless, it allows you to control state externally and reapply the patches as needed.
 
+### Keys
+
+Use a `key` attribute to associate an abstract node with the same DOM element across updates. Keys are useful when reordering stateful elements such as inputs. The key is reconciliation metadata and is not written to the DOM.
+
+```JavaScript
+patch(
+  n('ul', items.map((item) =>
+    n('li', {
+      key: item.id,
+    }, item.label),
+  )),
+)
+```
+
+Keys must be unique among siblings. When keyed children change order, staark patch moves their existing DOM elements instead of repurposing elements at the same positions.
+
 Then there is also another second parameter for the `prepare` function. This parameter can be the abstract node tree of the existing HTML. Typically rendered on the server and the provided to the client. See the [staark isomorphic](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) package for more in formation on this. And also important to note to make it easier, if the existing abstract node tree is a string it will automatically be parsed as JSON.
 
 The full build of the library also exports the `factory`, `fctory`, and `nde` functions from staark so these don't have te imported from there separately. And do note that the `memo` function is not exported because this is not supported since there is no state to provide to these memoization functions.

@@ -1,0 +1,54 @@
+# vroagn
+
+A small library for configurable network requests with parsing, retries, delays, throttling, debouncing, cancellation, and concurrency control.
+
+## `create`
+
+```TypeScript
+create(
+  initialOptions?: RequestOptions,
+): (sendOptions?: SendOptions) => Promise<[
+  error: Error | null,
+  response: Response | null,
+  result: any,
+]>
+```
+
+Creates a reusable request function. Per-call options override initial options, except headers are merged. Request failures are returned in the tuple instead of being thrown.
+
+Important options include:
+- URL and request: `domain`, `path`, `method`, `headers`, `queryParams`, `body`, `credentials`, `mode`, `redirect`, `cache`, and `priority`.
+- Execution: `abort`, `fetch`, `debounce`, `delay`, `throttle`, `timeout`, `maxConcurrency`, and `maxRequests`.
+- Retry: `retryAttempts`, `retryCodes` (default `[429, 503, 504]`), and `retryDelay` (default `500`).
+- Parsing: `type`, `parsers`, `createTrustedHTML`, and `trustedTypesPolicy`.
+
+Limited and unlimited calls share a strict FIFO scheduler. An `AbortController` can cancel queued or active work.
+
+Built-in parsing supports `arrayBuffer`, `blob`, `formData`, `text`, `json`, `xml`, `html`, `html-partial`, and `svg`. HTML modes do not sanitize content; only use them for trusted responses or provide a sanitizing Trusted Types policy.
+
+## Parser factories
+
+The full build exports these factories for additional response formats:
+
+```TypeScript
+csvParser(options?: CsvOptions): ResponseParser
+iniParser(options?: IniOptions): ResponseParser
+tomlParser(options?: TomlOptions): ResponseParser
+yamlParser(options?: YamlOptions): ResponseParser
+```
+
+The TOML and YAML parsers intentionally support a small subset of their specifications. Wrap a dedicated parser when full specification support is required.
+
+## Example
+
+```JavaScript
+import { create, yamlParser } from '@doars/vroagn'
+
+const request = create({
+  domain: 'https://api.example.com',
+  parsers: [yamlParser()],
+  retryAttempts: 3,
+})
+
+const [error, response, result] = await request({ path: '/items' })
+```

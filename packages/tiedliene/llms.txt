@@ -1,0 +1,75 @@
+# tiedliene
+
+State differencing, patching, cloning, and undo/redo management for JavaScript objects.
+
+## Diff types
+
+A diff is an array of changes. Each change has a `type` (`'add'`, `'set'`, or `'delete'`), a string-array `path`, and the applicable `old` and `new` values.
+
+## `determineDiff`
+
+```TypeScript
+determineDiff(
+  before: Record<string, any>,
+  after: Record<string, any>,
+  path?: string[],
+): Change[]
+```
+
+Returns the changes needed to transform `before` into `after`.
+
+## `applyDiff`
+
+```TypeScript
+applyDiff(state: Record<string, any>, diff: Change[]): Record<string, any>
+```
+
+Validates and applies changes to `state`, then returns that state. Invalid paths fail atomically.
+
+## `revertDiff`
+
+```TypeScript
+revertDiff(state: Record<string, any>, diff: Change[]): Record<string, any>
+```
+
+Applies the inverse of the changes and returns the restored state.
+
+## `cloneRecursive`
+
+```TypeScript
+cloneRecursive(value: any, clones?: WeakMap<object, any>): any
+```
+
+Deeply clones supported values while preserving cycles and shared references.
+
+## `manageState`
+
+```TypeScript
+manageState(
+  initialState: Record<string, any>,
+  options?: {
+    maximumHistory?: number,
+    snapshot?: 'clone' | 'reference',
+    clone?: (value: any) => any,
+  },
+): {
+  get: () => Record<string, any>,
+  set: (state: Record<string, any>) => void,
+  undo: () => void,
+  redo: () => void,
+}
+```
+
+Creates an undoable state manager. `maximumHistory` defaults to `50`, with `0` disabling history. `snapshot` defaults to `'clone'`; use `'reference'` only when callers will treat returned state as immutable.
+
+Plain objects and arrays can contain cycles. `Date`, `Map`, `Set`, and typed arrays are treated as atomic values. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected.
+
+## Example
+
+```JavaScript
+import { applyDiff, determineDiff } from '@doars/tiedliene'
+
+const state = { count: 1 }
+const diff = determineDiff(state, { count: 2 })
+applyDiff(state, diff)
+```

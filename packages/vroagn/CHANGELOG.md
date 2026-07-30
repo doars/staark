@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Document the package API for language models in `llms.txt`.
+
 ## 1.5.0
 
 - Parse single-line and multiline TOML arrays without losing their owning key.

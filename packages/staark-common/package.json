@@ -31,6 +31,7 @@
 		"dst",
 		"src",
 		"CHANGELOG.md",
+		"llms.txt",
 		"README.md"
 	]
 }

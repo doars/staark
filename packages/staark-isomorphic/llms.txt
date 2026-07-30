@@ -1,0 +1,62 @@
+# staark isomorphic
+
+Server-side rendering for Staark abstract node trees. It exports the Staark node creation helpers together with functions that render views or existing abstract trees to HTML.
+
+## Rendering functions
+
+### `stringifyPatch`
+
+```TypeScript
+stringifyPatch(
+  abstractTree?: NodeContent[] | NodeContent,
+): [html: string, abstractTree: NodeContent[] | undefined]
+```
+
+Renders an existing abstract tree. The returned tree can be passed to Staark's client-side `mount` function to hydrate the rendered HTML.
+
+### `stringify`
+
+```TypeScript
+stringify(
+  renderView: (state: Record<string, any>) => NodeContent[] | NodeContent,
+  initialState?: Record<string, any>,
+): [html: string, abstractTree: NodeContent[] | undefined]
+```
+
+Calls the view with the initial state, renders the result, and returns the HTML and normalized abstract tree.
+
+### `stringifyPatchFull`
+
+```TypeScript
+stringifyPatchFull(
+  abstractTree?: NodeContent[],
+): [html: string, serializedAbstractTree: string]
+```
+
+Renders an abstract tree and serializes the normalized tree for embedding in a response.
+
+### `stringifyFull`
+
+```TypeScript
+stringifyFull(
+  renderView: (state: Record<string, any>) => NodeContent[] | NodeContent,
+  initialState?: Record<string, any>,
+): [html: string, serializedAbstractTree: string, serializedState: string]
+```
+
+Renders a view and serializes both its abstract tree and initial state for client-side hydration.
+
+## Node helpers
+
+The package also exports `node`, `memo`, `conditional`, `match`, `nde`, `factory`, `fctory`, and `identifier`. Their behavior matches `@doars/staark-common` and `@doars/staark`.
+
+## Example
+
+```JavaScript
+import { node, stringifyFull } from '@doars/staark-isomorphic'
+
+const [html, abstractTree, state] = stringifyFull(
+  (currentState) => node('h1', `Hello ${currentState.name}`),
+  { name: 'world' },
+)
+```

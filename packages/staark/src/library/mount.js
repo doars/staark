@@ -33,6 +33,7 @@ export const mount = (
 ) => {
 	const setBefore =
 		"moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
+	const getKey = (abstract) => abstract?.a?.key;
 
 	if (typeof initialState === "string") {
 		initialState = JSON.parse(initialState);
@@ -63,6 +64,9 @@ export const mount = (
 	const updateAttributes = (element, newAttributes, oldAttributes) => {
 		if (newAttributes) {
 			for (const name of Object.keys(newAttributes)) {
+				if (name === "key") {
+					continue;
+				}
 				let value = newAttributes[name];
 				const oldValue = oldAttributes?.[name];
 				if (value !== null && value !== undefined && value !== false) {
@@ -139,6 +143,9 @@ export const mount = (
 
 		if (oldAttributes) {
 			for (const name of Object.keys(oldAttributes)) {
+				if (name === "key") {
+					continue;
+				}
 				const value = oldAttributes[name];
 				const newValue = newAttributes?.[name];
 				if (
@@ -165,46 +172,174 @@ export const mount = (
 
 	let oldMemoMap = new WeakMap();
 	let newMemoMap = new WeakMap();
+	let updateChildren;
+
+	/**
+	 * Create a DOM node from an abstract node.
+	 *
+	 * @param {NodeContent} abstract The abstract node to create.
+	 * @param {boolean} inSvg Whether the node is inside an SVG element.
+	 * @returns {Node} The created DOM node.
+	 */
+	const createNode = (abstract, inSvg) => {
+		if (!abstract.t) {
+			return document.createTextNode(abstract);
+		}
+
+		inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+		const element = inSvg
+			? document.createElementNS("http://www.w3.org/2000/svg", abstract.t)
+			: document.createElement(abstract.t);
+		updateAttributes(element, abstract.a);
+		updateChildren(element, abstract.c, undefined, inSvg);
+		return element;
+	};
+
+	/**
+	 * Update a DOM node from an abstract node.
+	 *
+	 * @param {Node} node The DOM node to update.
+	 * @param {NodeContent} newAbstract The new abstract node to apply.
+	 * @param {NodeContent} oldAbstract The old abstract node to replace.
+	 * @param {boolean} inSvg Whether the node is inside an SVG element.
+	 */
+	const updateNode = (node, newAbstract, oldAbstract, inSvg) => {
+		if (newAbstract.t) {
+			updateAttributes(node, newAbstract.a, oldAbstract.a);
+			updateChildren(
+				node,
+				newAbstract.c,
+				oldAbstract.c,
+				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
+			);
+		} else if (oldAbstract !== newAbstract) {
+			node.textContent = newAbstract;
+		}
+	};
 
 	/**
 	 * @param {Element} element Element to update.
 	 * @param {NodeContent[]} [newChildAbstracts] New children to set.
 	 * @param {NodeContent[]} [oldChildAbstracts] Old children to compare with.
 	 */
-	const updateChildren = (
-		element,
-		newChildAbstracts,
-		oldChildAbstracts,
-		inSvg,
-	) => {
+	updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
+		if (newChildAbstracts) {
+			for (let index = 0; index < newChildAbstracts.length; index++) {
+				const abstract = newChildAbstracts[index];
+				if (!abstract.r) {
+					continue;
+				}
+
+				let match = oldMemoMap.get(abstract.r);
+				if (!match || !equalRecursive(match.m, abstract.m)) {
+					match = {
+						c: arrayifyOrUndefined(abstract.r(state, abstract.m)),
+						m: abstract.m,
+					};
+				}
+				newMemoMap.set(abstract.r, match);
+				newChildAbstracts.splice(index, 1, ...cloneRecursive(match.c));
+				index--;
+			}
+		}
+
+		let hasKeys = false;
+		if (newChildAbstracts) {
+			for (let index = 0; index < newChildAbstracts.length; index++) {
+				if (getKey(newChildAbstracts[index]) != null) {
+					hasKeys = true;
+					break;
+				}
+			}
+		}
+		if (!hasKeys && oldChildAbstracts) {
+			for (let index = 0; index < oldChildAbstracts.length; index++) {
+				if (getKey(oldChildAbstracts[index]) != null) {
+					hasKeys = true;
+					break;
+				}
+			}
+		}
+
+		if (hasKeys) {
+			const oldNodes = [];
+			const keyedEntries = new Map();
+			const unkeyedEntries = new Map();
+			if (oldChildAbstracts) {
+				for (let index = 0; index < oldChildAbstracts.length; index++) {
+					const abstract = oldChildAbstracts[index];
+					oldNodes.push(element.childNodes[index]);
+					const key = getKey(abstract);
+					if (key != null) {
+						keyedEntries.set(key, index);
+					} else {
+						const type = abstract.t || null;
+						let entries = unkeyedEntries.get(type);
+						if (!entries) {
+							entries = {
+								indexes: [],
+								index: 0,
+							};
+							unkeyedEntries.set(type, entries);
+						}
+						entries.indexes.push(index);
+					}
+				}
+			}
+
+			if (newChildAbstracts) {
+				for (
+					let newIndex = 0;
+					newIndex < newChildAbstracts.length;
+					newIndex++
+				) {
+					const newAbstract = newChildAbstracts[newIndex];
+					const key = getKey(newAbstract);
+					let oldIndex;
+					if (key != null) {
+						oldIndex = keyedEntries.get(key);
+					} else {
+						const entries = unkeyedEntries.get(newAbstract.t || null);
+						if (entries) {
+							oldIndex = entries.indexes[entries.index++];
+						}
+					}
+					const oldAbstract = oldChildAbstracts?.[oldIndex];
+					const oldNode = oldNodes[oldIndex];
+
+					if (
+						oldIndex !== undefined &&
+						oldNode &&
+						((oldAbstract.t && newAbstract.t === oldAbstract.t) ||
+							(!oldAbstract.t && !newAbstract.t))
+					) {
+						oldNodes[oldIndex] = undefined;
+						if (oldNode !== element.childNodes[newIndex]) {
+							element[setBefore](oldNode, element.childNodes[newIndex]);
+						}
+						updateNode(oldNode, newAbstract, oldAbstract, inSvg);
+						continue;
+					}
+
+					const newNode = createNode(newAbstract, inSvg);
+					element.insertBefore(newNode, element.childNodes[newIndex]);
+				}
+			}
+
+			for (let index = 0; index < oldNodes.length; index++) {
+				const oldNode = oldNodes[index];
+				if (oldNode?.parentNode === element) {
+					oldNode.remove();
+				}
+			}
+			return;
+		}
+
 		let newIndex = 0;
 		let newCount = 0;
 		if (newChildAbstracts) {
 			for (; newIndex < newChildAbstracts.length; newIndex++) {
 				const newAbstract = newChildAbstracts[newIndex];
-
-				if (newAbstract.r) {
-					let match = oldMemoMap.get(newAbstract.r);
-					if (!match || !equalRecursive(match.m, newAbstract.m)) {
-						match = {
-							c: arrayifyOrUndefined(newAbstract.r(state, newAbstract.m)),
-							m: newAbstract.m,
-						};
-					}
-
-					newMemoMap.set(newAbstract.r, match);
-
-					// Splice nodes into the tree and re-run the loop again.
-					newChildAbstracts.splice(
-						newIndex,
-						1,
-						// NOTE: Is a recursive clone required here? Yes as long as the old abstract tree is mutated.
-						...cloneRecursive(match.c),
-					);
-					// NOTE: Preferably we would skip re-rendering when the nodes were memoized, but because those nodes might have morphed we'll have to check. So we re-process the node again that was just inserted in. We could have the resolve memoization return whether it was re-rendered, but this also means the nodes are not allowed to be re-used when morphing the DOM and this needs to be prevented by marking them as such.
-					newIndex--;
-					continue;
-				}
 
 				let matched = false;
 				if (oldChildAbstracts) {
@@ -232,45 +367,19 @@ export const mount = (
 								);
 							}
 
-							if (newAbstract.t) {
-								updateAttributes(
-									element.childNodes[newIndex],
-									newAbstract.a,
-									oldAbstract.a,
-								);
-								updateChildren(
-									element.childNodes[newIndex],
-									newAbstract.c,
-									oldAbstract.c,
-									inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
-								);
-							} else if (oldAbstract !== newAbstract) {
-								element.childNodes[newIndex].textContent = newAbstract;
-							}
+							updateNode(
+								element.childNodes[newIndex],
+								newAbstract,
+								oldAbstract,
+								inSvg,
+							);
 							break;
 						}
 					}
 				}
 
 				if (!matched) {
-					let newNode;
-					if (newAbstract.t) {
-						const _inSvg =
-							inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg";
-						if (_inSvg) {
-							newNode = document.createElementNS(
-								"http://www.w3.org/2000/svg",
-								newAbstract.t,
-							);
-						} else {
-							newNode = document.createElement(newAbstract.t);
-						}
-						updateAttributes(newNode, newAbstract.a);
-						updateChildren(newNode, newAbstract.c, undefined, _inSvg);
-					} else {
-						newNode = document.createTextNode(newAbstract);
-					}
-
+					const newNode = createNode(newAbstract, inSvg);
 					element.insertBefore(newNode, element.childNodes[newIndex]);
 					newCount++;
 				}

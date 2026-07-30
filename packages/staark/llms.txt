@@ -57,6 +57,7 @@ Parameters:
   - Functions: Added as event listeners.
   - `class`: A string, list or object with class names.
   - `style`: A string or an object with style properties.
+  - `key`: Reconciliation metadata that preserves DOM element identity when siblings are inserted, removed, or reordered. Keys must be unique among siblings and are not written to the DOM.
 - children: Child nodes or primitive values such as a string.
 
 Returns: An abstract node used for subsequent diffing and DOM rendering.

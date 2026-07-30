@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- Reduce minified bundle size by simplifying attribute and child reconciliation.
+- Document the package API for language models in `llms.txt`.
+- Reduce minified bundle size by sharing node creation and update logic.
+- Reduce allocations during keyed child reconciliation.
+- Preserve keyed DOM element identity when inserting, removing, or reordering siblings.
+- Treat `key` as reconciliation metadata instead of writing it to the DOM.
 
 ## 1.4.12
 

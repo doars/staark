@@ -30,8 +30,8 @@
 	"files": [
 		"dst",
 		"src",
-		"AI.md",
 		"CHANGELOG.md",
+		"llms.txt",
 		"README.md"
 	],
 	"dependencies": {

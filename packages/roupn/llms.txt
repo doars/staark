@@ -1,0 +1,62 @@
+# roupn
+
+Real-time shared state over end-to-end encrypted WebSocket messages. A relay server creates rooms and forwards opaque messages; the room creator verifies joining users.
+
+## `createServerConnector`
+
+```TypeScript
+createServerConnector(options?: ServerOptions): {
+  getRoom: (code: string) => object | undefined,
+  getRoomCodes: () => string[],
+  getRoomCount: () => number,
+  handleHttpRequest: (request: IncomingMessage, response: ServerResponse) => void,
+  handleSocketUpgrade: (request: IncomingMessage, socket: WebSocket) => void,
+}
+```
+
+Creates the server-side room registry and HTTP/WebSocket handlers. Important options include endpoints, serialization, room and pending-user limits, room timeouts, message-size and rate budgets, origin and subprotocol validation, remote-address resolution, and room-creation authorization.
+
+Production clients require secure `https:` and `wss:` URLs except for loopback development. Same-origin WebSocket upgrades are the default. Configure a transport `maxPayload` no larger than `maxEncodedMessageBytes`.
+
+## `createClientConnector`
+
+```TypeScript
+createClientConnector(options?: ClientOptions): Connector
+```
+
+Creates a browser connector for room creation, joining, verification, encrypted direct or room messages, user removal, and leaving. It exposes connection and room methods plus event objects whose `addListener`, `removeListener`, and `dispatch` methods manage subscriptions.
+
+Important options include `createRoomEndpoint`, `joinRoomEndpoint`, `httpUrl`, `wsUrl`, serialization, message buffer limits, and the development-only `allowInsecureNonLoopback` override.
+
+Room creation and joining accept `publicData`, `verifyPublicData`, `privateData`, and `verifyPrivateData`. Public data is visible before encryption; private data is exchanged only after end-to-end encryption is established.
+
+## `createClientSynchronizer`
+
+```TypeScript
+createClientSynchronizer(
+  options?: SynchronizerOptions,
+  privateState?: object,
+  publicState?: object,
+): Synchronizer
+```
+
+Wraps the client connector and automatically synchronizes mutations to a shared public state. The private state contains connection and user information and should be treated as read-only.
+
+Synchronizer-specific options include `windowPerUser`, `synchronisationInterval`, `maxDiffChanges`, `maxDiffPathDepth`, `maxDiffValueBytes`, and `maxSerializedStateBytes`.
+
+## Example
+
+```JavaScript
+import { createClientSynchronizer } from '@doars/roupn'
+
+const synchronizer = createClientSynchronizer(
+  { httpUrl: 'https://rooms.example.com', wsUrl: 'wss://rooms.example.com' },
+  {},
+  { message: '' },
+)
+
+await synchronizer.createRoom()
+synchronizer.publicState.message = 'Hello'
+```
+
+The package's main `all.js` entry includes `createClientConnector`, `createClientSynchronizer`, and `createServerConnector`. Browser bundles expose client APIs; server applications should use the server connector from the package entry appropriate to their build.

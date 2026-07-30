@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Document the package API for language models in `llms.txt`.
+
 ## 1.3.0
 
 - Store state transitions as changed-path patches instead of replacing state with a second full incoming clone.

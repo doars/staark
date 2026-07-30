@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Document the package API for language models in `llms.txt`.
+
 ## 0.2.0
 
 - Bind decrypted message senders to their server-authenticated WebSocket connections and advance the room protocol to version 2.

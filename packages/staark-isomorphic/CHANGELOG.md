@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Document the package API for language models in `llms.txt`.
+
 ## 1.6.9
 
 - Add deterministic concatenation-versus-fragment rendering benchmarks and retain concatenation after it won every measured fixture with lower memory.

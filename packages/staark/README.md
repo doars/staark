@@ -3,7 +3,7 @@
 A teeny-tiny framework for building web apps.
 
 - Minimal amount of concepts to learn in order to get going, meaning the system becomes incredibly **easy to reason with**.
-- Comes in at **less than two kilobytes** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Comes in at **two kilobytes** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has an **efficient diffing algorithm**. This ensures the node tree is morphed quickly from the old to the new with minimal overhead.
 - Utilises a proxy to manage the application state, the view is therefore **only updated on changing** the state, and can also be manipulated outside of event listeners.
 
@@ -22,6 +22,16 @@ mount(
   ]),
   { count: 0 },
 )
+```
+
+Use a `key` attribute to preserve a DOM element when sibling nodes are inserted, removed, or reordered. Keys must be unique among siblings and are reconciliation metadata, so they are not written to the DOM.
+
+```JavaScript
+node('ul', items.map((item) =>
+  node('li', {
+    key: item.id,
+  }, item.label)
+))
 ```
 
 Of course there is always more to a front-end framework to help you out. There is a `memo` function for using [memoization](https://wikipedia.org/wiki/Memoization) to optimize time costly operations. The function takes in a view function and a state. Only if the state has changed will the view function be called again, otherwise an earlier copy still in memory will be returned.

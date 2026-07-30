@@ -1,16 +1,19 @@
-const _dispatch = null,
-	_setTodos = null;
-
 window.benchmark = {
 	setup: async ({ complexity, rootNode }) => {
 		const { app, h, text } = window.hyperapp;
 
 		const todos = [];
+		window.updatedTodos = [];
 		for (let i = 0; i < complexity * 100; i++) {
 			todos.push({
 				text: "original",
 				id: i,
 				completed: false,
+			});
+			window.updatedTodos.push({
+				text: "updated",
+				id: i,
+				completed: i % 2 === 0,
 			});
 		}
 
@@ -25,7 +28,7 @@ window.benchmark = {
 				...state.todos,
 				{
 					text: state.value,
-					id: state.value + state.counter++,
+					id: `${state.value}-${state.counter}`,
 					completed: false,
 				},
 			],
@@ -37,7 +40,7 @@ window.benchmark = {
 			return {
 				...state,
 				todos: state.todos.map((todo) =>
-					todo.id !== id ? { ...todo, completed: !todo.completed } : todo,
+					`${todo.id}` === id ? { ...todo, completed: !todo.completed } : todo,
 				),
 			};
 		};
@@ -45,7 +48,7 @@ window.benchmark = {
 			const id = event.target.parentNode.getAttribute("data-id");
 			return {
 				...state,
-				todos: state.todos.filter((todo) => todo.id === id),
+				todos: state.todos.filter((todo) => `${todo.id}` !== id),
 			};
 		};
 		window.setTodos = (state, event) => ({
@@ -128,25 +131,26 @@ window.benchmark = {
 		await new Promise(requestAnimationFrame);
 	},
 
-	run: async ({ complexity }) => {
-		const todos = [];
-		for (let i = 0; i < complexity * 100; i++) {
-			todos.push({
-				text: "updated",
-				id: i,
-				completed: i % 2 === 0,
-			});
-		}
+	run: async () => {
 		window.dispatch(window.setTodos, {
-			todos: todos,
+			todos: window.updatedTodos,
 		});
 
 		await new Promise(requestAnimationFrame);
 	},
 
+	verify: ({ complexity, rootNode }, functionName) => {
+		window.benchmarkHelpers.verifyTodos(
+			rootNode,
+			100 * complexity,
+			functionName === "run",
+		);
+	},
+
 	cleanup: async ({ rootNode }) => {
 		window.dispatch = null;
 		window.setTodos = null;
+		window.updatedTodos = null;
 
 		for (let i = rootNode.childNodes.length - 1; i >= 0; i--) {
 			rootNode.childNodes[i].remove();

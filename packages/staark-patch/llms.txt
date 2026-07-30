@@ -1,0 +1,39 @@
+# staark patch
+
+A stateless DOM renderer for Staark abstract node trees. Use it when application state and update scheduling are managed elsewhere.
+
+## `prepare`
+
+```TypeScript
+prepare(
+  rootElement: HTMLElement | Element | string,
+  oldAbstractTree?: NodeContent[] | string | null,
+): (newAbstractTree: NodeContent[] | NodeContent) => unknown
+```
+
+Creates a patch function bound to a root element. A string root is resolved as a query selector. Calling the returned function reconciles the new abstract tree with the previous tree and updates the DOM.
+
+The optional old tree supports client-side hydration. When it is a string, it is parsed as serialized JSON. Use stable, sibling-unique `key` attributes to preserve DOM element identity when keyed children are inserted, removed, or reordered; keys are reconciliation metadata and are not written to the DOM.
+
+## Node helpers
+
+The base build exports `node` and `prepare`. The full build also exports `conditional`, `factory`, `fctory`, `identifier`, `match`, and `nde`.
+
+```TypeScript
+node(
+  type: string,
+  attributes?: Record<string, any>,
+  children?: NodeContent[] | NodeContent,
+): NodeAbstract
+```
+
+## Example
+
+```JavaScript
+import { node, prepare } from '@doars/staark-patch'
+
+const patch = prepare('#app')
+
+patch(node('p', 'First render'))
+patch(node('p', 'Updated render'))
+```

@@ -89,12 +89,17 @@ const calculateStats = (items) => {
 
 async function runBenchmark(
 	browser,
-	_helpersCode,
+	helpersCode,
 	libraryCode,
 	benchmarkCode,
 	profilePath,
 ) {
 	const page = await browser.newPage();
+	await page.evaluate(() => {
+		window.requestAnimationFrame = (callback) => {
+			queueMicrotask(() => callback(performance.now()));
+		};
+	});
 
 	const client = await page.context().newCDPSession(page);
 	await client.send("HeapProfiler.enable");
@@ -103,7 +108,9 @@ async function runBenchmark(
 		content: libraryCode ? libraryCode : "",
 	});
 	await page.addScriptTag({
-		// '(function(){' + helpersCode + '}())'
+		content: helpersCode,
+	});
+	await page.addScriptTag({
 		content: `(function(){${benchmarkCode}}())`,
 	});
 
@@ -227,14 +234,8 @@ async function runBenchmark(
 			const startMemory = performance.memory?.usedJSHeapSize || 0;
 			const startTime = performance.now();
 
-			try {
-				if (context.window.benchmark[functionName]) {
-					await context.window.benchmark[functionName](context);
-				}
-			} catch (error) {
-				console.warn(
-					`Benchmark failed because of ${error.name}: ${error.message}`,
-				);
+			if (context.window.benchmark[functionName]) {
+				await context.window.benchmark[functionName](context);
 			}
 
 			return {
@@ -243,6 +244,14 @@ async function runBenchmark(
 			};
 		};
 		const result = await page.evaluate(runner, { context, functionName });
+		await page.evaluate(
+			({ context, functionName }) => {
+				if (context.window.benchmark.verify) {
+					context.window.benchmark.verify(context, functionName);
+				}
+			},
+			{ context, functionName },
+		);
 
 		if (snapshotFilePath) {
 			await client.send("HeapProfiler.takeHeapSnapshot", {
@@ -263,7 +272,7 @@ async function runBenchmark(
 
 	const runner = async ({ context }) => {
 		if (context.window.benchmark.cleanup) {
-			context.window.benchmark.cleanup(context);
+			await context.window.benchmark.cleanup(context);
 		}
 	};
 	await page.evaluate(runner, { context });
@@ -295,6 +304,7 @@ async function runBenchmarks() {
 
 	const helpersCode = await fsPromises.readFile(
 		path.join(projectDirectory, "src", "helpers.js"),
+		"utf8",
 	);
 
 	const libraries = await fsPromises.readdir(

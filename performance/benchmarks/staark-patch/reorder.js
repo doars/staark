@@ -43,6 +43,14 @@ window.benchmark = {
 		update();
 	},
 
+	verify: ({ complexity, rootNode }, functionName) => {
+		window.benchmarkHelpers.verifyReorder(
+			rootNode,
+			100 * complexity,
+			functionName === "run",
+		);
+	},
+
 	run: async (_dependencies) => {
 		ran = true;
 		update();

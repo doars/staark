@@ -6,15 +6,21 @@ Memory usage is checked in a rather crude manner. Before each iteration the garb
 
 ## Benchmarks
 
-The performance is measured in two phases. The first is the setup process this is where the library creates the initial app structure. After which the second phase is ran, this phase modifies the state and runs the library to modify the initial app structure into the new desired structure.
+Performance is measured in two phases. The setup phase creates the initial app structure. The run phase applies a prepared state change and updates the initial structure. Each phase is verified after timing, so an incorrect or incomplete render fails the benchmark instead of producing a result.
+
+The benchmark replaces `requestAnimationFrame` with a microtask scheduler before loading a library. This retains asynchronous update batching while preventing frame alignment from adding an arbitrary delay to libraries such as Hyperapp. These results therefore measure JavaScript and DOM update work, not browser frame latency.
 
 ### reorder
 
-The `reorder` benchmark creates a list of differing node types and then reorders them. This is done to see how well libraries are able to adjust when node types are changed.
+The `reorder` benchmark creates a repeating list of different node types and reverses the type pattern. It measures how each library reconciles unkeyed elements whose types change. It does not measure logical item identity.
+
+### keyed-reorder
+
+The `keyed-reorder` benchmark creates same-type input elements with stable keys and reverses their order. The benchmark verifies DOM node identity for every library.
 
 ### todo_app
 
-With the `todo_app` there are a thousand rows created and then modified. Simple enough to test how well the app handles adding nodes, modifying texts, and changing attributes over a list of data.
+The `todo_app` benchmark creates `100 * complexity` rows and then replaces the todo collection with an equivalent collection prepared during setup. It measures state application and rendering without including different object-construction loops in the timed phase. The update changes text, classes, styles, and button labels without reordering rows.
 
 ## Libraries
 
@@ -44,9 +50,9 @@ Min+gzip           2.09KB    41.72%
 Min+brotli         1.92KB    38.16%
 
 staark-patch
-Minified           2.39KB
-Min+gzip           1.15KB    48.16%
-Min+brotli         1.03KB    43.17%
+Minified           3.54KB
+Min+gzip           1.55KB    43.76%
+Min+brotli         1.38KB    38.93%
 
 superfine
 Minified           2.34KB
