@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.6.10
 
+- Update and improve the `README.md`.
 - Document the package API for language models in `llms.txt`.
 
 ## 1.6.9

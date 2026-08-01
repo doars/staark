@@ -1,10 +1,23 @@
 # tiedliene
 
-State differencing, patching, cloning, and undo/redo management for JavaScript objects.
+State differencing, patching, cloning, and undo/redo management for JavaScript objects. Use it when state transitions need explicit diffs or bounded local history without a larger state framework.
+
+## Runtime and builds
+
+The package works in JavaScript runtimes with standard collection APIs. The base build exports `determineDiff`, `applyDiff`, and `revertDiff`. The full build also exports `cloneRecursive` and `manageState`.
 
 ## Diff types
 
-A diff is an array of changes. Each change has a `type` (`'add'`, `'set'`, or `'delete'`), a string-array `path`, and the applicable `old` and `new` values.
+```TypeScript
+type Change = {
+  type: 'set' | 'delete',
+  path: (string | number)[],
+  old?: any,
+  new?: any,
+}
+```
+
+A diff is a `Change[]`. `set` creates or replaces a value; `delete` removes one. Paths must be non-empty and cannot contain `__proto__`, `constructor`, or `prototype`. Numeric components address array indices.
 
 ## `determineDiff`
 
@@ -12,11 +25,11 @@ A diff is an array of changes. Each change has a `type` (`'add'`, `'set'`, or `'
 determineDiff(
   before: Record<string, any>,
   after: Record<string, any>,
-  path?: string[],
+  path?: (string | number)[],
 ): Change[]
 ```
 
-Returns the changes needed to transform `before` into `after`.
+Returns the ordered changes needed to transform `before` into `after`. Plain objects and arrays are traversed recursively. Cycles and shared references are supported. `Date`, `Map`, `Set`, typed arrays, and other non-container values are treated as atomic values.
 
 ## `applyDiff`
 
@@ -24,7 +37,7 @@ Returns the changes needed to transform `before` into `after`.
 applyDiff(state: Record<string, any>, diff: Change[]): Record<string, any>
 ```
 
-Validates and applies changes to `state`, then returns that state. Invalid paths fail atomically.
+Validates the complete diff before mutation, applies it to `state`, and returns that same state. Malformed or unsafe paths throw without partially applying the diff. Values written from a diff are recursively cloned.
 
 ## `revertDiff`
 
@@ -32,7 +45,7 @@ Validates and applies changes to `state`, then returns that state. Invalid paths
 revertDiff(state: Record<string, any>, diff: Change[]): Record<string, any>
 ```
 
-Applies the inverse of the changes and returns the restored state.
+Applies the inverse changes in reverse order and returns the restored state. The same validation and cloning rules as `applyDiff` apply.
 
 ## `cloneRecursive`
 
@@ -54,22 +67,26 @@ manageState(
   },
 ): {
   get: () => Record<string, any>,
-  set: (state: Record<string, any>) => void,
-  undo: () => void,
-  redo: () => void,
+  set: (state: Record<string, any>) => Record<string, any>,
+  undo: () => Record<string, any>,
+  redo: () => Record<string, any>,
 }
 ```
 
-Creates an undoable state manager. `maximumHistory` defaults to `50`, with `0` disabling history. `snapshot` defaults to `'clone'`; use `'reference'` only when callers will treat returned state as immutable.
+Creates an undoable state manager. `maximumHistory` defaults to `50`; `0` disables history. `snapshot` defaults to `'clone'`, which returns defensive snapshots. Use `'reference'` only when callers will treat returned state as immutable. `clone` defaults to `cloneRecursive`.
 
-Plain objects and arrays can contain cycles. `Date`, `Map`, `Set`, and typed arrays are treated as atomic values. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected.
+`set` records changes and clears redo history. `undo` and `redo` return the resulting snapshot, including when no corresponding history entry exists.
+
+Plain objects and arrays may contain cycles. `Date`, `Map`, `Set`, and typed arrays are stored as atomic values. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected with `TypeError`.
 
 ## Example
 
 ```JavaScript
-import { applyDiff, determineDiff } from '@doars/tiedliene'
+import { manageState } from '@doars/tiedliene'
 
-const state = { count: 1 }
-const diff = determineDiff(state, { count: 2 })
-applyDiff(state, diff)
+const state = manageState({ count: 0 })
+
+state.set({ count: 1 })
+const previous = state.undo()
+const current = state.redo()
 ```

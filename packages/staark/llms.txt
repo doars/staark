@@ -1,267 +1,142 @@
 # staark
 
+A small reactive DOM renderer. Use Staark when an application should own a mutable state object, automatically rerender after state mutations, and reconcile an abstract node tree with the DOM.
+
+## Runtime and builds
+
+Staark runs in browsers and requires DOM APIs. The package entry exports `mount`, `node`, `memo`, `conditional`, `match`, `nde`, `factory`, `fctory`, and `identifier`.
+
+The base browser build contains `mount`, `node`, and `memo`. The full browser build adds the helper functions. Package imports are tree-shakeable, so unused helpers can be removed by a bundler.
+
+Names such as `n`, `c`, and `m` are conventional local import aliases, not package exports:
+
+```JavaScript
+import {
+  conditional as c,
+  match as m,
+  node as n,
+} from '@doars/staark'
+```
+
 ## Types
 
 ```TypeScript
-export type NodeContent =
-  string |
-  MemoAbstract |
-  NodeAbstract
+type NodeContent = string | MemoAbstract | NodeAbstract
 
-type ResolveFunction = () => NodeAbstract[] | NodeAbstract | null | undefined
+type ResolveFunction = (
+) => NodeContent[] | NodeContent | null | undefined
 ```
 
-## Base functions
+## `mount`
 
-### `mount`
-
-Signature:
 ```TypeScript
 mount(
-  rootNode: Element | string,
-  renderView: (state: any) => NodeContent[] | NodeContent,
-  initialState?: any,
-  oldAbstractTree?: NodeContent[] | NodeContent | string,
-): [update: () => void, unmount: () => void, state?: any]
+  rootElement: HTMLElement | Element | string,
+  renderView: (state: Record<string, any>) => NodeContent[] | NodeContent,
+  initialState?: Record<string, any> | string,
+  oldAbstractTree?: NodeContent[] | string | null,
+): [
+  update: () => Promise<void>,
+  unmount: () => void,
+  state: Record<string, any>,
+]
 ```
 
-Behaviour: Attaches the application to a given DOM node.
+Mounts a view on an element. A string root is treated as a query selector. If it does not match, Staark appends a new `div` to `document.body` and uses that element.
 
-Parameters:
-- `rootNode` the element to attach he application to, if a string is used it will be used as a query selector.
-- `renderView` a function which receives the current state and returns an abstract node tree.
-- `initialState` can be an object or a recursive proxy; if a proxy is used, manual triggering of re-renders via the update function is expected.
-- `oldAbstractTree` is in combination with isomorphic / server-side rendering. If provided as a string, it will be parsed as JSON.
+The initial state defaults to `{}`. A plain object is wrapped in a recursive proxy; mutations schedule a microtask render. A supplied recursive proxy is used directly, so call `update()` when its mutations should render. Serialized initial state is parsed as JSON.
 
-Returns a tuple:
-  1. update: Function to force a re-render.
-  2. unmount: Function to remove the application from the DOM.
-  3. state: The state proxy used within the app.
+`oldAbstractTree` hydrates existing DOM produced by `@doars/staark-isomorphic`. A serialized tree is parsed as JSON. When no old tree is supplied, the root's existing children are converted into an abstract tree before reconciliation.
 
-### `node` (Common alias: n)
+`update()` schedules a render and returns its promise. `unmount()` removes all rendered children and disables further updates. The returned state is the same proxy passed to the view and event listeners.
 
-Signature:
+## `node`
+
 ```TypeScript
 node(
   type: string,
-  attributes?: { [key: string]: any },
-  children?: (NodeContent | string)[] | NodeContent | string,
+  attributesOrContents?: NodeAttributes | NodeContent[] | NodeContent,
+  contents?: NodeContent[] | NodeContent,
 ): NodeAbstract
 ```
 
-Behaviour: Creates an abstract representation of a DOM node.
+Creates an abstract DOM node. The second argument is treated as contents when it is a string, array, or abstract node, so both forms are valid:
 
-Parameters:
-- type: A string indicating the node type (e.g., 'div', 'span').
-- attributes: An object containing attributes. Special handling:
-  - Functions: Added as event listeners.
-  - `class`: A string, list or object with class names.
-  - `style`: A string or an object with style properties.
-  - `key`: Reconciliation metadata that preserves DOM element identity when siblings are inserted, removed, or reordered. Keys must be unique among siblings and are not written to the DOM.
-- children: Child nodes or primitive values such as a string.
+```JavaScript
+node('p', 'Text')
+node('button', { click: onClick }, 'Save')
+```
 
-Returns: An abstract node used for subsequent diffing and DOM rendering.
+Attribute behavior in the DOM renderer:
 
-#### `attributes` explained
+- Function values are event listeners. They receive `(event, state)`. Define stable listener functions outside the view when practical so they can be reused between renders.
+- `class` accepts a string, an array joined with spaces, or an object whose truthy keys become class names.
+- `style` accepts a CSS string or an object. Camel-case properties are assigned through `element.style`; names containing hyphens use `style.setProperty`.
+- `value` updates both the attribute and live element property.
+- `null`, `undefined`, and `false` remove or omit an attribute.
+- `key` is sibling reconciliation metadata and is never written to the DOM. Keys must be stable and unique among siblings.
 
-Event listeners:
-- When an attribute's value is a function, it is automatically registered as an event listener.
-- For consistent behaviour, define event listener functions outside of the view function to avoid identity changes between renders.
+## `memo`
 
-`class` attribute:
-- Can be a string.
-- Can also be provided as an array of class names.
-- Can also be provided as an object, keys with truthy values are concatenated.
-
-`style` attribute:
-- Can be a string.
-- Can be provided as an object with CSS properties.
-- Keys in camelCase are automatically converted to kebab-case.
-- The object is converted into a valid inline CSS string.
-
-### `memo`
-
-Signature:
 ```TypeScript
 memo(
-  view: (state: any) => NodeContent[] | NodeContent,
-  condition: any,
+  render: (state: Record<string, any>, memory: any) => NodeContent[] | NodeContent,
+  memory: any,
 ): MemoAbstract
 ```
 
-Behaviour: Memoizes the result of a view function based on a condition. The memoized view is recalculated only when the condition value changes.
+Reuses a rendered subtree while the render function identity is stable and `memory` remains recursively equal. Define the render function outside its parent view. Nested memo nodes are discouraged because memo caches are cleared after updates.
 
-Parameters:
-- The `view` function receives the current state and returns an abstract node tree (using node or its variants).
-- `condition` any value that if changed will cause the view function to be called again.
+## View helpers
 
-Return: A memo abstract used for subsequent diffing and DOM rendering.
-
-Note:
-- Define the memoized view function outside of the parent view function to maintain a stable identity.
-- Nested use of memo is discouraged due to cache clearing after updates.
-
-## Helper functions
-
-The helper functions are not included in the base library, only in the full library. If imported from a CDN the base library is specified by a `.base.js` or `.base.min.js` suffix instead of the simple `.js` and `.min.js` suffixes. If imported from `node_modules` the unused helpers will automatically be removed via treeshaking.
-
-### `conditional` (Common alias: c)
-
-Signature:
 ```TypeScript
 conditional(
   condition: any,
   onTruth: NodeContent[] | NodeContent | ResolveFunction,
   onFalse?: NodeContent[] | NodeContent | ResolveFunction,
 ): NodeContent[]
-```
 
-Behaviour: Evaluates a condition and returns an array containing either `onTrue` (when true) or `onFalse` (when false).
-
-Parameters:
-- `condition` any value that will be checked for being truthy.
-- `onTrue` data to return when the condition is truthy.
-- `onFalse` data to return when the condition is falsy.
-
-Returns: an array, suitable for spreading into an abstract node tree.
-
-### `match` (Common alias: m)
-
-Signature:
-```TypeScript
 match(
-  key: string,
-  lookup: { [key: string]: NodeContent[] | NodeContent | ResolveFunction },
-  fallback?: NodeContent[] | NodeContent | ResolveFunction,
+  key: any,
+  lookup: Record<any, NodeContent[] | NodeContent | ResolveFunction>,
+  fallback?: NodeContent[] | NodeContent | ResolveFunction | null,
 ): NodeContent[]
 ```
 
-Behaviour:
-- Matches the provided key against an object of cases.
-- Case values may be functions; they are evaluated when selected.
+`conditional` selects one branch. `match` selects a lookup value or fallback. A selected function is evaluated lazily. Both functions normalize the selected content to an array.
 
-- `key` any value that will be checked for being in the lookup table.
-- `lookup` the lookup table through which is looked for a match.
-- `fallback` the data to return if no match is found.
+## Alternative node creation
 
-Returns: the corresponding value as an array, suitable for spreading into an abstract node tree.
-
-## Alternative abstract creation
-
-### `nde`
-
-Signature:
 ```TypeScript
-nde(
-  query: string,
-  children?: any[],
-): NodeAbstract
+nde(selector: string, contents?: NodeContent[] | NodeContent): NodeAbstract
 ```
 
-Behaviour: Creates an abstract node using a query selector syntax.
+`nde` parses compact selector syntax such as `a.button#next[href=/next]`. `factory` provides tag-name functions around `node`; `fctory` provides tag-name functions combined with selector parsing.
 
-Example:
 ```JavaScript
-nde('a.nav-link.active[href="/next-page/"][target=_blank]', 'Next page')
-```
+import { factory, fctory, nde } from '@doars/staark'
 
-### `factory`
+const { div } = factory
+const { a } = fctory
 
-Behaviour: A object acting as a factory pattern that wraps the `node` function for easy node generation using specific types. Eliminating the need to pass the node type as a string in every call.
-
-Example:
-```JavaScript
-const { div, span } = factory
-// Now `div([...])` is equivalent to `node('div', [...])` and `span([...]) is equivalent to node('span', [...])`
-```
-
-### `fctory`
-
-Behaviour: Combines the functionality of `factory` and `nde`. Provides pre-bound functions for node types that accept query selector strings for attributes.
-
-Example:
-```JavaScript
-const { a } = fctory;
-// Now `a('.nav-link.active[href="/next-page/"][target=_blank]', 'Next page')` creates an anchor node.
+div([nde('strong.notice', 'Notice')])
+a('.button[href=/next]', 'Next')
 ```
 
 ## Example
 
 ```JavaScript
-import {
-  mount,
-  node as n,
-} from '@doars/staark'
+import { mount, node } from '@doars/staark'
 
-const calculateBMI = (
-  state,
-) => {
-  const weight = parseFloat(state.weight)
-  const height = parseFloat(state.height) / 100
-  if (
-    weight
-    && height
-  ) {
-    state.bmi = (weight / (height * height)).toFixed(2)
-  }
+const increment = (event, state) => {
+  state.count++
 }
 
-const onWeightInput = (
-  event,
-  state,
-) => {
-  state.weight = event.target.value
-  calculateBMI(state)
-}
-
-const onHeightInput = (
-  event,
-  state,
-) => {
-  state.height = event.target.value
-  calculateBMI(state)
-}
-
-mount('#app', (state) =>
-  n('div', {
-    style: {
-      maxWidth: '256px',
-    }
-  }, [
-    n('p', 'BMI calculator'),
-
-    n('input', {
-      type: 'number',
-      placeholder: 'Weight (kg)',
-      value: state.weight,
-      input: onWeightInput,
-      style: {
-        marginBottom: '8px',
-        padding: '4px',
-        width: '100%',
-      },
-    }),
-
-    n('input', {
-      type: 'number',
-      placeholder: 'Height (cm)',
-      value: state.height,
-      input: onHeightInput,
-      style: {
-        marginBottom: '8px',
-        padding: '4px',
-        width: '100%',
-      },
-    }),
-
-    n('div', {
-      style: {
-        marginTop: '8px',
-      },
-    }, 'BMI: ' + state.bmi),
-  ]), {
-  weight: '',
-  height: '',
-  bmi: 0,
-}
+const [update, unmount, state] = mount(
+  '#app',
+  (currentState) => node('button', { click: increment }, currentState.count),
+  { count: 0 },
+)
 ```
+
+For server rendering, use `@doars/staark-isomorphic` and pass its serialized state and tree to `mount`. When state and scheduling are managed elsewhere, use `@doars/staark-patch` instead.

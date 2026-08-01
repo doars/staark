@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.5.10
 
+- Update and improve the `README.md`.
 - Document the package API for language models in `llms.txt`.
 - Reduce minified bundle size by sharing element type conversion and simplifying selector parser state.
 

@@ -4,18 +4,18 @@ Synchronise application state between users in real-time via end-to-end encrypte
 
 - Minimal footprint with no unnecessary dependencies.
 - Communication is encrypted from one client to another, ensuring privacy.
-- The server only relays messages and cannot decrypt the content send.
+- The server only relays messages and cannot decrypt the content sent.
 - A built-in verification flow helps prevent man-in-the-middle attacks.
 - Automatically synchronizes a shared state object between clients using an efficient diffing mechanism.
 - Provides straightforward functions for setting up both the server and client.
 
 `roupn` operates with a central server that acts as a message relay. Clients connect to this server to create or join rooms. The room's creator is responsible for verifying new users to ensure they are who they claim to be, establishing a secure room for the group. All data exchanged between clients is end-to-end encrypted and is verified during the joining process.
 
-Because the messages are always end-to-end encrypted the server used by the users does not have to be trusted by the users. Instead it can be any server that simply has the protocol accessible on it. The server will not be able to see into the data being transmitted, just when and which user sends a message. This metadata is of course still private data and therefore a trusted server should still be used if available.
+Because messages are end-to-end encrypted, the server cannot inspect their content. It can still observe metadata such as addresses, timing, room membership, and message sizes, and it controls availability. This metadata is private too, so a trusted server should still be used when available.
 
 ## From the user's perspective
 
-A user can be given the option to create or join a room. When creating a room this user is given their assigned room code from the server, for example `AB3D5F`. They provide this to the other users they want to join. The users join and each are show a different code on their screen, for example `U2W4YZ`. This code must then be provided back to the room's creator over a secure and trusted channel. The room's creator then enters this code in to verify the joining user. The verification code is there to verify that the public keys received by both users have not been altered, ensuring encrypted messages can not been decrypted by any other party.
+A user can be given the option to create or join a room. When creating a room, this user receives a room code from the server, for example `AB3D5F`, and provides it to the people they want to join. Each joining user then sees a different verification code, for example `U2W4YZ`. This code must be given back to the room's creator over a secure and trusted channel. The creator enters it to verify that the public keys received by both users have not been altered.
 
 ## Usage
 
@@ -63,9 +63,27 @@ Construct the WebSocket server with a transport-level `maxPayload` no larger
 than the connector's logical encoded-message limit:
 
 ```JavaScript
+const connector = createServerConnector()
 const socketServer = new WebSocketServer({
   maxPayload: 256 * 1024,
   noServer: true,
+})
+```
+
+Connect the returned handlers to the HTTP and WebSocket servers:
+
+```JavaScript
+httpServer.on('request', (request, response) => {
+  if (!connector.handleHttpRequest(request, response)) {
+    response.writeHead(404)
+    response.end()
+  }
+})
+
+httpServer.on('upgrade', (request, socket, head) => {
+  if (!connector.handleSocketUpgrade(request, socket, head, socketServer)) {
+    socket.destroy()
+  }
 })
 ```
 
@@ -81,9 +99,9 @@ access logs.
 
 ### Setting up the client
 
-On the client-side, you can use the `createClientConnector` to handle the connection and encryption. Or use you can use the `createClientSynchronizer` to handle the connection, encryption and state management.
+On the client side, use `createClientConnector` to handle connections and encryption, or `createClientSynchronizer` to add shared-state management.
 
-The synchronizer works with two state objects. A private state, this object holds connection status, user IDs, and other internal data. It should be treated as read-only. And a public state, this object is the shared state that gets synchronized across all users in the room. Any changes made to it will be automatically broadcast to other users.
+The synchronizer works with two state objects. Its private state holds connection status, user IDs, and other internal data and should be treated as read-only. Its public state is synchronized across the room; changes made to it are automatically broadcast to verified users.
 
 #### `createClientConnector(options)`
 
@@ -100,10 +118,10 @@ The synchronizer works with two state objects. A private state, this object hold
 
 When creating or joining a room, you can provide the following options:
 
-- `publicData` (`any`): Data that is shared publicly with other users before the connection is fully established. This can be used to verify that the applications are compatible, it is recommended to obfuscated this information to prevent the server from knowing which apps are used. This can be done by hashing the app name and verion number to gether with a nonce.
+- `publicData` (`any`): Data shared before the encrypted connection is fully established. It can be used to verify application compatibility, but it is visible to the relay and must not contain secrets.
 - `verifyPublicData` (`Function`): A function that verifies the public data from other users.
-- `privateData` (`any`): Data that is shared privately after the end-to-end encryption has been established with other users. This can be used to verify additional user information.
-- `verifyPrivateata` (`Function`): A function that verifies the private data from other users.
+
+Subscribe to `onError` before creating or joining a room. The connector also provides room, user-verification, direct-message, room-message, and server-message methods, alongside connection, room, user, message, and error events. Event objects expose `addListener`, `removeListener`, and `dispatch`.
 
 #### `createClientSynchronizer(options)`
 
@@ -152,3 +170,7 @@ import { createClientConnector } from 'https://cdn.jsdelivr.net/npm/@doars/roupn
 // Full bundle (connector and synchronizer).
 import { createClientConnector, createClientSynchronizer } from 'https://cdn.jsdelivr.net/npm/@doars/roupn@1/dst/roupn.js'
 ```
+
+The browser bundles contain client APIs only. Server applications should import `createServerConnector` from the package entry. The client requires WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs.
+
+For compact language-model documentation, see [`llms.txt`](./llms.txt).

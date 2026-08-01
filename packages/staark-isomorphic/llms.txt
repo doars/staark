@@ -1,10 +1,12 @@
 # staark isomorphic
 
-Server-side rendering for Staark abstract node trees. It exports the Staark node creation helpers together with functions that render views or existing abstract trees to HTML.
+Server-side HTML rendering for Staark abstract node trees. Use it to render a Staark view or an existing abstract tree and optionally serialize hydration data for `@doars/staark` or `@doars/staark-patch`.
 
-## Rendering functions
+## Runtime and exports
 
-### `stringifyPatch`
+The renderer does not require browser DOM APIs. It exports `stringify`, `stringifyFull`, `stringifyPatch`, and `stringifyPatchFull`, plus `node`, `memo`, `conditional`, `match`, `nde`, `factory`, `fctory`, and `identifier` from `@doars/staark-common`.
+
+## `stringifyPatch`
 
 ```TypeScript
 stringifyPatch(
@@ -12,9 +14,9 @@ stringifyPatch(
 ): [html: string, abstractTree: NodeContent[] | undefined]
 ```
 
-Renders an existing abstract tree. The returned tree can be passed to Staark's client-side `mount` function to hydrate the rendered HTML.
+Renders an existing abstract tree and returns the normalized tree. This form does not serialize hydration data.
 
-### `stringify`
+## `stringify`
 
 ```TypeScript
 stringify(
@@ -23,19 +25,19 @@ stringify(
 ): [html: string, abstractTree: NodeContent[] | undefined]
 ```
 
-Calls the view with the initial state, renders the result, and returns the HTML and normalized abstract tree.
+Calls the view with the initial state, which defaults to `{}`, then returns the rendered HTML and normalized tree.
 
-### `stringifyPatchFull`
+## `stringifyPatchFull`
 
 ```TypeScript
 stringifyPatchFull(
-  abstractTree?: NodeContent[],
+  abstractTree?: NodeContent[] | NodeContent,
 ): [html: string, serializedAbstractTree: string]
 ```
 
-Renders an abstract tree and serializes the normalized tree for embedding in a response.
+Renders an existing tree and serializes its normalized form for hydration by `@doars/staark-patch` or the fourth argument of Staark's `mount`.
 
-### `stringifyFull`
+## `stringifyFull`
 
 ```TypeScript
 stringifyFull(
@@ -44,19 +46,32 @@ stringifyFull(
 ): [html: string, serializedAbstractTree: string, serializedState: string]
 ```
 
-Renders a view and serializes both its abstract tree and initial state for client-side hydration.
+Renders a view and serializes both the normalized tree and initial state. Pass the serialized state as the third argument and the serialized tree as the fourth argument to Staark's `mount`.
 
-## Node helpers
+## Rendering and serialization behavior
 
-The package also exports `node`, `memo`, `conditional`, `match`, `nde`, `factory`, `fctory`, and `identifier`. Their behavior matches `@doars/staark-common` and `@doars/staark`.
+- Text and attribute values are HTML-escaped.
+- Element and attribute names containing unsafe characters are rejected.
+- Function-valued attributes such as event listeners are not written to HTML.
+- `class` arrays and truth maps are normalized; style objects use kebab-case property names in rendered HTML.
+- Keys are reconciliation metadata and are omitted from HTML but retained in serialized hydration data.
+- The custom abstract-tree serializer omits object keys beginning with `_`. Unsupported values such as functions become `null`.
+- State is serialized with `JSON.stringify`, so it must satisfy normal JSON serialization constraints.
+- `stringifyPatch` and `stringifyPatchFull` cannot render a memo node meaningfully because they receive no state. Use `stringify` or `stringifyFull` for views containing `memo`.
 
 ## Example
 
 ```JavaScript
 import { node, stringifyFull } from '@doars/staark-isomorphic'
 
-const [html, abstractTree, state] = stringifyFull(
-  (currentState) => node('h1', `Hello ${currentState.name}`),
+const [html, serializedTree, serializedState] = stringifyFull(
+  (state) => node('h1', `Hello ${state.name}`),
   { name: 'world' },
 )
+```
+
+Send `html` as the root element's contents. Make `serializedTree` and `serializedState` available to trusted client code, then hydrate:
+
+```JavaScript
+mount('#app', renderView, serializedState, serializedTree)
 ```

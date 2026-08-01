@@ -43,7 +43,7 @@ console.log(tree) // '[...]'
 console.log(state) // '{"count":0}'
 ```
 
-The added benefit of stringify the abstract node tree and state is that this can also be passed to [staark](https://github.com/doars/staark/tree/main/packages/staark#readme) the front-end for re-hydration alongside the rendered HTML.
+The added benefit of stringifying the abstract node tree and state is that both can be passed to [staark](https://github.com/doars/staark/tree/main/packages/staark#readme) for hydration alongside the rendered HTML.
 
 ```HTML
 <body>
@@ -104,7 +104,7 @@ console.log(html) // '<div><p>Hello there</p><p>General Kenobi</p></div>'
 console.log(tree) // '[...]'
 ```
 
-As mentioned before the `stringifyPatch` and `stringifyPatchFull` functions are ideal to re-hydrate this can be done with [staark-patch](https://github.com/doars/staark/tree/main/packages/staark-patch#readme).
+As mentioned before, the output of `stringifyPatchFull` is ideal for hydration with [staark-patch](https://github.com/doars/staark/tree/main/packages/staark-patch#readme).
 
 ```HTML
 <body>
@@ -132,24 +132,13 @@ As mentioned before the `stringifyPatch` and `stringifyPatchFull` functions are 
 </body>
 ```
 
-The library also exports the `factory`, `fctory`, `memo`, and `nde` functions from staark so these don't have te imported from there separately. But do note that `stringifyPatch` and `stringifyPatchFull` do not support the `memo` node since there is no state to provide to these memoization functions.
+The library also exports `conditional`, `factory`, `fctory`, `identifier`, `match`, `memo`, `nde`, and `node`, so they do not have to be imported from Staark separately. Do note that `stringifyPatch` and `stringifyPatchFull` cannot render a `memo` node meaningfully because there is no state to provide to its render function.
+
+Text and attribute values are HTML-escaped, unsafe element and attribute names are rejected, and function-valued attributes are not written to HTML. State is serialized with `JSON.stringify`, so it must satisfy the normal JSON serialization constraints. When transporting serialized state and trees to the browser, do not interpolate arbitrary values directly into an inline script; use the safe encoding or data transport provided by your server framework.
 
 ## Rendering benchmark
 
-Run `npm run benchmark --workspace=packages/staark-isomorphic` to compare the
-published concatenation renderer with the private fragment-array experiment.
-The deterministic fixtures cover broad and deep trees, attribute-heavy nodes,
-escaping, SVG, custom elements, boolean attributes, classes, styles, and memo
-output. The benchmark warms each variant 20 times, alternates execution order,
-and reports 50-sample medians, median absolute deviation, and heap deltas.
-
-On Node.js 26.5.0, concatenation was faster in every fixture. For example, the
-large broad fixture measured 6.23 ms median versus 7.73 ms for fragments, while
-using roughly 6.20 MB versus 8.89 MB of additional heap. Node.js 20.20.2 showed
-the same result: 6.59 ms versus 9.22 ms and roughly 6.18 MB versus 8.93 MB for
-that fixture. The fragment variant therefore does not meet the 10% improvement
-threshold on either the minimum supported or development runtime, and the
-runtime renderer remains unchanged.
+Run `npm run benchmark --workspace=packages/staark-isomorphic` to compare the published concatenation renderer with the private fragment-array experiment. The fixtures cover broad and deep trees, attribute-heavy nodes, escaping, SVG, custom elements, boolean attributes, classes, styles, and memo output. Exact numbers depend on the runtime and machine, so run the benchmark in your target environment when making implementation decisions.
 
 ## Installation
 
@@ -176,3 +165,5 @@ import { stringify } from 'https://cdn.jsdelivr.net/npm/@doars/staark-isomorphic
 // Bundle minified.
 import { stringify } from 'https://cdn.jsdelivr.net/npm/@doars/staark-isomorphic@1/dst/staark-isomorphic.min.js'
 ```
+
+For compact language-model documentation, see [`llms.txt`](./llms.txt).

@@ -1,6 +1,10 @@
 # staark patch
 
-A stateless DOM renderer for Staark abstract node trees. Use it when application state and update scheduling are managed elsewhere.
+A stateless DOM renderer for Staark abstract node trees. Use it when application state and update scheduling are managed elsewhere and only DOM reconciliation is needed.
+
+## Runtime and builds
+
+Staark Patch runs in browsers and requires DOM APIs. The base build exports `node` and `prepare`. The full build also exports `conditional`, `factory`, `fctory`, `identifier`, `match`, and `nde`. It does not export `memo`, because the patcher has no state to pass to memo render functions.
 
 ## `prepare`
 
@@ -11,29 +15,46 @@ prepare(
 ): (newAbstractTree: NodeContent[] | NodeContent) => unknown
 ```
 
-Creates a patch function bound to a root element. A string root is resolved as a query selector. Calling the returned function reconciles the new abstract tree with the previous tree and updates the DOM.
+Creates a patch function bound to a root element. A string is resolved as a query selector. If it does not match, a new `div` is appended to `document.body`.
 
-The optional old tree supports client-side hydration. When it is a string, it is parsed as serialized JSON. Use stable, sibling-unique `key` attributes to preserve DOM element identity when keyed children are inserted, removed, or reordered; keys are reconciliation metadata and are not written to the DOM.
+Each call normalizes the new tree, reconciles it against the previous tree, updates the DOM, and remembers it for the next call.
 
-## Node helpers
+The optional old tree supports hydration. A string is parsed as serialized JSON. When no tree is supplied, the root's existing DOM children are converted into the initial abstract tree.
 
-The base build exports `node` and `prepare`. The full build also exports `conditional`, `factory`, `fctory`, `identifier`, `match`, and `nde`.
+## `node`
 
 ```TypeScript
 node(
   type: string,
-  attributes?: Record<string, any>,
-  children?: NodeContent[] | NodeContent,
+  attributesOrContents?: NodeAttributes | NodeContent[] | NodeContent,
+  contents?: NodeContent[] | NodeContent,
 ): NodeAbstract
 ```
+
+The second argument can be attributes or contents. Function-valued attributes become DOM event listeners receiving only the browser event; state remains the caller's responsibility. `class`, `style`, `value`, and removal values are handled like Staark. A `key` preserves DOM element identity during sibling insertion, removal, or reordering and is never written to the DOM. Keys must be stable and unique among siblings.
+
+## Helper functions
+
+`conditional` and `match` select and normalize content. `nde` parses compact selector syntax. `factory` creates tag-name functions around `node`, and `fctory` combines tag-name functions with selector parsing. These helpers are present only in the full browser build, although package imports can be tree-shaken.
 
 ## Example
 
 ```JavaScript
 import { node, prepare } from '@doars/staark-patch'
 
+const state = { count: 0 }
 const patch = prepare('#app')
 
-patch(node('p', 'First render'))
-patch(node('p', 'Updated render'))
+const render = () => patch(
+  node('button', {
+    click: () => {
+      state.count++
+      render()
+    },
+  }, state.count),
+)
+
+render()
 ```
+
+For server rendering, pass the serialized tree returned by `stringifyPatchFull` from `@doars/staark-isomorphic` as the second argument to `prepare`.

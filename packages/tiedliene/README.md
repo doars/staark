@@ -4,10 +4,12 @@ tiedliene is a teensy-tiny yet powerful state management utility designed to kee
 
 - Offers a simple set of functions, making it **easy to understand** and integrate into your application.
 - Comes in at **less than a kilobyte and a half** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
-- Uses an **naive diffing algorithm** to ensure that state changes are applied in full.
+- Uses a **naive diffing algorithm** to ensure that state changes are applied in full.
 - Allows you to not only revert state changes but also provides built-in **undo and redo** capabilities.
 
-To start using tiedliene, you need to understand the core functions: `determineDiff`, `applyDiff`, `revertDiff`. These functions allow you to calculate the differences between states, apply those changes, revert to previous states.
+To start using tiedliene, you need to understand three core functions: `determineDiff`, `applyDiff`, and `revertDiff`. These calculate the differences between states, apply those changes, and revert them.
+
+A diff contains `set` and `delete` changes. Each change has a non-empty path made from string keys or numeric array indices. Unsafe path components such as `__proto__`, `constructor`, and `prototype` are rejected.
 
 The `determineDiff` function is the cornerstone of tiedliene. It takes two states—an original state and a modified state—and returns a list of changes (diffs) that describe how to transform the original state into the modified state.
 
@@ -50,7 +52,7 @@ const diffs = [{
   new: 23,
 }, {
   type: 'set',
-  path: ['interests', '2', ],
+  path: ['interests', 2, ],
   new: 'Meditation',
 }]
 
@@ -78,7 +80,7 @@ const diffs = [{
   new: 23,
 }, {
   type: 'set',
-  path: ['interests', '2', ],
+  path: ['interests', 2, ],
   new: 'Meditation',
 }]
 
@@ -88,14 +90,14 @@ console.log(originalState)
 
 In this example, `revertDiff` undoes the changes specified in the diffs, restoring the state to its previous condition.
 
-All the functionality above is part of the base library there is an expanded version which has a bit more non-essential functionality to make development simpler. The full build has in addition to determining, apply, and reverting changes also support for state management via the `manageState` function. This method does not only tracks state changes but also provides undo and redo functionality. This method encapsulates your state, allowing you to `get`, `set`, `undo`, and `redo` state changes efficiently.
+All the functionality above is part of the base library. The full build adds a little non-essential functionality to make development simpler, including state management through `manageState`. This method tracks changes and provides undo and redo while keeping the state encapsulated behind `get`, `set`, `undo`, and `redo`.
 
 - Use `get()` to retrieve the current state.
-- The `set(newState)` method updates the state and pushes the changes to the undo stack. If you set a new state, the redo stack is cleared.
-- The `undo()` method reverts the state to its previous version by popping the last set of diffs from the undo stack and applying them in reverse. These diffs are then pushed onto the redo stack.
-- The `redo()` method reapplies the most recent undo by popping diffs from the redo stack and applying them, pushing them back onto the undo stack.
+- The `set(newState)` method updates the state, pushes changes to the undo stack, clears the redo stack, and returns the new snapshot.
+- The `undo()` method reverts the latest change, moves it to the redo stack, and returns the resulting snapshot.
+- The `redo()` method reapplies the latest undone change, moves it back to the undo stack, and returns the resulting snapshot.
 
-These methods makes it easy to implement undo and redo functionality in your application, keeping the history of state changes, and allowing users to navigate through past states.
+These methods make it easy to add undo and redo to an application, keeping the history of state changes and allowing users to navigate through past states.
 
 ```JavaScript
 import { manageState } from '@doars/tiedliene'
@@ -133,25 +135,9 @@ console.log(stateManager.get())
 - `snapshot` is either `'clone'` (the defensive default) or `'reference'`. Reference snapshots expose managed state directly and require callers to treat it as immutable unless they intentionally want to mutate the manager state.
 - `clone` is an optional clone function used for snapshots and instrumentation.
 
-Plain objects and arrays may contain cycles and shared references, which are
-preserved. `Date`, `Map`, `Set`, and typed-array values are compared by value
-and stored as whole atomic changes. Functions, custom instances, weak
-collections, DOM nodes, symbol-keyed state, and enumerable accessors are
-rejected with `TypeError` before managed state changes.
+Plain objects and arrays may contain cycles and shared references, which are preserved. `Date`, `Map`, `Set`, and typed-array values are compared by value and stored as whole atomic changes. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected with `TypeError` before managed state changes.
 
-Run `npm run benchmark --workspace=packages/tiedliene` to measure `set`, `get`,
-`undo`, and `redo` across the included stable-tree sizes and history limits.
-The fixture sizes are 100, 1,000, and 5,000 records with one changing leaf;
-history limits are 0, 10, and 50. Each operation receives 20 warm-ups and 50
-samples. On Node.js 26.5.0, the 5,000-record/history-10 fixture measured medians
-of 19.17 ms for `set`, 2.11 ms for `get`, 2.09 ms for `undo`, and 2.05 ms for
-`redo`. Median snapshot heap deltas were about 1.97 MB; `set` heap deltas are
-GC-sensitive and are reported without treating negative samples as allocations.
-Clone instrumentation recorded 351 full snapshot clones for the complete
-fixture run. State assignment itself no longer performs a second full incoming
-clone; immutable forward/reverse patch values own changed data.
-
-tiedliene's functions are versatile and can be used with nested objects, arrays, or even custom objects like Proxies. The diffing, applying, and reverting mechanisms handle these cases smoothly, ensuring your state transitions are consistent and predictable.
+tiedliene's diff functions work with nested plain objects and arrays, including cycles and shared references. `manageState` deliberately rejects functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors so managed transitions remain predictable.
 
 ```JavaScript
 const nestedState = {
@@ -198,3 +184,5 @@ import { determineDiff, manageState } from 'https://cdn.jsdelivr.net/npm/@doars/
 // Full bundle minified.
 import { determineDiff, manageState } from 'https://cdn.jsdelivr.net/npm/@doars/tiedliene@1/dst/tiedliene.min.js'
 ```
+
+For compact language-model documentation, see [`llms.txt`](./llms.txt).

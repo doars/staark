@@ -12,7 +12,7 @@ The heart of _vroagn_ is the `create` function, it helps you set up a reusable r
 import { create } from '@doars/vroagn'
 
 const request = create({
-  domain: '//api.example.com',
+  domain: 'https://api.example.com',
   path: '/v1/item',
   method: 'get',
   retryAttempts: 3,
@@ -20,7 +20,7 @@ const request = create({
 })
 ```
 
-Here, we set up a `GET` request to `https://api.example.com/data` with a retry policy that attempts the request up to three times, waiting one second between attempts. You can add [more options](#request-options), like custom headers, query parameters, or even timeout settings.
+Here, we set up a `GET` request to `https://api.example.com/v1/item` with a policy allowing up to three retries after the initial request, starting with a one-second delay. You can add [more options](#request-options), like custom headers, query parameters, or even timeout settings.
 
 Once your request is created, sending it is as easy as pie. Just call the function with any additional options you need, and the library takes care of the rest.
 
@@ -31,9 +31,9 @@ console.log(error, response, result)
 
 This sends the request and returns the response and parsed result, depending on the response type. It will automatically retry the request if it fails with specific HTTP status codes like `429 Too Many Requests` or `503 Service Unavailable`.
 
-The library tries to be smart, it knows that different content types need different handling. If you're fetching `JSON`, `XML`, `HTML`, or even `SVG`, the data will automatically be parses correctly.
+The library tries to be smart: it knows that different content types need different handling. If you're fetching `JSON`, `XML`, `HTML`, or even `SVG`, the data will automatically be parsed correctly.
 
-But, what if you need to parse other data types? Say no more! The base library only contains a hand full of common parsing methods, but the full library has a few additional ones. For example parsing `CSV/TSV`, `INI`, `TOML` and even `YAML`.
+But what if you need to parse other data types? Say no more! The base library contains a handful of common parsing methods, while the full library adds `CSV/TSV`, `INI`, `TOML`, and even `YAML`.
 
 ```JavaScript
 import {
@@ -45,7 +45,7 @@ import {
 } from '@doars/vroagn'
 
 const request = create({
-  domain: '//api.example.com',
+  domain: 'https://api.example.com',
   parsers: [
     csvParser(),
     iniParser(),
@@ -63,6 +63,7 @@ The example below is a wrapper function for the [`smol-toml`](https://github.com
 import { parse } from 'smol-toml'
 
 const tomlParser = (
+  options = {},
 ) => ({
   types: options.types || ['toml', 'application/toml', 'text/toml'],
   parser: async (
@@ -97,14 +98,14 @@ const yamlParser = (
 
 You can of course also write an entirely new parser based on a custom data specification, this is perfect for those quirky APIs with their own data formats.
 
-A custom fetch function can also be specified using the fetch options. The examples directory of the library contains an additional fetch function. This function writes successful requests to the browser's caches ensuring the cache is maintained between page reloads outside of the browsers build-in cache.
+A custom fetch function can also be specified using the `fetch` option. The examples directory contains an additional fetch function that writes successful requests to the browser's Cache API, keeping them available between page reloads independently of the browser's built-in HTTP cache.
 
 ```JavaScript
 import { create } from '@doars/vroagn'
 import { cacheFetch } from '[...]/exm/cache.js'
 
 const request = create({
-  domain: '//api.example.com',
+  domain: 'https://api.example.com',
   fetch: cacheFetch({
     name: 'vroagn-cache', // Optional.
     ttl: 60 * 60 * 1000, // One hour, optional.
@@ -124,21 +125,15 @@ import { mount, node } from '@doars/staark'
 import { create } from '@doars/vroagn'
 
 const requestItems = create({
-  domain: '//api.example.com',
+  domain: 'https://api.example.com',
   path: '/v1/item',
   maxRequests: 1,
   retryAttempts: 4,
 })
 
-mount(
-  document.body.firstElementSibling,
+const [, , state] = mount(
+  '#app',
   (state) => {
-    if (!state.data) {
-      requestItems()
-        .then(
-          ([error, response, result]) => state.data => result,
-        )
-    }
     return node('div', (
       (state.data ?? []).map(
         (item) => node('p', item.title),
@@ -147,13 +142,17 @@ mount(
   },
   { data: null },
 )
+
+requestItems().then(([error, response, result]) => {
+  state.data = error ? [] : result
+})
 ```
 
 In this example, _staark_ and _vroagn_ team up to fetch and display a list of items. The data is only fetched once, and _vroagn_ handles any retry logic if the request fails. This approach ensures that your application remains responsive and resilient, even when the network isn't.
 
 ## Request options
 
-When creating a request instance, you can pass an options object to configure the request behaviour. Note that any send options can also be specified here, but will be overwritten with by the options given to the returned method. With one exception, the headers object will be merged with one anther.
+When creating a request instance, you can pass an options object to configure its behaviour. Any send option can also be specified here and overridden by options passed to the returned method. Headers are the exception: initial and per-call headers are merged.
 
 The full list of create options:
 
@@ -171,10 +170,10 @@ The full list of send options:
 - `{string} method = 'get'` The HTTP method to use for the request. Common options include `get`, `post`, `put`, and `delete`.
 - `{string} mode = null` The mode of the request. Options include `cors`, `no-cors`, or `same-origin`.
 - `{string} path = ''` The endpoint path to be appended to the base URL.
-- `{string} priority = null` The priority of the request. Options include `high`, `normal`, or `low`. Higher priority requests are executed first.
+- `{string} priority = null` The Fetch priority hint. Options include `high`, `normal`, or `low`. This does not reorder vroagn's FIFO scheduler.
 - `{object} queryParams = {}` Query parameters to append to the request URL.
-- `{string} redirect = {}` The way to handle redirect responses. Options include `error`, `follow`, or `manual`.
-- `{Parser[]} parsers = null` A list of additional custom parsers for when the build-in parsers aren't sufficient.
+- `{string} redirect = null` The way to handle redirect responses. Options include `error`, `follow`, or `manual`.
+- `{Parser[]} parsers = null` A list of additional custom parsers for when the built-in parsers aren't sufficient.
 - `{string} type = null` Specifies the expected response type for the request. This overrides the automatic type determination.
 - `{AbortController} abort = null` A custom `AbortController` instance for cancelling the request.
 - `{string} cache = 'default'` The cache mode for the request. Options include `default`, `no-store`, `reload`, `no-cache`, `force-cache`, or `only-if-cached`.
@@ -184,10 +183,11 @@ The full list of send options:
 - `{number} retryAttempts = 0` The number of retry attempts allowed before giving up on the request.
 - `{number[]} retryCodes = [429, 503, 504,]` An array of HTTP status codes that will trigger a retry if encountered. If a  `Retry-After` header is given by the response it will be used if the retry after moment is later that the retry delay.
 - `{number} retryDelay = 500` Time in milliseconds to wait between retry attempts if retries are enabled. The delay between retries will increase exponentially, doubling after each failed attempt. This can help to reduce the load on the server during periods of high failure rates.
+- `{number} maximumRetryDelay` Optional upper bound for retry delays.
 - `{number} throttle = 0` Time in milliseconds to throttle requests. Limits the number of requests that can be made within a specified time frame.
 - `{number} timeout = 0` Time in milliseconds before the request times out. If the request exceeds this duration, it will be aborted.
 
-The `send` method returns a promise that resolves to a tuple containing the raw response object and the parsed response body. If the response is JSON and accepts is set to json, it will be parsed automatically.
+The returned method resolves to `[error, response, result]`, containing an error when one occurred, the raw response when available, and the parsed body. Expected request failures are returned in this tuple. Invalid creation options, such as a non-positive `maxConcurrency`, can throw synchronously.
 
 ## Parsing
 
@@ -196,19 +196,14 @@ The following types will be automatically parsed and determined.
 - The type `arrayBuffer` will be parsed as an array buffer.
 - The type `blob` will be parsed as a blob.
 - The type `formData` will be parsed as form data.
-- The type `text` will be parsed as text. A `Content-Type` or `Accepts` headers of `text/plain` or a file extension of `txt` are also parsed as text.
-- The type `json` will be parsed as JSON. A `Content-Type` or `Accepts` headers of `application/json` or `text/json` or a file extension of `json` are also parsed as JSON.
-- The type `xml` will be parsed as XML. A `Content-Type` or `Accepts` headers of `application/xml` or `text/xml` or a file extension of `xml` are also parsed as XML.
-- The type `html` will be parsed as a HTML document. A `Content-Type` or `Accepts` headers of `text/html` or a file extension of `html` are also parsed as a HTML document.
-- The type `html-partial` will be parsed as partial HTML content. A `Content-Type` or `Accepts` headers of `text/html-partial` are also parsed as partial HTML content.
-- The type `svg` will be parsed as a SVG document. A `Content-Type` or `Accepts` headers of `image/svg+xml` or a file extension of `svg` are also parsed as a SVG document.
+- The type `text` will be parsed as text. An `Accept` or `Content-Type` header of `text/plain`, or a file extension of `txt`, is also parsed as text.
+- The type `json` will be parsed as JSON. An `Accept` or `Content-Type` header of `application/json` or `text/json`, or a file extension of `json`, is also parsed as JSON.
+- The type `xml` will be parsed as XML. An `Accept` or `Content-Type` header of `application/xml` or `text/xml`, or a file extension of `xml`, is also parsed as XML.
+- The type `html` will be parsed as an HTML document. An `Accept` or `Content-Type` header of `text/html`, or a file extension of `html`, is also parsed as an HTML document.
+- The type `html-partial` will be parsed as partial HTML content. An `Accept` or `Content-Type` header of `text/html-partial` is also parsed as partial HTML content.
+- The type `svg` will be parsed as an SVG document. An `Accept` or `Content-Type` header of `image/svg+xml`, or a file extension of `svg`, is also parsed as an SVG document.
 
-> `html` and `html-partial` parse trusted content and do not sanitize it. Using
-> either mode asserts that you trust the response origin and content. For
-> untrusted HTML, sanitize with a maintained sanitizer inside your application's
-> Trusted Types policy and pass that policy with `trustedTypesPolicy`. A
-> `TrustedHTML` value only reflects the policy that created it; it does not
-> sanitize content by itself.
+> `html` and `html-partial` parse trusted content and do not sanitize it. Using either mode asserts that you trust the response origin and content. For untrusted HTML, sanitize with a maintained sanitizer inside your application's Trusted Types policy and pass that policy with `trustedTypesPolicy`. A `TrustedHTML` value only reflects the policy that created it; it does not sanitize content by itself.
 
 ```JavaScript
 const policy = trustedTypes.createPolicy('vroagn', {
@@ -256,3 +251,5 @@ import { create } from 'https://cdn.jsdelivr.net/npm/@doars/vroagn@1/dst/vroagn.
 // Full bundle minified.
 import { create } from 'https://cdn.jsdelivr.net/npm/@doars/vroagn@1/dst/vroagn.min.js'
 ```
+
+For compact language-model documentation, see [`llms.txt`](./llms.txt).

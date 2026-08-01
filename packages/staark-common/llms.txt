@@ -1,6 +1,10 @@
 # staark common
 
-Shared abstract-node creation and utility functions used by the Staark rendering packages.
+Shared abstract-node constructors and utilities used by the Staark renderers. Use this package when building tooling or a renderer around Staark's abstract tree; application code normally imports the same helpers from `@doars/staark`, `@doars/staark-patch`, or `@doars/staark-isomorphic`.
+
+## Runtime and exports
+
+Most constructors are runtime-independent. DOM conversion utilities require browser DOM APIs. The package exports its constructors and utilities from the package entry.
 
 ## Abstract nodes
 
@@ -9,35 +13,40 @@ type NodeContent = string | MemoAbstract | NodeAbstract
 
 node(
   type: string,
-  attributes?: Record<string, any>,
+  attributesOrContents?: NodeAttributes | NodeContent[] | NodeContent,
   contents?: NodeContent[] | NodeContent,
 ): NodeAbstract
 ```
 
-`node` creates an abstract DOM node. Function-valued attributes become event listeners. `class` accepts a string, array, or truth-map, while `style` accepts a string or object. A `key` preserves element identity during keyed reconciliation and is not emitted to the DOM.
+`node` only constructs an abstract object; it does not touch the DOM. The second argument can be attributes or contents. DOM renderers interpret function-valued attributes as event listeners, while the isomorphic renderer omits them. `key` is reconciliation metadata and is not emitted as an HTML or DOM attribute.
+
+```JavaScript
+node('p', 'Text')
+node('button', { click: onClick }, 'Save')
+```
 
 ## View helpers
 
 ```TypeScript
 conditional(
   condition: any,
-  onTruth: NodeContent[] | NodeContent | (() => NodeContent),
-  onFalse?: NodeContent[] | NodeContent | (() => NodeContent),
+  onTruth: NodeContent[] | NodeContent | ResolveFunction,
+  onFalse?: NodeContent[] | NodeContent | ResolveFunction,
 ): NodeContent[]
 
 match(
-  key: string,
-  lookup: Record<string, NodeContent[] | NodeContent | (() => NodeContent)>,
-  fallback?: NodeContent[] | NodeContent | (() => NodeContent),
+  key: any,
+  lookup: Record<any, NodeContent[] | NodeContent | ResolveFunction>,
+  fallback?: NodeContent[] | NodeContent | ResolveFunction | null,
 ): NodeContent[]
 
 memo(
-  render: (state: any) => NodeContent[] | NodeContent,
+  render: (state: any, memory: any) => NodeContent[] | NodeContent,
   memory: any,
 ): MemoAbstract
 ```
 
-`conditional` selects one branch. `match` selects a lookup entry or fallback. Selected functions are evaluated lazily. `memo` describes a view whose result can be reused until its memory value changes.
+`conditional` and `match` evaluate only the selected function and normalize its result to an array. `memo` records a render function and memory value; a compatible renderer decides whether its previous subtree can be reused.
 
 ## Alternative node creation
 
@@ -45,7 +54,7 @@ memo(
 nde(selector: string, contents?: NodeContent[] | NodeContent): NodeAbstract
 ```
 
-`nde` parses selector syntax such as `a.button#next[href=/next]`. `factory` is a proxy of tag-name functions around `node`; `fctory` combines tag-name functions with selector parsing.
+`nde` parses syntax such as `a.button#next[href=/next]`. `factory` is a proxy of tag-name functions around `node`; `fctory` combines tag-name functions with selector parsing.
 
 ```JavaScript
 import { factory, fctory, nde } from '@doars/staark-common'
@@ -59,12 +68,16 @@ a('.button[href=/next]', 'Next')
 
 ## Utilities
 
-- `arrayify(data)` always returns an array; `arrayifyOrUndefined(data)` returns an array or `undefined`.
+- `arrayify(data)` returns `data` as an array; `arrayifyOrUndefined(data)` returns an array or `undefined`.
 - `cloneRecursive(value, clones?)` deeply clones supported values while preserving cycles and shared references.
 - `equalRecursive(valueA, valueB, compared?)` recursively compares supported values.
-- `childrenToNodes(element)` converts DOM children into abstract nodes.
+- `childrenToNodes(element)` converts an element's DOM children into abstract nodes and requires DOM APIs.
 - `identifier(prefix)` returns a process-unique string using the prefix.
 - `marker` is the abstract-node discriminator string `'n'`.
 - `suffixNameIfMultiple(attributes)` normalizes multiple select-like attribute names.
-- `propertyNameToType(propertyName)` converts DOM property names to attribute types.
+- `propertyNameToType(propertyName)` maps DOM property names to attribute types.
 - `selectorToTokenizer(selector)` tokenizes the selector syntax used by `nde` and `fctory`.
+
+## Renderer behavior
+
+This package defines data structures, not one universal rendering policy. Attribute handling, memo support, hydration, and event binding depend on the consuming package. See `@doars/staark` for reactive DOM rendering, `@doars/staark-patch` for stateless DOM patching, and `@doars/staark-isomorphic` for HTML serialization.

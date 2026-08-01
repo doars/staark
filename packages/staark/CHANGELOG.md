@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.7.17
 
+- Update and improve the `README.md`.
 - Document the package API for language models in `llms.txt`.
 - Preserve keyed DOM element identity when inserting, removing, or reordering siblings, including keyed nodes returned by memoized views.
 - Reduce the minified bundle size of factory, selector, mounting, and state proxy helpers.

@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.4.13
 
+- Update and improve the `README.md`.
 - Document the package API for language models in `llms.txt`.
 - Reduce minified bundle size by sharing node creation and update logic.
 - Reduce allocations during keyed child reconciliation.

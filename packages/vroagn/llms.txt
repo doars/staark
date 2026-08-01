@@ -1,6 +1,12 @@
 # vroagn
 
-A small library for configurable network requests with parsing, retries, delays, throttling, debouncing, cancellation, and concurrency control.
+A configurable network-request library with parsing, retries, delays, throttling, debouncing, cancellation, and concurrency control. Use it to create a reusable request function whose expected failures are returned as tuple values.
+
+## Runtime and builds
+
+Vroagn targets environments with Fetch-compatible APIs. XML, HTML, partial-HTML, and SVG parsing require browser parsing APIs. A custom `fetch` implementation can be supplied.
+
+The base build exports `create`. The full build also exports `csvParser`, `iniParser`, `tomlParser`, and `yamlParser`.
 
 ## `create`
 
@@ -14,21 +20,56 @@ create(
 ]>
 ```
 
-Creates a reusable request function. Per-call options override initial options, except headers are merged. Request failures are returned in the tuple instead of being thrown.
+Creates a reusable request function. Per-call options override initial options, except headers are merged. Network, parsing, status, timeout, cancellation, and request-limit failures normally resolve as `[error, response, result]` instead of rejecting.
 
-Important options include:
-- URL and request: `domain`, `path`, `method`, `headers`, `queryParams`, `body`, `credentials`, `mode`, `redirect`, `cache`, and `priority`.
-- Execution: `abort`, `fetch`, `debounce`, `delay`, `throttle`, `timeout`, `maxConcurrency`, and `maxRequests`.
-- Retry: `retryAttempts`, `retryCodes` (default `[429, 503, 504]`), and `retryDelay` (default `500`).
-- Parsing: `type`, `parsers`, `createTrustedHTML`, and `trustedTypesPolicy`.
+Invalid creation options such as a non-positive `maxConcurrency` or malformed Trusted Types policy can throw synchronously. Invalid per-call Trusted Types options are returned in the tuple.
 
-Limited and unlimited calls share a strict FIFO scheduler. An `AbortController` can cancel queued or active work.
+## Request options
 
-Built-in parsing supports `arrayBuffer`, `blob`, `formData`, `text`, `json`, `xml`, `html`, `html-partial`, and `svg`. HTML modes do not sanitize content; only use them for trusted responses or provide a sanitizing Trusted Types policy.
+URL and request options include `domain`, `path`, `method`, `headers`, `queryParams`, `body`, `credentials`, `mode`, `redirect`, `cache`, and `priority`.
+
+Execution options include:
+
+- `abort`: an `AbortController` or compatible signal used to cancel queued or active work.
+- `fetch`: a custom Fetch-compatible function.
+- `debounce`: delay until calls stop arriving; superseded callers settle with the eventual debounced request result unless cancelled.
+- `delay`: delay before starting a request.
+- `throttle`: minimum interval between starts.
+- `timeout`: maximum active request duration.
+- `maxConcurrency`: positive maximum active requests; omitted means unlimited.
+- `maxRequests`: maximum fetches started by the reusable instance.
+
+Limited and unlimited calls share one FIFO scheduler. Debounced and queued calls consume `maxRequests` only when their fetch starts.
+
+Retry options include:
+
+- `retryAttempts`: retries after the initial request; default `0`.
+- `retryCodes`: retryable HTTP status codes; default `[429, 503, 504]`.
+- `retryDelay`: initial delay in milliseconds; default `500`.
+- `maximumRetryDelay`: optional upper bound for retry delays.
+
+Retry delay grows exponentially and honors a later valid `Retry-After` response value.
+
+## Parsing
+
+The response `type` may be explicitly supplied or inferred from headers and the URL. Built-in parsing supports `arrayBuffer`, `blob`, `formData`, `text`, `json`, `xml`, `html`, `html-partial`, and `svg`.
+
+HTML parsing does not sanitize content. Only parse trusted HTML, or sanitize it through an application-controlled Trusted Types policy supplied as `trustedTypesPolicy`. `createTrustedHTML` can provide equivalent application-controlled conversion. A `TrustedHTML` value indicates policy provenance; it is not inherently sanitized.
+
+Custom parsers have this shape:
+
+```TypeScript
+type ResponseParser = {
+  types: string[],
+  parser: (
+    response: Response,
+    options: RequestOptions,
+    type: string,
+  ) => any,
+}
+```
 
 ## Parser factories
-
-The full build exports these factories for additional response formats:
 
 ```TypeScript
 csvParser(options?: CsvOptions): ResponseParser
@@ -37,7 +78,7 @@ tomlParser(options?: TomlOptions): ResponseParser
 yamlParser(options?: YamlOptions): ResponseParser
 ```
 
-The TOML and YAML parsers intentionally support a small subset of their specifications. Wrap a dedicated parser when full specification support is required.
+The TOML and YAML parsers intentionally implement small subsets of their specifications. Wrap a maintained dedicated parser when complete syntax, complex values, or detailed error handling is required.
 
 ## Example
 
@@ -48,7 +89,12 @@ const request = create({
   domain: 'https://api.example.com',
   parsers: [yamlParser()],
   retryAttempts: 3,
+  maximumRetryDelay: 5000,
 })
 
 const [error, response, result] = await request({ path: '/items' })
+
+if (error) {
+  console.error(error)
+}
 ```

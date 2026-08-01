@@ -6,7 +6,7 @@ A teeny-tiny stateless framework for building web apps.
 - Comes in at **a kilobyte** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has an **efficient diffing algorithm**. This ensures the node tree is morphed quickly from the old to the new with minimal overhead.
 
-> Looking for one with a state management solution checkout out [staark](https://github.com/doars/staark/tree/main/packages/staark#readme).
+> Looking for one with a state management solution? Check out [staark](https://github.com/doars/staark/tree/main/packages/staark#readme).
 
 To use staark patch, you need to know two main functions the `prepare` and `node`. With `prepare`, you set up the `patch` function, which will update a section of the node tree based on new abstract node tree you provide. The `node` function creates those abstract representations of document elements, which staark patch uses to manipulate the actual document.
 
@@ -14,7 +14,7 @@ To use staark patch, you need to know two main functions the `prepare` and `node
 import { node as n, prepare } from '@doars/staark-patch'
 
 const patch = prepare(
-  document.body.firstSibling,
+  '#app',
 )
 
 patch(
@@ -25,7 +25,7 @@ patch(
 )
 ```
 
-The `prepare` function attaches the `patch` function to the document’s first sibling. The `patch` function is then used to apply a simple view of two paragraphs into the document. Every time `patch` is called, the document updates based on the new nodes passed to it.
+The `prepare` function attaches the `patch` function to the element matching `#app`. The `patch` function is then used to apply a simple view of two paragraphs into the document. Every time `patch` is called, the document updates based on the new nodes passed to it.
 
 Even though patch is stateless, you can still use it for dynamic updates by manually handling state changes within your code. The library provides an easy and efficient way to re-render parts of your document when you modify your data.
 
@@ -33,10 +33,10 @@ Even though patch is stateless, you can still use it for dynamic updates by manu
 import { node as n, prepare } from '@doars/staark-patch'
 
 const patch = prepare(
-  document.body.firstSibling,
+  '#app',
 )
 
-const state = {}
+const state = { count: 0 }
 const update = () => {
   patch(
     n('div', [
@@ -50,6 +50,8 @@ const update = () => {
     ]),
   )
 }
+
+update()
 ```
 
 As you can read above, update re-renders the view with the current value of `state.count` whenever the button is clicked. Despite patch being stateless, it allows you to control state externally and reapply the patches as needed.
@@ -70,9 +72,9 @@ patch(
 
 Keys must be unique among siblings. When keyed children change order, staark patch moves their existing DOM elements instead of repurposing elements at the same positions.
 
-Then there is also another second parameter for the `prepare` function. This parameter can be the abstract node tree of the existing HTML. Typically rendered on the server and the provided to the client. See the [staark isomorphic](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) package for more in formation on this. And also important to note to make it easier, if the existing abstract node tree is a string it will automatically be parsed as JSON.
+There is also a second parameter for the `prepare` function. This can be the abstract node tree corresponding to existing HTML, typically rendered on the server and provided to the client. See [staark isomorphic](https://github.com/doars/staark/tree/main/packages/staark-isomorphic#readme) for more information. If the existing abstract node tree is a string, it is automatically parsed as JSON. When no tree is supplied, the root's existing children are converted into the initial abstract tree.
 
-The full build of the library also exports the `factory`, `fctory`, and `nde` functions from staark so these don't have te imported from there separately. And do note that the `memo` function is not exported because this is not supported since there is no state to provide to these memoization functions.
+The full build also exports `conditional`, `factory`, `fctory`, `identifier`, `match`, and `nde`, so they do not have to be imported from Staark separately. The `memo` function is intentionally not exported because the stateless patcher has no state to provide to memo render functions.
 
 ## Installation
 
@@ -107,3 +109,5 @@ import { node as n, prepare } from 'https://cdn.jsdelivr.net/npm/@doars/staark-p
 // Full bundle minified.
 import { node as n, prepare } from 'https://cdn.jsdelivr.net/npm/@doars/staark-patch@1/dst/staark-patch.min.js'
 ```
+
+For compact language-model documentation, see [`llms.txt`](./llms.txt).
