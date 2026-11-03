@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Treat only `null`, `undefined`, and `false` as no contents in `node`, `arrayify`, and `arrayifyOrUndefined`, so zero and empty strings are kept.
+- Avoid creating a closure per call in `equalPlain`.
 - Only allocate the comparison cache in `equalRecursive` when comparing objects.
 - Support comment nodes in `childrenToNodes`, and use `localName` so element types match lowercase abstract nodes. HTML element types are now lowercase.
 - Add `equalPlain`, a smaller comparison for plain data that does not allocate key arrays, and `clonePlain` to copy plain data for it.

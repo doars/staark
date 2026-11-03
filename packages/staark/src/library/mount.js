@@ -196,25 +196,47 @@ export const mount = (
 					if (result === abstracts) {
 						result = abstracts.slice(0, index);
 					}
-					// Memos are cached per render function, and found by their memory first so reordered state objects are reused, then by their position.
+					// Memos are cached per render function. They are matched by position, or else by memory so reordered state objects are reused.
 					let memos = newMemoMap.get(abstract.r);
 					if (!memos) {
-						memos = { l: [], i: new Map() };
+						memos = [];
 						newMemoMap.set(abstract.r, memos);
 					}
 					const oldMemos = oldMemoMap.get(abstract.r);
 					// State objects are compared through their targets, which is faster than through the proxy.
-					const memory = toTarget(abstract.m);
-					let match = oldMemos?.i.get(memory) ?? oldMemos?.l[memos.l.length];
+					const memory =
+						abstract.m && typeof abstract.m === "object"
+							? toTarget(abstract.m)
+							: abstract.m;
+					const atPosition = oldMemos?.[memos.length];
+					let match = atPosition;
 					if (!match || !equalPlain(match.m, memory)) {
+						match = undefined;
+						if (oldMemos && atPosition?.t !== memory) {
+							// The lookup by memory is only built once the order has changed.
+							if (!oldMemos.i) {
+								oldMemos.i = new Map();
+								for (const memo of oldMemos) {
+									oldMemos.i.set(memo.t, memo);
+								}
+							}
+							match = oldMemos.i.get(memory);
+							if (match && !equalPlain(match.m, memory)) {
+								match = undefined;
+							}
+						}
+					}
+					if (!match) {
 						match = {
 							c: expand(arrayify(abstract.r(state, abstract.m))),
 							// Copied so memory mutated in place, such as the state, is still compared with its previous contents.
 							m: clonePlain(memory),
+							t: memory,
 						};
+					} else if (match.t !== memory) {
+						match = { c: match.c, m: match.m, t: memory };
 					}
-					memos.l.push(match);
-					memos.i.set(memory, match);
+					memos.push(match);
 					result.push(...match.c);
 				} else if (result !== abstracts) {
 					result.push(abstract);
@@ -293,13 +315,16 @@ export const mount = (
 		for (; start < newLength && start < oldLength; start++) {
 			const newAbstract = newChildAbstracts[start];
 			const oldAbstract = oldChildAbstracts[start];
-			if (
-				newAbstract.t !== oldAbstract.t ||
-				getKey(newAbstract) !== getKey(oldAbstract)
-			) {
-				break;
+			// Unchanged memos return the same abstract, which needs no update.
+			if (newAbstract !== oldAbstract) {
+				if (
+					newAbstract.t !== oldAbstract.t ||
+					getKey(newAbstract) !== getKey(oldAbstract)
+				) {
+					break;
+				}
+				updateNode(node, newAbstract, oldAbstract, inSvg);
 			}
-			updateNode(node, newAbstract, oldAbstract, inSvg);
 			node = node.nextSibling;
 		}
 

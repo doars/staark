@@ -88,6 +88,70 @@ export const proxify = (root, onChange) => {
 		},
 	};
 
+	// Array methods that run on the target instead of through the proxy, where every item they read or move passes through a trap, which is slow for long arrays. The target holds the same proxied items, so the results are the same.
+	const methods = Object.create(null);
+	/**
+	 * Adds wrappers for the given array methods.
+	 *
+	 * @param {string} names - Names of the array methods, separated by spaces.
+	 * @param {number} type - 0 for methods that only read, 1 for methods whose callback receives the array as the third argument, 2 as the fourth argument, and 3 for methods that move items.
+	 */
+	const wrap = (names, type) => {
+		for (const name of names.split(" ")) {
+			const method = Array.prototype[name];
+			// Only methods the browser supports are wrapped, so feature detection keeps working.
+			if (method) {
+				methods[name] = function (...args) {
+					const target = toTarget(this);
+					if (proxies.get(target) !== this) {
+						return method.apply(this, args);
+					}
+					const callback = args[0];
+					if (type === 3) {
+						for (let index = 0; index < args.length; index++) {
+							if (args[index] && typeof args[index] === "object") {
+								args[index] = add(args[index]);
+							}
+						}
+						const before = target.slice();
+						const result = method.apply(target, args);
+						// Only report a change when an item or the length changed, the same as the set trap.
+						if (
+							before.length !== target.length ||
+							before.some((value, index) => value !== target[index])
+						) {
+							onChange();
+						}
+						return result === target ? this : result;
+					}
+					if (type && typeof callback === "function") {
+						const proxy = this;
+						// Callbacks receive the proxy as the array, so changes made through it are tracked.
+						args[0] = function (a, b, c) {
+							return type === 1
+								? callback.call(this, a, b, proxy)
+								: callback(a, b, c, proxy);
+						};
+					}
+					return method.apply(target, args);
+				};
+			}
+		}
+	};
+	wrap("includes indexOf join slice toReversed toSorted values", 0);
+	wrap(
+		"every filter find findIndex findLast findLastIndex flatMap forEach map some",
+		1,
+	);
+	wrap("reduce reduceRight", 2);
+	wrap("copyWithin fill reverse shift sort splice unshift", 3);
+	methods[Symbol.iterator] = methods.values;
+	const arrayHandler = {
+		...handler,
+		get: (target, key, receiver) =>
+			methods[key] ?? Reflect.get(target, key, receiver),
+	};
+
 	/**
 	 * Recursively creates proxies for each property of the target object to track changes.
 	 *
@@ -108,7 +172,7 @@ export const proxify = (root, onChange) => {
 			return target;
 		}
 
-		proxy = new Proxy(target, handler);
+		proxy = new Proxy(target, Array.isArray(target) ? arrayHandler : handler);
 		proxies.set(target, proxy);
 		targets.set(proxy, target);
 		// Recursively create proxies for each property.

@@ -350,6 +350,45 @@ describe('Mount', () => {
     assert.strictEqual(div.innerHTML, '<ul><li>c</li><li>B</li><li>a</li><li>x</li><li>z</li></ul>')
   })
 
+  it('only renders new and changed memos when a list shifts', async () => {
+    const div = document.createElement('div')
+    const rendered = []
+    const renderItem = (_state, todo) => {
+      rendered.push(todo.text)
+      return node('li', { key: todo.text }, todo.text)
+    }
+    const [update, , state] = mount(
+      div,
+      (state) => node('ul', state.todos.map((todo) => memo(renderItem, todo))),
+      { todos: [{ text: 'a' }, { text: 'b' }, { text: 'c' }] },
+    )
+    const [a, b, c] = div.firstChild.children
+
+    rendered.length = 0
+    state.todos.unshift({ text: 'z' })
+    await update()
+    assert.deepStrictEqual(rendered, ['z'])
+    assert.strictEqual(div.innerHTML, '<ul><li>z</li><li>a</li><li>b</li><li>c</li></ul>')
+    assert.deepStrictEqual([...div.firstChild.children].slice(1), [a, b, c])
+
+    rendered.length = 0
+    state.todos.splice(1, 1)
+    state.todos[2].text = 'C'
+    await update()
+    assert.deepStrictEqual(rendered, ['C'])
+    assert.strictEqual(div.innerHTML, '<ul><li>z</li><li>b</li><li>C</li></ul>')
+    assert.strictEqual(div.firstChild.children[1], b)
+  })
+
+  it('renders zero as contents', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => node('p', state.count), { count: 0 })
+    assert.strictEqual(div.innerHTML, '<p>0</p>')
+    state.count = 1
+    await update()
+    assert.strictEqual(div.innerHTML, '<p>1</p>')
+  })
+
   it('creates and updates single text children', async () => {
     const div = document.createElement('div')
     const [update, , state] = mount(div, (state) => state.items.map((item) => node('p', [item])), { items: ['', 'a', '0'] })

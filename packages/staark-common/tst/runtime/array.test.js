@@ -23,12 +23,15 @@ describe('Array', () => {
       assert.deepStrictEqual(result, ['test'])
     })
 
-    it('should return empty array for falsy values', () => {
+    it('should return empty array for null, undefined, and false', () => {
       assert.deepStrictEqual(arrayify(null), [])
       assert.deepStrictEqual(arrayify(undefined), [])
       assert.deepStrictEqual(arrayify(false), [])
-      assert.deepStrictEqual(arrayify(0), [])
-      assert.deepStrictEqual(arrayify(''), [])
+    })
+
+    it('should wrap other falsy values', () => {
+      assert.deepStrictEqual(arrayify(0), [0])
+      assert.deepStrictEqual(arrayify(''), [''])
     })
   })
 
@@ -45,12 +48,15 @@ describe('Array', () => {
       assert.deepStrictEqual(result, ['test'])
     })
 
-    it('should return undefined for falsy values', () => {
+    it('should return undefined for null, undefined, and false', () => {
       assert.strictEqual(arrayifyOrUndefined(null), undefined)
       assert.strictEqual(arrayifyOrUndefined(undefined), undefined)
       assert.strictEqual(arrayifyOrUndefined(false), undefined)
-      assert.strictEqual(arrayifyOrUndefined(0), undefined)
-      assert.strictEqual(arrayifyOrUndefined(''), undefined)
+    })
+
+    it('should wrap other falsy values', () => {
+      assert.deepStrictEqual(arrayifyOrUndefined(0), [0])
+      assert.deepStrictEqual(arrayifyOrUndefined(''), [''])
     })
   })
 })

@@ -96,6 +96,31 @@ export const equalRecursive = (valueA, valueB, compared) => {
 };
 
 /**
+ * Checks if two children of a value compared by `equalPlain` are equal, given that they are not identical.
+ *
+ * @param {*} childA Child of the first value.
+ * @param {*} childB Child of the second value.
+ * @param {object} parent The first value, added to the path while comparing its children.
+ * @param {object[]} [path] Objects currently being compared.
+ * @returns {boolean} Whether the children are equal.
+ */
+const equalChild = (childA, childB, parent, path) => {
+	if (
+		!childA ||
+		!childB ||
+		typeof childA !== "object" ||
+		typeof childB !== "object"
+	) {
+		return false;
+	}
+	path ??= [];
+	path.push(parent);
+	const equal = equalPlain(childA, childB, path);
+	path.pop();
+	return equal;
+};
+
+/**
  * Recursively checks if two plain data values are equal. Arrays and plain objects are compared by content and dates by time, any other object only by identity. Circular structures are never considered equal.
  *
  * @param {*} valueA The first value to compare.
@@ -130,36 +155,14 @@ export const equalPlain = (valueA, valueB, path) => {
 		return false;
 	}
 
-	/**
-	 * @param {*} childA Child of the first value.
-	 * @param {*} childB Child of the second value.
-	 * @returns {boolean} Whether the children are equal.
-	 */
-	const equalChild = (childA, childB) => {
-		if (childA === childB) {
-			return true;
-		}
-		if (
-			!childA ||
-			!childB ||
-			typeof childA !== "object" ||
-			typeof childB !== "object"
-		) {
-			return false;
-		}
-		path ??= [];
-		path.push(valueA);
-		const equal = equalPlain(childA, childB, path);
-		path.pop();
-		return equal;
-	};
-
 	if (prototype === Array.prototype) {
 		if (valueA.length !== valueB.length) {
 			return false;
 		}
 		for (let index = 0; index < valueA.length; index++) {
-			if (!equalChild(valueA[index], valueB[index])) {
+			const childA = valueA[index];
+			const childB = valueB[index];
+			if (childA !== childB && !equalChild(childA, childB, valueA, path)) {
 				return false;
 			}
 		}
@@ -170,10 +173,11 @@ export const equalPlain = (valueA, valueB, path) => {
 	for (const key in valueA) {
 		if (Object.hasOwn(valueA, key)) {
 			count++;
+			const childA = valueA[key];
 			const childB = valueB[key];
 			if (
 				(childB === undefined && !Object.hasOwn(valueB, key)) ||
-				!equalChild(valueA[key], childB)
+				(childA !== childB && !equalChild(childA, childB, valueA, path))
 			) {
 				return false;
 			}

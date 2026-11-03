@@ -2,11 +2,15 @@
 
 ## Unreleased
 
+- Fix `node("p", 0)` and other zero or empty string contents rendering nothing. Only `null`, `undefined`, and `false` mean no contents.
+- Run `unshift`, `shift`, `splice`, `sort`, `reverse`, `fill`, and `copyWithin` on the state's arrays without going through the proxy for every moved item, and report a single change when an item or the length changed. Inserting or removing an item at the start of a long list is about a third faster.
+- Run array methods that only read, such as `map`, `filter`, `find`, `includes`, and iteration with `for…of`, on the state's arrays without reading every item through the proxy. Callbacks still receive the proxy as the array argument. Rendering a list of 10,000 rows is about 0.6 ms faster.
+- Skip the diff of abstracts reused from unchanged memos, and only index memos by memory once their order has changed.
 - Fix style properties set to `null`, `undefined`, or `false` not being removed. Browsers ignore them as invalid values, so the previous value was kept.
 - Support style arrays, which are joined into a list of declarations, and arrays as style values, which are joined with spaces.
 - Update a shared suffix of keyed children in place, so inserting or removing children near the start of a list only touches those children.
 - Fix memos not re-rendering when their memory, such as a state object, is mutated in place. A copy of the memory is now compared instead.
-- Reuse memos rendered in lists. Memos sharing a render function were previously cached as one, so only the last one could be reused. They are now matched by their memory first and their position second.
+- Reuse memos rendered in lists. Memos sharing a render function were previously cached as one, so only the last one could be reused. They are now matched by their position, or else by their memory so reordered state objects are reused. Memos at the same position with equal memory are reused even when the memory is a new object.
 - Fix proxies being wrapped again when assigned back to the state, for example when sorting or reversing an array, which stacked proxies and triggered an update per layer.
 - Compare memo memory that is part of the state through the objects behind the proxies, which avoids going through the proxy.
 - Fix the ESM builds in `dst/` being emitted as IIFEs without exports.
