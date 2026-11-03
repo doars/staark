@@ -14,6 +14,7 @@ const ARGUMENT_BENCHMARK = "--benchmark=";
 const ARGUMENT_LIBRARY = "--library=";
 const ARGUMENT_ITERATIONS = "--iterations=";
 const ARGUMENT_COMPLEXITY = "--complexity=";
+const ARGUMENT_WARMUP = "--warmup=";
 
 const DIRECTORY_BENCHMARK = "benchmarks";
 const DIRECTORY_LIBRARY = "dst";
@@ -42,6 +43,7 @@ const options = {
 
 	complexity: 10,
 	iterations: 100,
+	warmup: 0,
 };
 const args = process.argv.slice(2);
 args.forEach((arg) => {
@@ -60,6 +62,8 @@ args.forEach((arg) => {
 			arg.substring(ARGUMENT_ITERATIONS.length),
 			10,
 		);
+	} else if (arg.startsWith(ARGUMENT_WARMUP)) {
+		options.warmup = Number.parseInt(arg.substring(ARGUMENT_WARMUP.length), 10);
 	} else if (arg === "--profile") {
 		// Set the flag to true if the argument is exactly the flag.
 		options.profile = true;
@@ -131,6 +135,16 @@ async function runBenchmark(
 		}),
 		options,
 	);
+
+	// Optionally run the whole benchmark a few times first, so the measured iteration uses optimised code.
+	for (let index = 0; index < options.warmup; index++) {
+		await page.evaluate(async (context) => {
+			const benchmark = context.window.benchmark;
+			await benchmark.setup?.(context);
+			await benchmark.run?.(context);
+			await benchmark.cleanup?.(context);
+		}, context);
+	}
 
 	const callBenchmark = async (functionName) => {
 		if (profilePath) {
