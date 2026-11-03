@@ -1,7 +1,10 @@
 (() => {
+  // ../staark-common/src/absent.js
+  var isAbsent = (value) => value === null || value === void 0 || value === false;
+
   // ../staark-common/src/array.js
   var arrayify = (data) => arrayifyOrUndefined(data) || [];
-  var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
+  var arrayifyOrUndefined = (data) => isAbsent(data) ? void 0 : Array.isArray(data) ? data : [data];
 
   // ../staark-common/src/conditional.js
   var conditional = (condition, onTruth, onFalse) => {
@@ -17,7 +20,7 @@
 
   // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
-    if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+    if (!isAbsent(attributesOrContents) && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
       attributesOrContents = void 0;
     }
@@ -238,7 +241,7 @@
 
   // ../staark-common/src/attribute.js
   var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
-  var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+  var styleValueToString = (value) => isAbsent(value) ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
   var styleToString = (style) => {
     const declarations = [];
     for (const name of Object.keys(style)) {
@@ -296,7 +299,7 @@
     for (const name of Object.keys(attributes)) {
       const validatedName = validateName(name, "attribute");
       let value = attributes[name];
-      if (value === null || value === void 0 || value === false || validatedName === "key" || typeof value === "function") {
+      if (isAbsent(value) || validatedName === "key" || typeof value === "function") {
         continue;
       }
       value = validatedName === "style" && typeof value === "object" && !Array.isArray(value) ? styleToString(value) : attributeToString(validatedName, value);
@@ -310,7 +313,7 @@
     }
     const expanded = [];
     const add = (abstract) => {
-      if (abstract === null || abstract === void 0 || abstract === false) {
+      if (isAbsent(abstract)) {
         return;
       }
       if (abstract.r) {

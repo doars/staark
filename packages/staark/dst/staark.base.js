@@ -8,13 +8,16 @@ var memo = (render, memory) => ({
   m: memory
 });
 
+// ../staark-common/src/absent.js
+var isAbsent = (value) => value === null || value === void 0 || value === false;
+
 // ../staark-common/src/array.js
 var arrayify = (data) => arrayifyOrUndefined(data) || [];
-var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
+var arrayifyOrUndefined = (data) => isAbsent(data) ? void 0 : Array.isArray(data) ? data : [data];
 
 // ../staark-common/src/node.js
 var node = (type, attributesOrContents, contents) => {
-  if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+  if (!isAbsent(attributesOrContents) && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
     contents = attributesOrContents;
     attributesOrContents = void 0;
   }
@@ -28,7 +31,7 @@ var node = (type, attributesOrContents, contents) => {
 
 // ../staark-common/src/attribute.js
 var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
-var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+var styleValueToString = (value) => isAbsent(value) ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
 
 // ../staark-common/src/compare.js
 var equalChild = (childA, childB, parent, path) => {
@@ -103,6 +106,13 @@ var clonePlain = (value, path) => {
 };
 
 // ../staark-common/src/element.js
+var setStyle = (element, name, value) => {
+  if (name.includes("-", 1)) {
+    element.style.setProperty(name, value);
+  } else {
+    element.style[name] = value;
+  }
+};
 var childrenToNodes = (element) => {
   const abstractChildNodes = [];
   for (const childNode of element.childNodes) {
@@ -334,7 +344,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         }
         let value = newAttributes[name];
         const oldValue = oldAttributes?.[name];
-        if (value !== null && value !== void 0 && value !== false) {
+        if (!isAbsent(value)) {
           const type = typeof value;
           if (type === "function") {
             if (value === oldValue) {
@@ -357,30 +367,19 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             for (const styleName in value) {
               const styleValue = value[styleName];
               if (Object.hasOwn(value, styleName) && oldStyle?.[styleName] !== styleValue) {
-                if (styleName.includes("-", 1)) {
-                  element.style.setProperty(
-                    styleName,
-                    styleValueToString(styleValue)
-                  );
-                } else {
-                  element.style[styleName] = styleValueToString(styleValue);
-                }
+                setStyle(element, styleName, styleValueToString(styleValue));
               }
             }
             if (oldStyle) {
               for (const styleName in oldStyle) {
                 if (Object.hasOwn(oldStyle, styleName) && !Object.hasOwn(value, styleName)) {
-                  if (styleName.includes("-", 1)) {
-                    element.style.removeProperty(styleName);
-                  } else {
-                    element.style[styleName] = "";
-                  }
+                  setStyle(element, styleName, "");
                 }
               }
             }
           } else if (value !== oldValue || name === "value") {
             value = attributeToString(name, value);
-            if (oldValue === null || oldValue === void 0 || oldValue === false || attributeToString(name, oldValue) !== value) {
+            if (isAbsent(oldValue) || attributeToString(name, oldValue) !== value) {
               element.setAttribute(name, value);
             }
             if (name === "value" && element.value !== value) {
@@ -396,7 +395,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
           continue;
         }
         const newValue = newAttributes?.[name];
-        if (newValue === null || newValue === void 0 || newValue === false) {
+        if (isAbsent(newValue)) {
           if (typeof oldAttributes[name] === "function") {
             element.removeEventListener(name, handleEvent);
             delete listeners.get(element)[name];
@@ -469,7 +468,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     if (!abstract.t) {
       return document.createTextNode(abstract);
     }
-    inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+    inSvg = inSvg || abstract.t === "svg";
     const element = inSvg ? document.createElementNS("http://www.w3.org/2000/svg", abstract.t) : document.createElement(abstract.t);
     updateAttributes(element, abstract.a);
     abstract.c = expand(abstract.c);
@@ -487,7 +486,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         node2,
         newAbstract.c,
         oldAbstract.c,
-        inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
+        inSvg || newAbstract.t === "svg"
       );
     } else {
       node2.textContent = newAbstract;
@@ -628,9 +627,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
       if (active) {
         active = false;
         updatePromise = null;
-        for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
-          rootElement.childNodes[i].remove();
-        }
+        rootElement.replaceChildren();
       }
     },
     state

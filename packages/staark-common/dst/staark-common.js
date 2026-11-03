@@ -1,6 +1,9 @@
+// src/absent.js
+var isAbsent = (value) => value === null || value === void 0 || value === false;
+
 // src/array.js
 var arrayify = (data) => arrayifyOrUndefined(data) || [];
-var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
+var arrayifyOrUndefined = (data) => isAbsent(data) ? void 0 : Array.isArray(data) ? data : [data];
 
 // src/attribute.js
 var SUFFIX_MULTIPLE = "[]";
@@ -10,7 +13,7 @@ var suffixNameIfMultiple = (attributes) => {
   }
 };
 var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
-var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+var styleValueToString = (value) => isAbsent(value) ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
 var styleToString = (style) => {
   const declarations = [];
   for (const name of Object.keys(style)) {
@@ -222,7 +225,7 @@ var marker = "n";
 
 // src/node.js
 var node = (type, attributesOrContents, contents) => {
-  if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+  if (!isAbsent(attributesOrContents) && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
     contents = attributesOrContents;
     attributesOrContents = void 0;
   }
@@ -235,6 +238,13 @@ var node = (type, attributesOrContents, contents) => {
 };
 
 // src/element.js
+var setStyle = (element, name, value) => {
+  if (name.includes("-", 1)) {
+    element.style.setProperty(name, value);
+  } else {
+    element.style[name] = value;
+  }
+};
 var childrenToNodes = (element) => {
   const abstractChildNodes = [];
   for (const childNode of element.childNodes) {
@@ -496,11 +506,13 @@ export {
   fctory,
   identifier,
   increasingSubsequence,
+  isAbsent,
   marker,
   match,
   memo,
   nde,
   node,
+  setStyle,
   styleToString,
   styleValueToString,
   suffixNameIfMultiple
