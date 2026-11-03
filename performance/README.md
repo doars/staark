@@ -22,6 +22,18 @@ The `keyed-reorder` benchmark creates same-type input elements with stable keys 
 
 The `todo_app` benchmark creates `100 * complexity` rows and then replaces the todo collection with an equivalent collection prepared during setup. It measures state application and rendering without including different object-construction loops in the timed phase. The update changes text, classes, styles, and button labels without reordering rows.
 
+### update-one, prepend, and remove-one
+
+These benchmarks create a keyed list of `100 * complexity` rows, each with a label and a button. The run phase then makes a single small change: `update-one` changes the label of the middle row, `prepend` inserts a row at the start, and `remove-one` removes the middle row. They measure the overhead of re-rendering a large view for a small change, which is the most common kind of update in an app. Each library changes its state the way it is meant to be used, so staark mutates its state proxy and Hyperapp returns a new state. The benchmarks verify the rows and that every remaining row keeps its DOM element.
+
+### update-one-memo
+
+The same as `update-one`, but every row is rendered through `memo` so unchanged rows can be skipped. Only libraries with memoization are included.
+
+### Warm runs
+
+Every iteration loads a fresh page, so by default the measurements include running code that the JavaScript engine has not optimised yet. Pass `--warmup=10`, or use `npm run benchmark:warm`, to run the whole benchmark ten times on the page before measuring it.
+
 ## Libraries
 
 ### Hyperapp
