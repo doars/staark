@@ -1,5 +1,3 @@
-import { isAbsent } from "./absent.js";
-
 const SUFFIX_MULTIPLE = "[]";
 
 /**
@@ -50,7 +48,11 @@ export const attributeToString = (name, value) =>
  * @returns {string} The style value as a string.
  */
 export const styleValueToString = (value) =>
-	isAbsent(value) ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+	value === null || value === undefined || value === false
+		? ""
+		: Array.isArray(value)
+			? value.join(" ")
+			: `${value}`;
 
 /**
  * Converts a style object to a list of declarations, as used when rendering to a string. Camel-case property names are hyphenated, and properties whose value is `null`, `undefined`, or `false` are left out.

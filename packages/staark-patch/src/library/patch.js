@@ -1,10 +1,9 @@
-import { isAbsent } from "@doars/staark-common/src/absent.js";
 import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
 import {
 	attributeToString,
 	styleValueToString,
 } from "@doars/staark-common/src/attribute.js";
-import { childrenToNodes, setStyle } from "@doars/staark-common/src/element.js";
+import { childrenToNodes } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 
 /**
@@ -27,7 +26,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 			if (name !== "key" && Object.hasOwn(newAttributes, name)) {
 				let value = newAttributes[name];
 				const oldValue = oldAttributes?.[name];
-				if (!isAbsent(value)) {
+				if (value !== null && value !== undefined && value !== false) {
 					const type = typeof value;
 					if (type === "function") {
 						if (oldValue !== value) {
@@ -59,7 +58,14 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 								Object.hasOwn(value, styleName) &&
 								oldStyle?.[styleName] !== styleValue
 							) {
-								setStyle(element, styleName, styleValueToString(styleValue));
+								if (styleName.includes("-", 1)) {
+									element.style.setProperty(
+										styleName,
+										styleValueToString(styleValue),
+									);
+								} else {
+									element.style[styleName] = styleValueToString(styleValue);
+								}
 							}
 						}
 
@@ -70,14 +76,20 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 									Object.hasOwn(oldStyle, styleName) &&
 									!Object.hasOwn(value, styleName)
 								) {
-									setStyle(element, styleName, "");
+									if (styleName.includes("-", 1)) {
+										element.style.removeProperty(styleName);
+									} else {
+										element.style[styleName] = "";
+									}
 								}
 							}
 						}
 					} else if (value !== oldValue || name === "value") {
 						value = attributeToString(name, value);
 						if (
-							isAbsent(oldValue) ||
+							oldValue === null ||
+							oldValue === undefined ||
+							oldValue === false ||
 							attributeToString(name, oldValue) !== value
 						) {
 							element.setAttribute(name, value);
@@ -97,7 +109,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 			if (name !== "key" && Object.hasOwn(oldAttributes, name)) {
 				const value = oldAttributes[name];
 				const newValue = newAttributes?.[name];
-				if (isAbsent(newValue)) {
+				if (newValue === null || newValue === undefined || newValue === false) {
 					if (typeof value === "function") {
 						element.removeEventListener(name, value);
 					} else {

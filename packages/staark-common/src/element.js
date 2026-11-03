@@ -1,21 +1,6 @@
 import { node } from "./node.js";
 
 /**
- * Sets a style property on an element. Hyphenated names, such as custom properties, are set with `setProperty`, other names as properties of the style declaration. An empty value removes the property.
- *
- * @param {ElementCSSInlineStyle} element Element to set the style on.
- * @param {string} name Name of the style property.
- * @param {string} value Value of the style property.
- */
-export const setStyle = (element, name, value) => {
-	if (name.includes("-", 1)) {
-		element.style.setProperty(name, value);
-	} else {
-		element.style[name] = value;
-	}
-};
-
-/**
  * @typedef {import('./node.js').NodeContent} NodeContent
  */
 

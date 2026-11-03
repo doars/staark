@@ -1,4 +1,3 @@
-import { isAbsent } from "@doars/staark-common/src/absent.js";
 import {
 	arrayify,
 	arrayifyOrUndefined,
@@ -113,7 +112,9 @@ const renderAttributes = (attributes) => {
 		let value = attributes[name];
 		// Skip the same values the DOM renderers do not write: removed attributes, keys, and listeners.
 		if (
-			isAbsent(value) ||
+			value === null ||
+			value === undefined ||
+			value === false ||
 			validatedName === "key" ||
 			typeof value === "function"
 		) {
@@ -146,7 +147,7 @@ const expand = (abstracts, state) => {
 
 	const expanded = [];
 	const add = (abstract) => {
-		if (isAbsent(abstract)) {
+		if (abstract === null || abstract === undefined || abstract === false) {
 			return;
 		}
 		if (abstract.r) {

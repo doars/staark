@@ -68,15 +68,13 @@ a('.button[href=/next]', 'Next')
 
 ## Utilities
 
-- `isAbsent(value)` returns whether a value is `null`, `undefined`, or `false`, the values that mean an attribute or contents are not set.
-- `arrayify(data)` returns `data` as an array, or an empty array when `data` is absent; `arrayifyOrUndefined(data)` returns an array or `undefined`.
+- `arrayify(data)` returns `data` as an array; `arrayifyOrUndefined(data)` returns an array or `undefined`.
 - `cloneRecursive(value, clones?)` deeply clones supported values while preserving cycles and shared references.
 - `equalRecursive(valueA, valueB, compared?)` recursively compares supported values, including maps, sets, typed arrays, and circular structures.
 - `equalPlain(valueA, valueB)` is a smaller comparison for plain data. Arrays and plain objects are compared by content and dates by time; any other object only by identity. Circular structures are never equal.
 - `clonePlain(value)` copies plain data so it can later be compared with `equalPlain`, even after the original is mutated in place. Arrays and plain objects are copied recursively and dates by time; other objects and circular references are kept by reference.
 - `increasingSubsequence(sources)` marks the longest increasing subsequence of a sparse number array, used to minimise DOM moves.
 - `childrenToNodes(element)` converts an element's DOM children into abstract nodes using their lowercase-preserving `localName`, and requires DOM APIs. Comments become `#comment` nodes.
-- `setStyle(element, name, value)` sets a style property, using `setProperty` for hyphenated names such as custom properties. An empty value removes the property. Requires DOM APIs.
 - `identifier(prefix)` returns a process-unique string using the prefix.
 - `marker` is the abstract-node discriminator string `'n'`.
 - `attributeToString(name, value)` converts an attribute value to the string written to the DOM, joining class arrays and the truthy keys of class objects.

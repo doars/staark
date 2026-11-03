@@ -80,10 +80,6 @@ export const equalRecursive = (valueA, valueB, compared) => {
 		return true;
 	}
 
-	// if (valueA.prototype !== valueB.prototype) {
-	//   return false
-	// }
-
 	const keys = Object.keys(valueA);
 	return (
 		keys.length === Object.keys(valueB).length &&
