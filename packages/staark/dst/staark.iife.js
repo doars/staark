@@ -230,7 +230,7 @@
   var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
         subject[path[i]] = {};
       }
       subject = subject[path[i]];
@@ -238,58 +238,8 @@
     subject[path[path.length - 1]] = data;
   };
 
-  // ../staark-common/src/clone.js
-  var cloneRecursive = (value, clones = /* @__PURE__ */ new WeakMap()) => {
-    if (!value || typeof value !== "object") {
-      return value;
-    }
-    if (clones.has(value)) {
-      return clones.get(value);
-    }
-    if (value instanceof Date) {
-      const clone2 = new Date(value.getTime());
-      clones.set(value, clone2);
-      return clone2;
-    }
-    if (value instanceof Map) {
-      const clone2 = /* @__PURE__ */ new Map();
-      clones.set(value, clone2);
-      for (const [key, entryValue] of value) {
-        clone2.set(
-          cloneRecursive(key, clones),
-          cloneRecursive(entryValue, clones)
-        );
-      }
-      return clone2;
-    }
-    if (value instanceof Set) {
-      const clone2 = /* @__PURE__ */ new Set();
-      clones.set(value, clone2);
-      for (const entryValue of value) {
-        clone2.add(cloneRecursive(entryValue, clones));
-      }
-      return clone2;
-    }
-    if (ArrayBuffer.isView(value)) {
-      const clone2 = value instanceof DataView ? new DataView(
-        value.buffer.slice(
-          value.byteOffset,
-          value.byteOffset + value.byteLength
-        )
-      ) : new value.constructor(value);
-      clones.set(value, clone2);
-      return clone2;
-    }
-    const clone = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
-    clones.set(value, clone);
-    for (const key of Object.keys(value)) {
-      clone[key] = cloneRecursive(value[key], clones);
-    }
-    return clone;
-  };
-
   // ../staark-common/src/compare.js
-  var equalRecursive = (valueA, valueB, compared = /* @__PURE__ */ new WeakMap()) => {
+  var equalRecursive = (valueA, valueB, compared) => {
     if (valueA === valueB) {
       return true;
     }
@@ -302,6 +252,7 @@
     if (Object.getPrototypeOf(valueA) !== Object.getPrototypeOf(valueB)) {
       return false;
     }
+    compared ??= /* @__PURE__ */ new WeakMap();
     let comparedWithA = compared.get(valueA);
     if (comparedWithA?.has(valueB)) {
       return true;
@@ -359,7 +310,7 @@
         abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
-        for (const attribute of childNode.attributes) {
+        for (const attribute of childNode.attributes ?? []) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
@@ -371,6 +322,8 @@
   };
 
   // src/library/proxy.js
+  var created = /* @__PURE__ */ new WeakSet();
+  var isProxy = (value) => created.has(value);
   var proxify = (root, onChange) => {
     const proxies = /* @__PURE__ */ new WeakMap();
     const handler = {
@@ -425,6 +378,7 @@
       }
       proxy = new Proxy(target, handler);
       proxies.set(target, proxy);
+      created.add(proxy);
       for (const key of Object.keys(target)) {
         if (target[key] && typeof target[key] === "object") {
           target[key] = add(target[key]);
@@ -436,6 +390,33 @@
   };
 
   // src/library/mount.js
+  var findStable = (sources) => {
+    const tails = [];
+    const previous = [];
+    for (let index = 0; index < sources.length; index++) {
+      const source = sources[index];
+      if (source === void 0) {
+        continue;
+      }
+      let low = 0;
+      let high = tails.length;
+      while (low < high) {
+        const middle = low + high >> 1;
+        if (sources[tails[middle]] < source) {
+          low = middle + 1;
+        } else {
+          high = middle;
+        }
+      }
+      previous[index] = low ? tails[low - 1] : -1;
+      tails[low] = index;
+    }
+    const stable = [];
+    for (let index = tails[tails.length - 1]; index >= 0; index = previous[index]) {
+      stable[index] = true;
+    }
+    return stable;
+  };
   var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     const setBefore = "moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
     const getKey = (abstract) => abstract?.a?.key;
@@ -452,7 +433,11 @@
       }
       return updatePromise;
     };
-    const state = Object.getPrototypeOf(initialState) === Proxy.prototype ? initialState : proxify(initialState, triggerUpdate);
+    const state = isProxy(initialState) ? initialState : proxify(initialState, triggerUpdate);
+    const listeners = /* @__PURE__ */ new WeakMap();
+    const handleEvent = (event) => {
+      listeners.get(event.currentTarget)[event.type](event, state);
+    };
     const updateAttributes = (element, newAttributes, oldAttributes) => {
       if (newAttributes) {
         for (const name of Object.keys(newAttributes)) {
@@ -464,62 +449,52 @@
           if (value !== null && value !== void 0 && value !== false) {
             const type = typeof value;
             if (type === "function") {
-              if (oldValue?.f === value) {
-                newAttributes[name] = oldValue;
-              } else {
-                if (oldValue) {
-                  element.removeEventListener(name, oldValue);
-                }
-                const listener = newAttributes[name] = (event) => {
-                  value(event, state);
-                };
-                element.addEventListener(name, listener);
-                listener.f = value;
+              let elementListeners = listeners.get(element);
+              if (!elementListeners) {
+                elementListeners = {};
+                listeners.set(element, elementListeners);
               }
-            } else {
-              if (name === "class") {
-                if (typeof value === "object") {
-                  if (Array.isArray(value)) {
-                    value = value.join(" ");
-                  } else {
-                    let classNames = "";
-                    for (const className of Object.keys(value)) {
-                      if (value[className]) {
-                        classNames += ` ${className}`;
-                      }
-                    }
-                    value = classNames;
-                  }
-                }
-                element.className = value;
-              } else if (name === "style" && typeof value === "object") {
-                for (const styleName of Object.keys(value)) {
-                  const styleValue = value[styleName];
+              if (!elementListeners[name]) {
+                element.addEventListener(name, handleEvent);
+              }
+              elementListeners[name] = value;
+            } else if (name === "style" && type === "object") {
+              const oldStyle = oldValue && typeof oldValue === "object" ? oldValue : null;
+              if (!oldStyle) {
+                element.style.cssText = "";
+              }
+              for (const styleName of Object.keys(value)) {
+                const styleValue = value[styleName];
+                if (oldStyle?.[styleName] !== styleValue) {
                   if (styleName.includes("-", 1)) {
                     element.style.setProperty(styleName, styleValue);
                   } else {
                     element.style[styleName] = styleValue;
                   }
                 }
-                if (oldValue && typeof oldValue === "object" && !Array.isArray(oldValue)) {
-                  for (const styleName of Object.keys(oldValue)) {
-                    if (!Object.hasOwn(value, styleName)) {
-                      if (styleName.includes("-", 1)) {
-                        element.style.removeProperty(styleName);
-                      } else {
-                        element.style[styleName] = null;
-                      }
+              }
+              if (oldStyle) {
+                for (const styleName of Object.keys(oldStyle)) {
+                  if (!Object.hasOwn(value, styleName)) {
+                    if (styleName.includes("-", 1)) {
+                      element.style.removeProperty(styleName);
+                    } else {
+                      element.style[styleName] = null;
                     }
                   }
                 }
-              } else {
-                if (type !== "string") {
-                  value = value.toString();
-                }
+              }
+            } else {
+              if (name === "class" && type === "object") {
+                value = Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ");
+              } else if (type !== "string") {
+                value = value.toString();
+              }
+              if (element.getAttribute(name) !== value) {
                 element.setAttribute(name, value);
-                if (name === "value") {
-                  element.value = value;
-                }
+              }
+              if (name === "value" && element.value !== value) {
+                element.value = value;
               }
             }
           }
@@ -530,19 +505,16 @@
           if (name === "key") {
             continue;
           }
-          const value = oldAttributes[name];
           const newValue = newAttributes?.[name];
-          if (!Object.hasOwn(newAttributes || {}, name) || newValue === null || newValue === void 0 || newValue === false) {
-            if (typeof value === "function") {
-              element.removeEventListener(name, value);
-            } else if (name === "class") {
-              element.className = "";
-            } else if (name === "style") {
-              element.style.cssText = "";
-            } else if (name === "value") {
-              element.value = "";
+          if (newValue === null || newValue === void 0 || newValue === false) {
+            if (typeof oldAttributes[name] === "function") {
+              element.removeEventListener(name, handleEvent);
+              delete listeners.get(element)[name];
             } else {
               element.removeAttribute(name);
+              if (name === "value") {
+                element.value = "";
+              }
             }
           }
         }
@@ -551,6 +523,31 @@
     let oldMemoMap = /* @__PURE__ */ new WeakMap();
     let newMemoMap = /* @__PURE__ */ new WeakMap();
     let updateChildren;
+    const expand = (abstracts) => {
+      let result = abstracts;
+      if (abstracts) {
+        for (let index = 0; index < abstracts.length; index++) {
+          const abstract = abstracts[index];
+          if (abstract.r) {
+            if (result === abstracts) {
+              result = abstracts.slice(0, index);
+            }
+            let match2 = oldMemoMap.get(abstract.r);
+            if (!match2 || !equalRecursive(match2.m, abstract.m)) {
+              match2 = {
+                c: expand(arrayify(abstract.r(state, abstract.m))),
+                m: abstract.m
+              };
+            }
+            newMemoMap.set(abstract.r, match2);
+            result.push(...match2.c);
+          } else if (result !== abstracts) {
+            result.push(abstract);
+          }
+        }
+      }
+      return result;
+    };
     const createNode = (abstract, inSvg) => {
       if (!abstract.t) {
         return document.createTextNode(abstract);
@@ -558,161 +555,93 @@
       inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
       const element = inSvg ? document.createElementNS("http://www.w3.org/2000/svg", abstract.t) : document.createElement(abstract.t);
       updateAttributes(element, abstract.a);
+      abstract.c = expand(abstract.c);
       updateChildren(element, abstract.c, void 0, inSvg);
       return element;
     };
     const updateNode = (node2, newAbstract, oldAbstract, inSvg) => {
+      if (newAbstract === oldAbstract) {
+        return;
+      }
       if (newAbstract.t) {
         updateAttributes(node2, newAbstract.a, oldAbstract.a);
+        newAbstract.c = expand(newAbstract.c);
         updateChildren(
           node2,
           newAbstract.c,
           oldAbstract.c,
           inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
         );
-      } else if (oldAbstract !== newAbstract) {
+      } else {
         node2.textContent = newAbstract;
       }
     };
-    updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
-      if (newChildAbstracts) {
-        for (let index = 0; index < newChildAbstracts.length; index++) {
-          const abstract = newChildAbstracts[index];
-          if (!abstract.r) {
-            continue;
-          }
-          let match2 = oldMemoMap.get(abstract.r);
-          if (!match2 || !equalRecursive(match2.m, abstract.m)) {
-            match2 = {
-              c: arrayifyOrUndefined(abstract.r(state, abstract.m)),
-              m: abstract.m
-            };
-          }
-          newMemoMap.set(abstract.r, match2);
-          newChildAbstracts.splice(index, 1, ...cloneRecursive(match2.c));
-          index--;
+    updateChildren = (element, newChildAbstracts = [], oldChildAbstracts = [], inSvg) => {
+      const newLength = newChildAbstracts.length;
+      const oldLength = oldChildAbstracts.length;
+      let start = 0;
+      let node2 = element.firstChild;
+      for (; start < newLength && start < oldLength; start++) {
+        const newAbstract = newChildAbstracts[start];
+        const oldAbstract = oldChildAbstracts[start];
+        if (newAbstract.t !== oldAbstract.t || getKey(newAbstract) !== getKey(oldAbstract)) {
+          break;
         }
+        updateNode(node2, newAbstract, oldAbstract, inSvg);
+        node2 = node2.nextSibling;
       }
-      let hasKeys = false;
-      if (newChildAbstracts) {
-        for (let index = 0; index < newChildAbstracts.length; index++) {
-          if (getKey(newChildAbstracts[index]) != null) {
-            hasKeys = true;
-            break;
-          }
-        }
-      }
-      if (!hasKeys && oldChildAbstracts) {
-        for (let index = 0; index < oldChildAbstracts.length; index++) {
-          if (getKey(oldChildAbstracts[index]) != null) {
-            hasKeys = true;
-            break;
-          }
-        }
-      }
-      if (hasKeys) {
-        const oldNodes = [];
-        const keyedEntries = /* @__PURE__ */ new Map();
-        const unkeyedEntries = /* @__PURE__ */ new Map();
-        if (oldChildAbstracts) {
-          for (let index = 0; index < oldChildAbstracts.length; index++) {
-            const abstract = oldChildAbstracts[index];
-            oldNodes.push(element.childNodes[index]);
-            const key = getKey(abstract);
-            if (key != null) {
-              keyedEntries.set(key, index);
-            } else {
-              const type = abstract.t || null;
-              let entries = unkeyedEntries.get(type);
-              if (!entries) {
-                entries = {
-                  indexes: [],
-                  index: 0
-                };
-                unkeyedEntries.set(type, entries);
-              }
-              entries.indexes.push(index);
-            }
-          }
-        }
-        if (newChildAbstracts) {
-          for (let newIndex2 = 0; newIndex2 < newChildAbstracts.length; newIndex2++) {
-            const newAbstract = newChildAbstracts[newIndex2];
-            const key = getKey(newAbstract);
-            let oldIndex;
-            if (key != null) {
-              oldIndex = keyedEntries.get(key);
-            } else {
-              const entries = unkeyedEntries.get(newAbstract.t || null);
-              if (entries) {
-                oldIndex = entries.indexes[entries.index++];
-              }
-            }
-            const oldAbstract = oldChildAbstracts?.[oldIndex];
-            const oldNode = oldNodes[oldIndex];
-            if (oldIndex !== void 0 && oldNode && (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t)) {
-              oldNodes[oldIndex] = void 0;
-              if (oldNode !== element.childNodes[newIndex2]) {
-                element[setBefore](oldNode, element.childNodes[newIndex2]);
-              }
-              updateNode(oldNode, newAbstract, oldAbstract, inSvg);
-              continue;
-            }
-            const newNode = createNode(newAbstract, inSvg);
-            element.insertBefore(newNode, element.childNodes[newIndex2]);
-          }
-        }
-        for (let index = 0; index < oldNodes.length; index++) {
-          const oldNode = oldNodes[index];
-          if (oldNode?.parentNode === element) {
-            oldNode.remove();
-          }
-        }
+      if (start === newLength && start === oldLength) {
         return;
       }
-      let newIndex = 0;
-      let newCount = 0;
-      if (newChildAbstracts) {
-        for (; newIndex < newChildAbstracts.length; newIndex++) {
-          const newAbstract = newChildAbstracts[newIndex];
-          let matched = false;
-          if (oldChildAbstracts) {
-            for (let oldIndex = newIndex - newCount; oldIndex < oldChildAbstracts.length; oldIndex++) {
-              const oldAbstract = oldChildAbstracts[oldIndex];
-              if (oldAbstract.t && newAbstract.t === oldAbstract.t || !oldAbstract.t && !newAbstract.t) {
-                matched = true;
-                if (newIndex !== oldIndex + newCount) {
-                  element[setBefore](
-                    element.childNodes[oldIndex + newCount],
-                    element.childNodes[newIndex]
-                  );
-                  oldChildAbstracts.splice(
-                    newIndex - newCount,
-                    0,
-                    oldChildAbstracts.splice(oldIndex, 1)[0]
-                  );
-                }
-                updateNode(
-                  element.childNodes[newIndex],
-                  newAbstract,
-                  oldAbstract,
-                  inSvg
-                );
-                break;
-              }
-            }
+      const oldNodes = [];
+      for (let index = start; index < oldLength; index++) {
+        oldNodes[index] = node2;
+        node2 = node2?.nextSibling;
+      }
+      const keyedIndexes = /* @__PURE__ */ new Map();
+      const unkeyedIndexes = /* @__PURE__ */ new Map();
+      for (let index = oldLength; index-- > start; ) {
+        const abstract = oldChildAbstracts[index];
+        const key = getKey(abstract);
+        if (key != null) {
+          keyedIndexes.set(key, index);
+        } else {
+          let indexes = unkeyedIndexes.get(abstract.t);
+          if (!indexes) {
+            indexes = [];
+            unkeyedIndexes.set(abstract.t, indexes);
           }
-          if (!matched) {
-            const newNode = createNode(newAbstract, inSvg);
-            element.insertBefore(newNode, element.childNodes[newIndex]);
-            newCount++;
-          }
+          indexes.push(index);
         }
       }
-      if (oldChildAbstracts) {
-        for (let i = oldChildAbstracts.length + newCount - 1; i >= newIndex; i--) {
-          element.childNodes[i].remove();
+      const newNodes = [];
+      const sources = [];
+      for (let index = start; index < newLength; index++) {
+        const newAbstract = newChildAbstracts[index];
+        const key = getKey(newAbstract);
+        const oldIndex = key != null ? keyedIndexes.get(key) : unkeyedIndexes.get(newAbstract.t)?.pop();
+        const oldNode = oldNodes[oldIndex];
+        if (oldNode && oldChildAbstracts[oldIndex].t === newAbstract.t) {
+          oldNodes[oldIndex] = null;
+          newNodes[index] = oldNode;
+          sources[index] = oldIndex;
+          updateNode(oldNode, newAbstract, oldChildAbstracts[oldIndex], inSvg);
         }
+      }
+      for (let index = start; index < oldLength; index++) {
+        oldNodes[index]?.remove();
+      }
+      const stable = findStable(sources);
+      let next = null;
+      for (let index = newLength; index-- > start; ) {
+        let child = newNodes[index];
+        if (!child) {
+          child = createNode(newChildAbstracts[index], inSvg);
+          element.insertBefore(child, next);
+        } else if (!stable[index]) {
+          element[setBefore](child, next);
+        }
+        next = child;
       }
     };
     rootElement = typeof rootElement === "string" ? document.querySelector(rootElement) || document.body.appendChild(document.createElement("div")) : rootElement;
@@ -732,7 +661,7 @@
         updating = true;
         updatePromise = null;
         try {
-          const newAbstractTree = arrayifyOrUndefined(renderView(state));
+          const newAbstractTree = expand(arrayifyOrUndefined(renderView(state)));
           updateChildren(rootElement, newAbstractTree, oldAbstractTree);
           oldAbstractTree = newAbstractTree;
           oldMemoMap = newMemoMap;

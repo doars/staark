@@ -23,7 +23,7 @@
   var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
         subject[path[i]] = {};
       }
       subject = subject[path[i]];
@@ -39,7 +39,7 @@
         abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
-        for (const attribute of childNode.attributes) {
+        for (const attribute of childNode.attributes ?? []) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(

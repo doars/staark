@@ -9,7 +9,7 @@
   var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
         subject[path[i]] = {};
       }
       subject = subject[path[i]];
@@ -97,7 +97,7 @@
   __export(compare_exports, {
     equalRecursive: () => equalRecursive
   });
-  var equalRecursive = (valueA, valueB, compared = /* @__PURE__ */ new WeakMap()) => {
+  var equalRecursive = (valueA, valueB, compared) => {
     if (valueA === valueB) {
       return true;
     }
@@ -110,6 +110,7 @@
     if (Object.getPrototypeOf(valueA) !== Object.getPrototypeOf(valueB)) {
       return false;
     }
+    compared ??= /* @__PURE__ */ new WeakMap();
     let comparedWithA = compared.get(valueA);
     if (comparedWithA?.has(valueB)) {
       return true;
@@ -213,7 +214,7 @@
         abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
-        for (const attribute of childNode.attributes) {
+        for (const attribute of childNode.attributes ?? []) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
