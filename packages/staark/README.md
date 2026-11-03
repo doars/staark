@@ -168,7 +168,7 @@ await update()
 unmount()
 ```
 
-Last but not least there is the second way to provide and mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third argument and third value returned by the `mount` function. The third argument can be a recursive proxy in which case it is up to you to invoke the update function once a re-render needs to be done. State proxies created by `mount` are always recognised, other proxies are detected using `structuredClone`, so a proxy containing values that can not be cloned, such as functions, will be wrapped instead.
+Last but not least there is the second way to provide and mutate the state. This will be primarily done inside the app, but sometimes data from outside needs to be passed into the app. This can be done using the third argument and third value returned by the `mount` function. The third argument can be a recursive proxy in which case it is up to you to invoke the update function once a re-render needs to be done. The state proxy returned by `mount` is always recognised, other proxies are detected using `structuredClone`, so a proxy containing values that can not be cloned, such as functions, will be wrapped instead.
 
 ```JavaScript
 import { mount, node as n } from '@doars/staark'

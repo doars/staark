@@ -3,10 +3,10 @@ import {
 	arrayifyOrUndefined,
 } from "@doars/staark-common/src/array.js";
 import { attributeToString } from "@doars/staark-common/src/attribute.js";
-import { clonePlain, equalPlain } from "@doars/staark-common/src/compare.js";
+import { equalPlain } from "@doars/staark-common/src/compare.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
-import { isProxy, proxify, toTarget } from "./proxy.js";
+import { isProxy, proxify } from "./proxy.js";
 
 /**
  * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
@@ -182,25 +182,14 @@ export const mount = (
 					if (result === abstracts) {
 						result = abstracts.slice(0, index);
 					}
-					// Memos are cached per render function, and found by their memory first so reordered state objects are reused, then by their position.
-					let memos = newMemoMap.get(abstract.r);
-					if (!memos) {
-						memos = { l: [], i: new Map() };
-						newMemoMap.set(abstract.r, memos);
-					}
-					const oldMemos = oldMemoMap.get(abstract.r);
-					// State objects are compared through their targets, which is faster than through the proxy.
-					const memory = toTarget(abstract.m);
-					let match = oldMemos?.i.get(memory) ?? oldMemos?.l[memos.l.length];
-					if (!match || !equalPlain(match.m, memory)) {
+					let match = oldMemoMap.get(abstract.r);
+					if (!match || !equalPlain(match.m, abstract.m)) {
 						match = {
 							c: expand(arrayify(abstract.r(state, abstract.m))),
-							// Copied so memory mutated in place, such as the state, is still compared with its previous contents.
-							m: clonePlain(memory),
+							m: abstract.m,
 						};
 					}
-					memos.l.push(match);
-					memos.i.set(memory, match);
+					newMemoMap.set(abstract.r, match);
 					result.push(...match.c);
 				} else if (result !== abstracts) {
 					result.push(abstract);
@@ -288,58 +277,23 @@ export const mount = (
 			updateNode(node, newAbstract, oldAbstract, inSvg);
 			node = node.nextSibling;
 		}
-
-		// Update the shared suffix of keyed children in place.
-		let newEnd = newLength;
-		let oldEnd = oldLength;
-		let end = null;
-		if (start < oldLength && start < newLength) {
-			let tail = element.lastChild;
-			while (start < newEnd && start < oldEnd) {
-				const newAbstract = newChildAbstracts[newEnd - 1];
-				const oldAbstract = oldChildAbstracts[oldEnd - 1];
-				const key = getKey(oldAbstract);
-				if (
-					key == null ||
-					newAbstract.t !== oldAbstract.t ||
-					getKey(newAbstract) !== key
-				) {
-					break;
-				}
-				updateNode(tail, newAbstract, oldAbstract, inSvg);
-				end = tail;
-				tail = tail.previousSibling;
-				newEnd--;
-				oldEnd--;
-			}
-		}
-
-		if (start === oldEnd) {
-			// Nothing left to match, so insert the remaining children.
-			for (; start < newEnd; start++) {
-				element.insertBefore(createNode(newChildAbstracts[start], inSvg), end);
-			}
-			return;
-		}
-		if (start === newEnd) {
-			// Nothing left to create, so remove the remaining children.
-			for (; start < oldEnd; start++) {
-				const next = node.nextSibling;
-				node.remove();
-				node = next;
+		if (start === oldLength) {
+			// Nothing left to match, so append the remaining children.
+			for (; start < newLength; start++) {
+				element.insertBefore(createNode(newChildAbstracts[start], inSvg), node);
 			}
 			return;
 		}
 
 		// Index the remaining old children by key, or by type when unkeyed.
 		const oldNodes = [];
-		for (let index = start; index < oldEnd; index++) {
+		for (let index = start; index < oldLength; index++) {
 			oldNodes[index] = node;
 			node = node?.nextSibling;
 		}
 		const keyedIndexes = new Map();
 		const unkeyedIndexes = new Map();
-		for (let index = oldEnd; index-- > start; ) {
+		for (let index = oldLength; index-- > start; ) {
 			const abstract = oldChildAbstracts[index];
 			const key = getKey(abstract);
 			if (key != null) {
@@ -358,7 +312,7 @@ export const mount = (
 		// Match the remaining new children to old ones.
 		const newNodes = [];
 		const sources = [];
-		for (let index = start; index < newEnd; index++) {
+		for (let index = start; index < newLength; index++) {
 			const newAbstract = newChildAbstracts[index];
 			const key = getKey(newAbstract);
 			const oldIndex =
@@ -374,14 +328,14 @@ export const mount = (
 			}
 		}
 
-		for (let index = start; index < oldEnd; index++) {
+		for (let index = start; index < oldLength; index++) {
 			oldNodes[index]?.remove();
 		}
 
 		// Place children from back to front, only moving those outside the longest stable run.
 		const stable = increasingSubsequence(sources);
-		let next = end;
-		for (let index = newEnd; index-- > start; ) {
+		let next = null;
+		for (let index = newLength; index-- > start; ) {
 			let child = newNodes[index];
 			if (!child) {
 				child = createNode(newChildAbstracts[index], inSvg);

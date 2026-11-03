@@ -11,7 +11,6 @@
 	"scripts": {
 		"benchmark:quick": "node src/index.js --iterations=10",
 		"benchmark": "node src/index.js",
-		"benchmark:warm": "node src/index.js --warmup=10",
 		"build": "NODE_ENV=production node config.bundle.js",
 		"check": "biome check ./src ./benchmarks/**/*.js",
 		"check:write": "biome check --write ./src ./benchmarks/**/*.js",

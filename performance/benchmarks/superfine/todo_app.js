@@ -140,8 +140,6 @@ window.benchmark = {
 	},
 
 	cleanup: async ({ rootNode }) => {
-		// Superfine keeps the previous virtual node on the root element.
-		rootNode.vdom = null;
 		update = null;
 		state = null;
 		window.updatedTodos = null;

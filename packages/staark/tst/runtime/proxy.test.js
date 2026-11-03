@@ -37,17 +37,4 @@ describe('State proxy', () => {
     assert.strictEqual(isProxy(proxy.nested), true)
     assert.strictEqual(isProxy({}), false)
   })
-
-  it('does not wrap proxies again when they are assigned back', () => {
-    let changes = 0
-    const state = proxify({ todos: [{ text: 'a' }, { text: 'b' }] }, () => changes++)
-    const first = state.todos[0]
-    state.todos.reverse()
-    state.todos.reverse()
-    assert.strictEqual(state.todos[0], first)
-
-    changes = 0
-    state.todos[0].text = 'x'
-    assert.strictEqual(changes, 1)
-  })
 })

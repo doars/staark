@@ -120,99 +120,26 @@ export const equalPlain = (valueA, valueB, path) => {
 	}
 
 	const prototype = Object.getPrototypeOf(valueA);
+	path ??= [];
 	if (
 		prototype !== Object.getPrototypeOf(valueB) ||
 		(prototype !== Object.prototype &&
 			prototype !== Array.prototype &&
 			prototype !== null) ||
-		path?.includes(valueA)
+		path.includes(valueA)
 	) {
 		return false;
 	}
 
-	/**
-	 * @param {*} childA Child of the first value.
-	 * @param {*} childB Child of the second value.
-	 * @returns {boolean} Whether the children are equal.
-	 */
-	const equalChild = (childA, childB) => {
-		if (childA === childB) {
-			return true;
-		}
-		if (
-			!childA ||
-			!childB ||
-			typeof childA !== "object" ||
-			typeof childB !== "object"
-		) {
-			return false;
-		}
-		path ??= [];
-		path.push(valueA);
-		const equal = equalPlain(childA, childB, path);
-		path.pop();
-		return equal;
-	};
-
-	if (prototype === Array.prototype) {
-		if (valueA.length !== valueB.length) {
-			return false;
-		}
-		for (let index = 0; index < valueA.length; index++) {
-			if (!equalChild(valueA[index], valueB[index])) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	let count = 0;
-	for (const key in valueA) {
-		if (Object.hasOwn(valueA, key)) {
-			count++;
-			const childB = valueB[key];
-			if (
-				(childB === undefined && !Object.hasOwn(valueB, key)) ||
-				!equalChild(valueA[key], childB)
-			) {
-				return false;
-			}
-		}
-	}
-	return count === Object.keys(valueB).length;
-};
-
-/**
- * Copies plain data so it can later be compared with `equalPlain`, even when the original is mutated in place. Arrays and plain objects are copied recursively, dates by time, and other objects are kept by reference. Circular references are kept by reference.
- *
- * @param {any} value Value to copy.
- * @param {any[]} [path] Objects being copied, used to detect cycles.
- * @returns {any} Copy of the value.
- */
-export const clonePlain = (value, path) => {
-	if (!value || typeof value !== "object") {
-		return value;
-	}
-	if (value instanceof Date) {
-		return new Date(value.getTime());
-	}
-
-	const prototype = Object.getPrototypeOf(value);
-	path ??= [];
-	if (
-		(prototype !== Object.prototype &&
-			prototype !== Array.prototype &&
-			prototype !== null) ||
-		path.includes(value)
-	) {
-		return value;
-	}
-
-	path.push(value);
-	const copy = Array.isArray(value) ? [] : prototype ? {} : Object.create(null);
-	for (const key of Object.keys(value)) {
-		copy[key] = clonePlain(value[key], path);
-	}
+	path.push(valueA);
+	const keys = Object.keys(valueA);
+	const equal =
+		keys.length === Object.keys(valueB).length &&
+		keys.every(
+			(key) =>
+				Object.hasOwn(valueB, key) &&
+				equalPlain(valueA[key], valueB[key], path),
+		);
 	path.pop();
-	return copy;
+	return equal;
 };
