@@ -123,6 +123,29 @@ var equalRecursive = (valueA, valueB, compared) => {
     (key) => Object.hasOwn(valueB, key) && equalRecursive(valueA[key], valueB[key], compared)
   );
 };
+var equalPlain = (valueA, valueB, path) => {
+  if (valueA === valueB) {
+    return true;
+  }
+  if (!valueA || !valueB || typeof valueA !== "object" || typeof valueB !== "object") {
+    return false;
+  }
+  if (valueA instanceof Date) {
+    return valueB instanceof Date && valueA.getTime() === valueB.getTime();
+  }
+  const prototype = Object.getPrototypeOf(valueA);
+  path ??= [];
+  if (prototype !== Object.getPrototypeOf(valueB) || prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path.includes(valueA)) {
+    return false;
+  }
+  path.push(valueA);
+  const keys = Object.keys(valueA);
+  const equal = keys.length === Object.keys(valueB).length && keys.every(
+    (key) => Object.hasOwn(valueB, key) && equalPlain(valueA[key], valueB[key], path)
+  );
+  path.pop();
+  return equal;
+};
 
 // src/conditional.js
 var conditional = (condition, onTruth, onFalse) => {
@@ -162,7 +185,11 @@ var childrenToNodes = (element) => {
         attributes[attribute.name] = attribute.value;
       }
       abstractChildNodes.push(
-        node(childNode.nodeName, attributes, childrenToNodes(childNode))
+        node(
+          childNode.localName ?? childNode.nodeName,
+          attributes,
+          childrenToNodes(childNode)
+        )
       );
     }
   }
@@ -365,16 +392,47 @@ var nde = (selector, contents) => {
     t: type
   };
 };
+
+// src/sequence.js
+var increasingSubsequence = (sources) => {
+  const tails = [];
+  const previous = [];
+  for (let index = 0; index < sources.length; index++) {
+    const source = sources[index];
+    if (source === void 0) {
+      continue;
+    }
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = low + high >> 1;
+      if (sources[tails[middle]] < source) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    previous[index] = low ? tails[low - 1] : -1;
+    tails[low] = index;
+  }
+  const included = [];
+  for (let index = tails[tails.length - 1]; index >= 0; index = previous[index]) {
+    included[index] = true;
+  }
+  return included;
+};
 export {
   arrayify,
   arrayifyOrUndefined,
   childrenToNodes,
   cloneRecursive,
   conditional,
+  equalPlain,
   equalRecursive,
   factory,
   fctory,
   identifier,
+  increasingSubsequence,
   marker,
   match,
   memo,

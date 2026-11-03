@@ -27,67 +27,28 @@ var node = (type, attributesOrContents, contents) => {
 };
 
 // ../staark-common/src/compare.js
-var equalRecursive = (valueA, valueB, compared) => {
+var equalPlain = (valueA, valueB, path) => {
   if (valueA === valueB) {
     return true;
   }
   if (!valueA || !valueB || typeof valueA !== "object" || typeof valueB !== "object") {
-    return valueA === valueB;
+    return false;
   }
   if (valueA instanceof Date) {
     return valueB instanceof Date && valueA.getTime() === valueB.getTime();
   }
-  if (Object.getPrototypeOf(valueA) !== Object.getPrototypeOf(valueB)) {
+  const prototype = Object.getPrototypeOf(valueA);
+  path ??= [];
+  if (prototype !== Object.getPrototypeOf(valueB) || prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path.includes(valueA)) {
     return false;
   }
-  compared ??= /* @__PURE__ */ new WeakMap();
-  let comparedWithA = compared.get(valueA);
-  if (comparedWithA?.has(valueB)) {
-    return true;
-  }
-  if (!comparedWithA) {
-    comparedWithA = /* @__PURE__ */ new WeakSet();
-    compared.set(valueA, comparedWithA);
-  }
-  comparedWithA.add(valueB);
-  if (valueA instanceof Map) {
-    if (!(valueB instanceof Map) || valueA.size !== valueB.size) return false;
-    for (const [key, entryValue] of valueA) {
-      if (!valueB.has(key) || !equalRecursive(entryValue, valueB.get(key), compared)) {
-        return false;
-      }
-    }
-    return true;
-  }
-  if (valueA instanceof Set) {
-    if (!(valueB instanceof Set) || valueA.size !== valueB.size) return false;
-    for (const entryValue of valueA) {
-      if (!valueB.has(entryValue)) return false;
-    }
-    return true;
-  }
-  if (ArrayBuffer.isView(valueA)) {
-    if (!ArrayBuffer.isView(valueB) || valueA.constructor !== valueB.constructor || valueA.byteLength !== valueB.byteLength)
-      return false;
-    const bytesA = new Uint8Array(
-      valueA.buffer,
-      valueA.byteOffset,
-      valueA.byteLength
-    );
-    const bytesB = new Uint8Array(
-      valueB.buffer,
-      valueB.byteOffset,
-      valueB.byteLength
-    );
-    for (let index = 0; index < bytesA.length; index++) {
-      if (bytesA[index] !== bytesB[index]) return false;
-    }
-    return true;
-  }
+  path.push(valueA);
   const keys = Object.keys(valueA);
-  return keys.length === Object.keys(valueB).length && keys.every(
-    (key) => Object.hasOwn(valueB, key) && equalRecursive(valueA[key], valueB[key], compared)
+  const equal = keys.length === Object.keys(valueB).length && keys.every(
+    (key) => Object.hasOwn(valueB, key) && equalPlain(valueA[key], valueB[key], path)
   );
+  path.pop();
+  return equal;
 };
 
 // ../staark-common/src/element.js
@@ -102,16 +63,64 @@ var childrenToNodes = (element) => {
         attributes[attribute.name] = attribute.value;
       }
       abstractChildNodes.push(
-        node(childNode.nodeName, attributes, childrenToNodes(childNode))
+        node(
+          childNode.localName ?? childNode.nodeName,
+          attributes,
+          childrenToNodes(childNode)
+        )
       );
     }
   }
   return abstractChildNodes;
 };
 
+// ../staark-common/src/sequence.js
+var increasingSubsequence = (sources) => {
+  const tails = [];
+  const previous = [];
+  for (let index = 0; index < sources.length; index++) {
+    const source = sources[index];
+    if (source === void 0) {
+      continue;
+    }
+    let low = 0;
+    let high = tails.length;
+    while (low < high) {
+      const middle = low + high >> 1;
+      if (sources[tails[middle]] < source) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    previous[index] = low ? tails[low - 1] : -1;
+    tails[low] = index;
+  }
+  const included = [];
+  for (let index = tails[tails.length - 1]; index >= 0; index = previous[index]) {
+    included[index] = true;
+  }
+  return included;
+};
+
 // src/library/proxy.js
 var created = /* @__PURE__ */ new WeakSet();
-var isProxy = (value) => created.has(value);
+var isProxy = (value) => {
+  if (created.has(value)) {
+    return true;
+  }
+  try {
+    structuredClone(value);
+    return false;
+  } catch {
+  }
+  try {
+    structuredClone({ ...value });
+    return true;
+  } catch {
+    return false;
+  }
+};
 var proxify = (root, onChange) => {
   const proxies = /* @__PURE__ */ new WeakMap();
   const handler = {
@@ -178,42 +187,9 @@ var proxify = (root, onChange) => {
 };
 
 // src/library/mount.js
-var findStable = (sources) => {
-  const tails = [];
-  const previous = [];
-  for (let index = 0; index < sources.length; index++) {
-    const source = sources[index];
-    if (source === void 0) {
-      continue;
-    }
-    let low = 0;
-    let high = tails.length;
-    while (low < high) {
-      const middle = low + high >> 1;
-      if (sources[tails[middle]] < source) {
-        low = middle + 1;
-      } else {
-        high = middle;
-      }
-    }
-    previous[index] = low ? tails[low - 1] : -1;
-    tails[low] = index;
-  }
-  const stable = [];
-  for (let index = tails[tails.length - 1]; index >= 0; index = previous[index]) {
-    stable[index] = true;
-  }
-  return stable;
-};
 var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   const setBefore = "moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
   const getKey = (abstract) => abstract?.a?.key;
-  if (typeof initialState === "string") {
-    initialState = JSON.parse(initialState);
-  }
-  if (!initialState) {
-    initialState = {};
-  }
   let updatePromise = null;
   const triggerUpdate = () => {
     if (!updatePromise) {
@@ -221,7 +197,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     }
     return updatePromise;
   };
-  const state = isProxy(initialState) ? initialState : proxify(initialState, triggerUpdate);
+  const state = typeof initialState === "string" ? proxify(JSON.parse(initialState), triggerUpdate) : isProxy(initialState) ? initialState : proxify(initialState || {}, triggerUpdate);
   const listeners = /* @__PURE__ */ new WeakMap();
   const handleEvent = (event) => {
     listeners.get(event.currentTarget)[event.type](event, state);
@@ -321,7 +297,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             result = abstracts.slice(0, index);
           }
           let match = oldMemoMap.get(abstract.r);
-          if (!match || !equalRecursive(match.m, abstract.m)) {
+          if (!match || !equalPlain(match.m, abstract.m)) {
             match = {
               c: expand(arrayify(abstract.r(state, abstract.m))),
               m: abstract.m
@@ -419,7 +395,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     for (let index = start; index < oldLength; index++) {
       oldNodes[index]?.remove();
     }
-    const stable = findStable(sources);
+    const stable = increasingSubsequence(sources);
     let next = null;
     for (let index = newLength; index-- > start; ) {
       let child = newNodes[index];
