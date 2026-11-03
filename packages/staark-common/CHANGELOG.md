@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Only allocate the comparison cache in `equalRecursive` when comparing objects.
+- Support comment nodes in `childrenToNodes`.
+- Declare `sideEffects` so bundlers can tree-shake unused helpers.
+
 ## 1.5.10
 
 - Update and improve the `README.md`.

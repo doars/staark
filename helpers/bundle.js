@@ -21,7 +21,7 @@ export default async (bundles) => {
         "process.env.NODE_ENV": '"development"',
       },
       bundle: true,
-      format: options.format || "iife",
+      format: options.format || "esm",
       minify: false,
       sourcemap: "linked",
       entryPoints: Array.isArray(options.entryPoints)

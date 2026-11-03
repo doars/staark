@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Fix the ESM builds in `dst/` being emitted as IIFEs without exports.
+- Move only the children outside the longest stable run when reconciling, so removing or swapping keyed items no longer moves every sibling.
+- Use a single reconciliation path for keyed and unkeyed children, with an in-place fast path for an unchanged prefix.
+- Skip diffing unchanged memo contents instead of cloning and re-diffing them, and allow memos that render nothing.
+- Only write attributes, classes, and styles that changed, while keeping `value` in sync with the state.
+- Set classes through `setAttribute`, which also works for SVG elements. Object classes no longer have a leading space.
+- Dispatch events through one shared listener per mount instead of a wrapper per handler.
+- Use state proxies created by `mount` directly when passed to another `mount`, instead of wrapping them again.
+- Declare `sideEffects` so bundlers can tree-shake unused helpers.
+
 ## 1.7.17
 
 - Update and improve the `README.md`.

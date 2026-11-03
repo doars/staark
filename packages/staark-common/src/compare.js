@@ -6,7 +6,7 @@
  * @param {WeakMap<object, WeakSet<object>>} [compared] Compared object pairs.
  * @returns {boolean} Returns true if the values are equal, otherwise false.
  */
-export const equalRecursive = (valueA, valueB, compared = new WeakMap()) => {
+export const equalRecursive = (valueA, valueB, compared) => {
 	if (valueA === valueB) {
 		return true;
 	}
@@ -27,6 +27,7 @@ export const equalRecursive = (valueA, valueB, compared = new WeakMap()) => {
 		return false;
 	}
 
+	compared ??= new WeakMap();
 	let comparedWithA = compared.get(valueA);
 	if (comparedWithA?.has(valueB)) {
 		return true;

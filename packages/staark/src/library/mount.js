@@ -1,8 +1,10 @@
-import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
-import { cloneRecursive } from "@doars/staark-common/src/clone.js";
+import {
+	arrayify,
+	arrayifyOrUndefined,
+} from "@doars/staark-common/src/array.js";
 import { equalRecursive } from "@doars/staark-common/src/compare.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
-import { proxify } from "./proxy.js";
+import { isProxy, proxify } from "./proxy.js";
 
 /**
  * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
@@ -17,6 +19,45 @@ import { proxify } from "./proxy.js";
  * @property {NodeContent[]} c Remembered abstract tree after rendering.
  * @property {any} m Remembered data to compare with.
  */
+
+/**
+ * Finds the longest increasing subsequence of the given old indexes.
+ *
+ * @param {number[]} sources Old index of each new child, or undefined if the child is new.
+ * @returns {boolean[]} Whether each new child is part of the subsequence and can stay in place.
+ */
+const findStable = (sources) => {
+	const tails = [];
+	const previous = [];
+	for (let index = 0; index < sources.length; index++) {
+		const source = sources[index];
+		if (source === undefined) {
+			continue;
+		}
+		let low = 0;
+		let high = tails.length;
+		while (low < high) {
+			const middle = (low + high) >> 1;
+			if (sources[tails[middle]] < source) {
+				low = middle + 1;
+			} else {
+				high = middle;
+			}
+		}
+		previous[index] = low ? tails[low - 1] : -1;
+		tails[low] = index;
+	}
+
+	const stable = [];
+	for (
+		let index = tails[tails.length - 1];
+		index >= 0;
+		index = previous[index]
+	) {
+		stable[index] = true;
+	}
+	return stable;
+};
 
 /**
  * @param {HTMLElement | Element | string} rootElement Root element to mount the view on.
@@ -51,10 +92,15 @@ export const mount = (
 		}
 		return updatePromise;
 	};
-	const state =
-		Object.getPrototypeOf(initialState) === Proxy.prototype
-			? initialState
-			: proxify(initialState, triggerUpdate);
+	const state = isProxy(initialState)
+		? initialState
+		: proxify(initialState, triggerUpdate);
+
+	// Listeners per element, all invoked through a single shared event handler.
+	const listeners = new WeakMap();
+	const handleEvent = (event) => {
+		listeners.get(event.currentTarget)[event.type](event, state);
+	};
 
 	/**
 	 * @param {Element} element Element to update.
@@ -72,69 +118,58 @@ export const mount = (
 				if (value !== null && value !== undefined && value !== false) {
 					const type = typeof value;
 					if (type === "function") {
-						if (oldValue?.f === value) {
-							newAttributes[name] = oldValue;
-						} else {
-							if (oldValue) {
-								element.removeEventListener(name, oldValue);
-							}
-
-							// biome-ignore lint/suspicious/noAssignInExpressions: assignment is intentional
-							const listener = (newAttributes[name] = (event) => {
-								value(event, state);
-							});
-							element.addEventListener(name, listener);
-							listener.f = value;
+						let elementListeners = listeners.get(element);
+						if (!elementListeners) {
+							elementListeners = {};
+							listeners.set(element, elementListeners);
 						}
-					} else {
-						if (name === "class") {
-							if (typeof value === "object") {
-								if (Array.isArray(value)) {
-									value = value.join(" ");
-								} else {
-									let classNames = "";
-									for (const className of Object.keys(value)) {
-										if (value[className]) {
-											classNames += ` ${className}`;
-										}
-									}
-									value = classNames;
-								}
-							}
-							element.className = value;
-						} else if (name === "style" && typeof value === "object") {
-							for (const styleName of Object.keys(value)) {
-								const styleValue = value[styleName];
+						if (!elementListeners[name]) {
+							element.addEventListener(name, handleEvent);
+						}
+						elementListeners[name] = value;
+					} else if (name === "style" && type === "object") {
+						const oldStyle =
+							oldValue && typeof oldValue === "object" ? oldValue : null;
+						if (!oldStyle) {
+							element.style.cssText = "";
+						}
+						for (const styleName of Object.keys(value)) {
+							const styleValue = value[styleName];
+							if (oldStyle?.[styleName] !== styleValue) {
 								if (styleName.includes("-", 1)) {
 									element.style.setProperty(styleName, styleValue);
 								} else {
 									element.style[styleName] = styleValue;
 								}
 							}
+						}
 
-							if (
-								oldValue &&
-								typeof oldValue === "object" &&
-								!Array.isArray(oldValue)
-							) {
-								for (const styleName of Object.keys(oldValue)) {
-									if (!Object.hasOwn(value, styleName)) {
-										if (styleName.includes("-", 1)) {
-											element.style.removeProperty(styleName);
-										} else {
-											element.style[styleName] = null;
-										}
+						if (oldStyle) {
+							for (const styleName of Object.keys(oldStyle)) {
+								if (!Object.hasOwn(value, styleName)) {
+									if (styleName.includes("-", 1)) {
+										element.style.removeProperty(styleName);
+									} else {
+										element.style[styleName] = null;
 									}
 								}
 							}
-						} else {
-							if (type !== "string") {
-								value = value.toString();
-							}
+						}
+					} else {
+						if (name === "class" && type === "object") {
+							value = Array.isArray(value)
+								? value.join(" ")
+								: Object.keys(value)
+										.filter((className) => value[className])
+										.join(" ");
+						} else if (type !== "string") {
+							value = value.toString();
+						}
+						if (element.getAttribute(name) !== value) {
 							element.setAttribute(name, value);
-							if (name === "value") {
-								element.value = value;
-							}
+						}
+						if (name === "value" && element.value !== value) {
+							element.value = value;
 						}
 					}
 				}
@@ -146,24 +181,16 @@ export const mount = (
 				if (name === "key") {
 					continue;
 				}
-				const value = oldAttributes[name];
 				const newValue = newAttributes?.[name];
-				if (
-					!Object.hasOwn(newAttributes || {}, name) ||
-					newValue === null ||
-					newValue === undefined ||
-					newValue === false
-				) {
-					if (typeof value === "function") {
-						element.removeEventListener(name, value);
-					} else if (name === "class") {
-						element.className = "";
-					} else if (name === "style") {
-						element.style.cssText = "";
-					} else if (name === "value") {
-						element.value = "";
+				if (newValue === null || newValue === undefined || newValue === false) {
+					if (typeof oldAttributes[name] === "function") {
+						element.removeEventListener(name, handleEvent);
+						delete listeners.get(element)[name];
 					} else {
 						element.removeAttribute(name);
+						if (name === "value") {
+							element.value = "";
+						}
 					}
 				}
 			}
@@ -173,6 +200,38 @@ export const mount = (
 	let oldMemoMap = new WeakMap();
 	let newMemoMap = new WeakMap();
 	let updateChildren;
+
+	/**
+	 * Replace memo abstracts with their rendered contents. Unchanged memos reuse their previous contents, which lets the diff skip them.
+	 *
+	 * @param {NodeContent[]} [abstracts] Abstracts to expand.
+	 * @returns {NodeContent[] | undefined} Abstracts without memos.
+	 */
+	const expand = (abstracts) => {
+		let result = abstracts;
+		if (abstracts) {
+			for (let index = 0; index < abstracts.length; index++) {
+				const abstract = abstracts[index];
+				if (abstract.r) {
+					if (result === abstracts) {
+						result = abstracts.slice(0, index);
+					}
+					let match = oldMemoMap.get(abstract.r);
+					if (!match || !equalRecursive(match.m, abstract.m)) {
+						match = {
+							c: expand(arrayify(abstract.r(state, abstract.m))),
+							m: abstract.m,
+						};
+					}
+					newMemoMap.set(abstract.r, match);
+					result.push(...match.c);
+				} else if (result !== abstracts) {
+					result.push(abstract);
+				}
+			}
+		}
+		return result;
+	};
 
 	/**
 	 * Create a DOM node from an abstract node.
@@ -191,6 +250,7 @@ export const mount = (
 			? document.createElementNS("http://www.w3.org/2000/svg", abstract.t)
 			: document.createElement(abstract.t);
 		updateAttributes(element, abstract.a);
+		abstract.c = expand(abstract.c);
 		updateChildren(element, abstract.c, undefined, inSvg);
 		return element;
 	};
@@ -204,15 +264,19 @@ export const mount = (
 	 * @param {boolean} inSvg Whether the node is inside an SVG element.
 	 */
 	const updateNode = (node, newAbstract, oldAbstract, inSvg) => {
+		if (newAbstract === oldAbstract) {
+			return;
+		}
 		if (newAbstract.t) {
 			updateAttributes(node, newAbstract.a, oldAbstract.a);
+			newAbstract.c = expand(newAbstract.c);
 			updateChildren(
 				node,
 				newAbstract.c,
 				oldAbstract.c,
 				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
 			);
-		} else if (oldAbstract !== newAbstract) {
+		} else {
 			node.textContent = newAbstract;
 		}
 	};
@@ -221,179 +285,95 @@ export const mount = (
 	 * @param {Element} element Element to update.
 	 * @param {NodeContent[]} [newChildAbstracts] New children to set.
 	 * @param {NodeContent[]} [oldChildAbstracts] Old children to compare with.
+	 * @param {boolean} [inSvg] Whether the element is inside an SVG element.
 	 */
-	updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
-		if (newChildAbstracts) {
-			for (let index = 0; index < newChildAbstracts.length; index++) {
-				const abstract = newChildAbstracts[index];
-				if (!abstract.r) {
-					continue;
-				}
+	updateChildren = (
+		element,
+		newChildAbstracts = [],
+		oldChildAbstracts = [],
+		inSvg,
+	) => {
+		const newLength = newChildAbstracts.length;
+		const oldLength = oldChildAbstracts.length;
 
-				let match = oldMemoMap.get(abstract.r);
-				if (!match || !equalRecursive(match.m, abstract.m)) {
-					match = {
-						c: arrayifyOrUndefined(abstract.r(state, abstract.m)),
-						m: abstract.m,
-					};
-				}
-				newMemoMap.set(abstract.r, match);
-				newChildAbstracts.splice(index, 1, ...cloneRecursive(match.c));
-				index--;
+		// Update the shared prefix in place.
+		let start = 0;
+		let node = element.firstChild;
+		for (; start < newLength && start < oldLength; start++) {
+			const newAbstract = newChildAbstracts[start];
+			const oldAbstract = oldChildAbstracts[start];
+			if (
+				newAbstract.t !== oldAbstract.t ||
+				getKey(newAbstract) !== getKey(oldAbstract)
+			) {
+				break;
 			}
+			updateNode(node, newAbstract, oldAbstract, inSvg);
+			node = node.nextSibling;
 		}
-
-		let hasKeys = false;
-		if (newChildAbstracts) {
-			for (let index = 0; index < newChildAbstracts.length; index++) {
-				if (getKey(newChildAbstracts[index]) != null) {
-					hasKeys = true;
-					break;
-				}
-			}
-		}
-		if (!hasKeys && oldChildAbstracts) {
-			for (let index = 0; index < oldChildAbstracts.length; index++) {
-				if (getKey(oldChildAbstracts[index]) != null) {
-					hasKeys = true;
-					break;
-				}
-			}
-		}
-
-		if (hasKeys) {
-			const oldNodes = [];
-			const keyedEntries = new Map();
-			const unkeyedEntries = new Map();
-			if (oldChildAbstracts) {
-				for (let index = 0; index < oldChildAbstracts.length; index++) {
-					const abstract = oldChildAbstracts[index];
-					oldNodes.push(element.childNodes[index]);
-					const key = getKey(abstract);
-					if (key != null) {
-						keyedEntries.set(key, index);
-					} else {
-						const type = abstract.t || null;
-						let entries = unkeyedEntries.get(type);
-						if (!entries) {
-							entries = {
-								indexes: [],
-								index: 0,
-							};
-							unkeyedEntries.set(type, entries);
-						}
-						entries.indexes.push(index);
-					}
-				}
-			}
-
-			if (newChildAbstracts) {
-				for (
-					let newIndex = 0;
-					newIndex < newChildAbstracts.length;
-					newIndex++
-				) {
-					const newAbstract = newChildAbstracts[newIndex];
-					const key = getKey(newAbstract);
-					let oldIndex;
-					if (key != null) {
-						oldIndex = keyedEntries.get(key);
-					} else {
-						const entries = unkeyedEntries.get(newAbstract.t || null);
-						if (entries) {
-							oldIndex = entries.indexes[entries.index++];
-						}
-					}
-					const oldAbstract = oldChildAbstracts?.[oldIndex];
-					const oldNode = oldNodes[oldIndex];
-
-					if (
-						oldIndex !== undefined &&
-						oldNode &&
-						((oldAbstract.t && newAbstract.t === oldAbstract.t) ||
-							(!oldAbstract.t && !newAbstract.t))
-					) {
-						oldNodes[oldIndex] = undefined;
-						if (oldNode !== element.childNodes[newIndex]) {
-							element[setBefore](oldNode, element.childNodes[newIndex]);
-						}
-						updateNode(oldNode, newAbstract, oldAbstract, inSvg);
-						continue;
-					}
-
-					const newNode = createNode(newAbstract, inSvg);
-					element.insertBefore(newNode, element.childNodes[newIndex]);
-				}
-			}
-
-			for (let index = 0; index < oldNodes.length; index++) {
-				const oldNode = oldNodes[index];
-				if (oldNode?.parentNode === element) {
-					oldNode.remove();
-				}
-			}
+		if (start === newLength && start === oldLength) {
 			return;
 		}
 
-		let newIndex = 0;
-		let newCount = 0;
-		if (newChildAbstracts) {
-			for (; newIndex < newChildAbstracts.length; newIndex++) {
-				const newAbstract = newChildAbstracts[newIndex];
-
-				let matched = false;
-				if (oldChildAbstracts) {
-					for (
-						let oldIndex = newIndex - newCount;
-						oldIndex < oldChildAbstracts.length;
-						oldIndex++
-					) {
-						const oldAbstract = oldChildAbstracts[oldIndex];
-						if (
-							(oldAbstract.t && newAbstract.t === oldAbstract.t) ||
-							(!oldAbstract.t && !newAbstract.t)
-						) {
-							matched = true;
-
-							if (newIndex !== oldIndex + newCount) {
-								element[setBefore](
-									element.childNodes[oldIndex + newCount],
-									element.childNodes[newIndex],
-								);
-								oldChildAbstracts.splice(
-									newIndex - newCount,
-									0,
-									oldChildAbstracts.splice(oldIndex, 1)[0],
-								);
-							}
-
-							updateNode(
-								element.childNodes[newIndex],
-								newAbstract,
-								oldAbstract,
-								inSvg,
-							);
-							break;
-						}
-					}
+		// Index the remaining old children by key, or by type when unkeyed.
+		const oldNodes = [];
+		for (let index = start; index < oldLength; index++) {
+			oldNodes[index] = node;
+			node = node?.nextSibling;
+		}
+		const keyedIndexes = new Map();
+		const unkeyedIndexes = new Map();
+		for (let index = oldLength; index-- > start; ) {
+			const abstract = oldChildAbstracts[index];
+			const key = getKey(abstract);
+			if (key != null) {
+				keyedIndexes.set(key, index);
+			} else {
+				let indexes = unkeyedIndexes.get(abstract.t);
+				if (!indexes) {
+					indexes = [];
+					unkeyedIndexes.set(abstract.t, indexes);
 				}
-
-				if (!matched) {
-					const newNode = createNode(newAbstract, inSvg);
-					element.insertBefore(newNode, element.childNodes[newIndex]);
-					newCount++;
-				}
+				// Stored in reverse so pop returns the first remaining match.
+				indexes.push(index);
 			}
 		}
 
-		if (oldChildAbstracts) {
-			for (
-				let i = oldChildAbstracts.length + newCount - 1;
-				i >= newIndex;
-				i--
-			) {
-				element.childNodes[i].remove();
+		// Match the remaining new children to old ones.
+		const newNodes = [];
+		const sources = [];
+		for (let index = start; index < newLength; index++) {
+			const newAbstract = newChildAbstracts[index];
+			const key = getKey(newAbstract);
+			const oldIndex =
+				key != null
+					? keyedIndexes.get(key)
+					: unkeyedIndexes.get(newAbstract.t)?.pop();
+			const oldNode = oldNodes[oldIndex];
+			if (oldNode && oldChildAbstracts[oldIndex].t === newAbstract.t) {
+				oldNodes[oldIndex] = null;
+				newNodes[index] = oldNode;
+				sources[index] = oldIndex;
+				updateNode(oldNode, newAbstract, oldChildAbstracts[oldIndex], inSvg);
 			}
+		}
+
+		for (let index = start; index < oldLength; index++) {
+			oldNodes[index]?.remove();
+		}
+
+		// Place children from back to front, only moving those outside the longest stable run.
+		const stable = findStable(sources);
+		let next = null;
+		for (let index = newLength; index-- > start; ) {
+			let child = newNodes[index];
+			if (!child) {
+				child = createNode(newChildAbstracts[index], inSvg);
+				element.insertBefore(child, next);
+			} else if (!stable[index]) {
+				element[setBefore](child, next);
+			}
+			next = child;
 		}
 	};
 
@@ -424,7 +404,7 @@ export const mount = (
 			updating = true;
 			updatePromise = null;
 			try {
-				const newAbstractTree = arrayifyOrUndefined(renderView(state));
+				const newAbstractTree = expand(arrayifyOrUndefined(renderView(state)));
 				updateChildren(rootElement, newAbstractTree, oldAbstractTree);
 				oldAbstractTree = newAbstractTree;
 				oldMemoMap = newMemoMap;

@@ -85,7 +85,7 @@ memo(
 ): MemoAbstract
 ```
 
-Reuses a rendered subtree while the render function identity is stable and `memory` remains recursively equal. Define the render function outside its parent view. Nested memo nodes are discouraged because memo caches are cleared after updates.
+Reuses a rendered subtree while the render function identity is stable and `memory` remains recursively equal. Define the render function outside its parent view. Nested memo nodes are discouraged because memo caches are cleared after updates. Unchanged memo contents are not diffed again, so changes made to their DOM outside staark are kept.
 
 ## View helpers
 

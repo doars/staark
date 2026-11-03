@@ -1,3 +1,14 @@
+// Proxies created by proxify, so they are not wrapped again when passed back in.
+const created = new WeakSet();
+
+/**
+ * Checks whether the value is a state proxy created by proxify.
+ *
+ * @param {any} value Value to check.
+ * @returns {boolean} Whether the value is a state proxy.
+ */
+export const isProxy = (value) => created.has(value);
+
 /**
  * Creates a proxy for the given root object to track changes and invoke the onChange callback.
  *
@@ -77,6 +88,7 @@ export const proxify = (root, onChange) => {
 
 		proxy = new Proxy(target, handler);
 		proxies.set(target, proxy);
+		created.add(proxy);
 		// Recursively create proxies for each property.
 		for (const key of Object.keys(target)) {
 			if (target[key] && typeof target[key] === "object") {
