@@ -23,6 +23,15 @@ describe('Node', () => {
       assert.deepStrictEqual(result.c, ['text content'])
     })
 
+    it('should keep zero and empty strings as contents', () => {
+      assert.deepStrictEqual(node('p', 0).c, [0])
+      assert.deepStrictEqual(node('p', '').c, [''])
+      assert.deepStrictEqual(node('p', { id: 'a' }, 0).c, [0])
+      assert.strictEqual(node('p', 0).a, undefined)
+      assert.strictEqual(node('p', false).c, undefined)
+      assert.strictEqual(node('p', null).c, undefined)
+    })
+
     it('should arrayify contents', () => {
       const result = node('span', { id: 'test' }, 'single')
       assert.deepStrictEqual(result.c, ['single'])

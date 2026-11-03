@@ -380,6 +380,15 @@ describe('Mount', () => {
     assert.strictEqual(div.firstChild.children[1], b)
   })
 
+  it('renders zero as contents', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => node('p', state.count), { count: 0 })
+    assert.strictEqual(div.innerHTML, '<p>0</p>')
+    state.count = 1
+    await update()
+    assert.strictEqual(div.innerHTML, '<p>1</p>')
+  })
+
   it('creates and updates single text children', async () => {
     const div = document.createElement('div')
     const [update, , state] = mount(div, (state) => state.items.map((item) => node('p', [item])), { items: ['', 'a', '0'] })

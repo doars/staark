@@ -283,6 +283,15 @@ describe('Patch', () => {
     assert.strictEqual(div.innerHTML, '<p id="b" style="padding: 0px;"></p>')
   })
 
+  it('renders zero as contents', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    patch(node('p', 0))
+    assert.strictEqual(div.innerHTML, '<p>0</p>')
+    patch(node('p', 1))
+    assert.strictEqual(div.innerHTML, '<p>1</p>')
+  })
+
   it('creates and updates single text children', () => {
     const div = document.createElement('div')
     const patch = prepare(div)

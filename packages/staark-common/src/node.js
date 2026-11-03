@@ -36,7 +36,9 @@ import { marker } from "./marker.js";
  */
 export const node = (type, attributesOrContents, contents) => {
 	if (
-		attributesOrContents &&
+		attributesOrContents !== null &&
+		attributesOrContents !== undefined &&
+		attributesOrContents !== false &&
 		(typeof attributesOrContents !== "object" ||
 			attributesOrContents._ === marker ||
 			Array.isArray(attributesOrContents))

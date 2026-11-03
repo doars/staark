@@ -111,4 +111,9 @@ describe('Stringify', () => {
       '<svg class="visible" style="color:red" viewBox="0 0 10 10"></svg>',
     )
   })
+
+  it('renders zero as contents', () => {
+    assert.strictEqual(stringifyPatch(node('p', 0))[0], '<p>0</p>')
+    assert.strictEqual(stringify(() => node('p', { id: 'a' }, 0))[0], '<p id="a">0</p>')
+  })
 })
