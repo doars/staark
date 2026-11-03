@@ -120,28 +120,66 @@ export const equalPlain = (valueA, valueB, path) => {
 	}
 
 	const prototype = Object.getPrototypeOf(valueA);
-	path ??= [];
 	if (
 		prototype !== Object.getPrototypeOf(valueB) ||
 		(prototype !== Object.prototype &&
 			prototype !== Array.prototype &&
 			prototype !== null) ||
-		path.includes(valueA)
+		path?.includes(valueA)
 	) {
 		return false;
 	}
 
-	path.push(valueA);
-	const keys = Object.keys(valueA);
-	const equal =
-		keys.length === Object.keys(valueB).length &&
-		keys.every(
-			(key) =>
-				Object.hasOwn(valueB, key) &&
-				equalPlain(valueA[key], valueB[key], path),
-		);
-	path.pop();
-	return equal;
+	/**
+	 * @param {*} childA Child of the first value.
+	 * @param {*} childB Child of the second value.
+	 * @returns {boolean} Whether the children are equal.
+	 */
+	const equalChild = (childA, childB) => {
+		if (childA === childB) {
+			return true;
+		}
+		if (
+			!childA ||
+			!childB ||
+			typeof childA !== "object" ||
+			typeof childB !== "object"
+		) {
+			return false;
+		}
+		path ??= [];
+		path.push(valueA);
+		const equal = equalPlain(childA, childB, path);
+		path.pop();
+		return equal;
+	};
+
+	if (prototype === Array.prototype) {
+		if (valueA.length !== valueB.length) {
+			return false;
+		}
+		for (let index = 0; index < valueA.length; index++) {
+			if (!equalChild(valueA[index], valueB[index])) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	let count = 0;
+	for (const key in valueA) {
+		if (Object.hasOwn(valueA, key)) {
+			count++;
+			const childB = valueB[key];
+			if (
+				(childB === undefined && !Object.hasOwn(valueB, key)) ||
+				!equalChild(valueA[key], childB)
+			) {
+				return false;
+			}
+		}
+	}
+	return count === Object.keys(valueB).length;
 };
 
 /**
@@ -171,11 +209,7 @@ export const clonePlain = (value, path) => {
 	}
 
 	path.push(value);
-	const copy = Array.isArray(value)
-		? []
-		: prototype
-			? {}
-			: Object.create(null);
+	const copy = Array.isArray(value) ? [] : prototype ? {} : Object.create(null);
 	for (const key of Object.keys(value)) {
 		copy[key] = clonePlain(value[key], path);
 	}

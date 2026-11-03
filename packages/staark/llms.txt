@@ -44,7 +44,7 @@ mount(
 
 Mounts a view on an element. A string root is treated as a query selector. If it does not match, Staark appends a new `div` to `document.body` and uses that element.
 
-The initial state defaults to `{}`. A plain object is wrapped in a recursive proxy; mutations schedule a microtask render. A supplied proxy is used directly, so call `update()` when its mutations should render. The state proxy returned by `mount` is always recognised; other proxies are detected with `structuredClone`; a proxy whose contents can not be cloned (for example functions) is not detected and is wrapped instead. Serialized initial state is parsed as JSON.
+The initial state defaults to `{}`. A plain object is wrapped in a recursive proxy; mutations schedule a microtask render. A supplied proxy is used directly, so call `update()` when its mutations should render. State proxies created by `mount` are always recognised; other proxies are detected with `structuredClone`; a proxy whose contents can not be cloned (for example functions) is not detected and is wrapped instead. Serialized initial state is parsed as JSON.
 
 `oldAbstractTree` hydrates existing DOM produced by `@doars/staark-isomorphic`. A serialized tree is parsed as JSON. When no old tree is supplied, the root's existing children are converted into an abstract tree before reconciliation.
 

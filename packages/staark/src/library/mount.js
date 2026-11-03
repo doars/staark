@@ -6,7 +6,7 @@ import { attributeToString } from "@doars/staark-common/src/attribute.js";
 import { clonePlain, equalPlain } from "@doars/staark-common/src/compare.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
-import { isProxy, proxify } from "./proxy.js";
+import { isProxy, proxify, toTarget } from "./proxy.js";
 
 /**
  * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
@@ -189,17 +189,18 @@ export const mount = (
 						newMemoMap.set(abstract.r, memos);
 					}
 					const oldMemos = oldMemoMap.get(abstract.r);
-					let match =
-						oldMemos?.i.get(abstract.m) ?? oldMemos?.l[memos.l.length];
-					if (!match || !equalPlain(match.m, abstract.m)) {
+					// State objects are compared through their targets, which is faster than through the proxy.
+					const memory = toTarget(abstract.m);
+					let match = oldMemos?.i.get(memory) ?? oldMemos?.l[memos.l.length];
+					if (!match || !equalPlain(match.m, memory)) {
 						match = {
 							c: expand(arrayify(abstract.r(state, abstract.m))),
 							// Copied so memory mutated in place, such as the state, is still compared with its previous contents.
-							m: clonePlain(abstract.m),
+							m: clonePlain(memory),
 						};
 					}
 					memos.l.push(match);
-					memos.i.set(abstract.m, match);
+					memos.i.set(memory, match);
 					result.push(...match.c);
 				} else if (result !== abstracts) {
 					result.push(abstract);
