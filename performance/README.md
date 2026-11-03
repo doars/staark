@@ -46,87 +46,77 @@ Every iteration loads a fresh page, so by default the measurements include runni
 
 ## Results
 
+Measured on a Mac mini with an Apple M6 and 32 GB of memory, using Node.js 26.13 and Playwright 1.64 with Chromium. The benchmarks were run with a complexity of _100_, so lists have 10,000 rows, and _100_ iterations.
+
+> For staark the base build is used which does not include added functions such as `factory` and `nde`, making the comparison with Hyperapp well suited.
+
 ### Sizes
 
 Build size for IIFE builds.
 
 ```
 hyperapp
-Minified           3.58KB
-Min+gzip           1.74KB    48.72%
-Min+brotli         1.56KB    43.66%
+Minified           3.57KB
+Min+gzip           1.74KB    48.78%
+Min+brotli         1.56KB    43.82%
 
 staark
-Minified           5.02KB
-Min+gzip           2.09KB    41.72%
-Min+brotli         1.92KB    38.16%
+Minified           5.77KB
+Min+gzip           2.59KB    44.97%
+Min+brotli         2.39KB    41.43%
 
 staark-patch
-Minified           3.54KB
-Min+gzip           1.55KB    43.76%
-Min+brotli         1.38KB    38.93%
+Minified           3.26KB
+Min+gzip           1.59KB    48.94%
+Min+brotli         1.45KB    44.56%
 
 superfine
-Minified           2.34KB
-Min+gzip           1.18KB    50.38%
+Minified           2.33KB
+Min+gzip           1.17KB    50.40%
 Min+brotli         1.05KB    44.95%
 ```
 
-### reorder
+### Times
 
-When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
+Average time in milliseconds, the fastest library per row is in bold. Memory usage is left out for brevity, run the benchmarks to see it.
 
-```
-staark-patch
-- reorder
-  Setup time     x̄3.01ms,   ∧2.70ms,   ∨3.60ms,   ±0.90%
-  Setup memory   x̄0.17MB,   ∧0.17MB,   ∨0.17MB,   ±0.00%
-  Run time       x̄3.91ms,   ∧3.40ms,   ∨4.70ms,   ±0.90%
-  Run memory     x̄0.11MB,   ∧0.11MB,   ∨0.11MB,   ±0.01%
+Cold, every iteration loads a fresh page:
 
-superfine
-- reorder
-  Setup time     x̄3.01ms,   ∧2.70ms,   ∨3.70ms,   ±1.05%
-  Setup memory   x̄0.24MB,   ∧0.24MB,   ∨0.24MB,   ±0.02%
-  Run time       x̄3.31ms,   ∧2.00ms,   ∨4.20ms,   ±1.67%
-  Run memory     x̄0.23MB,   ∧0.20MB,   ∨0.71MB,   ±4.59%
-```
+| Benchmark | Phase | staark | staark-patch | superfine | hyperapp |
+|---|---|---:|---:|---:|---:|
+| todo_app | setup | 29.49 | **22.51** | 25.89 | 24.50 |
+| todo_app | run | 10.71 | **8.40** | 11.19 | 11.89 |
+| update-one | setup | 19.97 | **15.56** | 18.84 | 18.72 |
+| update-one | run | 4.04 | **3.10** | 3.81 | 5.24 |
+| update-one-memo | setup | 22.38 | – | – | **18.51** |
+| update-one-memo | run | 2.81 | – | – | **1.48** |
+| prepend | setup | 19.88 | **15.93** | 19.26 | 19.55 |
+| prepend | run | 6.31 | **3.08** | 3.67 | 5.18 |
+| remove-one | setup | 20.11 | **15.79** | 18.92 | 18.53 |
+| remove-one | run | 5.06 | **2.96** | 3.59 | 4.91 |
+| reorder | setup | 3.51 | **2.92** | 3.49 | 3.98 |
+| reorder | run | 4.18 | **3.91** | 5.55 | 5.81 |
+| keyed-reorder | setup | 5.81 | **5.70** | 8.19 | 7.84 |
+| keyed-reorder | run | 7.22 | **7.15** | 11.86 | 12.07 |
 
-### todo_app
+Warm, with `--warmup=10`:
 
-When ran with a complexity of _100_ and _100_ iterations on an Intel i5 MacBook Pro 2020:
-
-```
-hyperapp
-- todo_app
-  Setup time    x̄21.19ms,  ∧15.40ms,  ∨28.40ms,   ±1.93%
-  Setup memory   x̄1.03MB,   ∧1.00MB,   ∨1.04MB,   ±0.13%
-  Run time       x̄7.20ms,   ∧6.70ms,   ∨8.80ms,   ±0.76%
-  Run memory     x̄1.05MB,   ∧1.03MB,   ∨1.06MB,   ±0.18%
-
-staark
-- todo_app
-  Setup time    x̄17.01ms,  ∧15.90ms,  ∨19.90ms,   ±0.66%
-  Setup memory   x̄0.77MB,   ∧0.73MB,   ∨0.81MB,   ±0.39%
-  Run time      x̄10.98ms,  ∧10.40ms,  ∨13.50ms,   ±0.75%
-  Run memory     x̄0.54MB,   ∧0.50MB,   ∨0.56MB,   ±0.59%
-
-staark-patch
-- todo_app
-  Setup time    x̄14.50ms,  ∧13.70ms,  ∨16.10ms,   ±0.58%
-  Setup memory   x̄0.76MB,   ∧0.75MB,   ∨0.77MB,   ±0.12%
-  Run time       x̄8.58ms,   ∧7.90ms,  ∨10.10ms,   ±0.77%
-  Run memory     x̄1.06MB,   ∧1.03MB,   ∨1.07MB,   ±0.17%
-
-superfine
-- todo_app
-  Setup time    x̄13.18ms,  ∧12.20ms,  ∨15.50ms,   ±1.15%
-  Setup memory   x̄0.98MB,   ∧0.97MB,   ∨1.02MB,   ±0.10%
-  Run time       x̄5.20ms,   ∧4.70ms,   ∨6.10ms,   ±1.12%
-  Run memory     x̄0.89MB,   ∧0.89MB,   ∨0.97MB,   ±0.21%
-```
-
-> For staark the base build is used which does not include added functions such as `factory` and `nde` Making the comparison with Hyperapp well suited.
+| Benchmark | Phase | staark | staark-patch | superfine | hyperapp |
+|---|---|---:|---:|---:|---:|
+| todo_app | setup | 28.88 | **21.18** | 29.08 | 27.28 |
+| todo_app | run | 9.04 | **7.47** | 11.40 | 11.92 |
+| update-one | setup | 18.31 | **13.12** | 17.08 | 17.90 |
+| update-one | run | 3.57 | **2.67** | 2.84 | 4.15 |
+| update-one-memo | setup | 20.32 | – | – | **17.90** |
+| update-one-memo | run | 2.40 | – | – | **1.26** |
+| prepend | setup | 19.06 | **13.07** | 17.20 | 17.25 |
+| prepend | run | 5.82 | **2.52** | 2.86 | 4.13 |
+| remove-one | setup | 18.84 | **13.08** | 17.20 | 17.07 |
+| remove-one | run | 4.70 | **2.53** | 2.86 | 4.06 |
+| reorder | setup | 2.87 | **2.41** | 2.82 | 3.08 |
+| reorder | run | **2.73** | 2.76 | 3.40 | 4.86 |
+| keyed-reorder | setup | 5.15 | **4.66** | 6.80 | 7.03 |
+| keyed-reorder | run | **5.71** | 5.80 | 10.76 | 11.34 |
 
 ## Profiling
 
@@ -134,4 +124,4 @@ The performance measurements also include outputting profiling information. This
 
 ## Usage
 
-To run the benchmark and profile the libraries yourself simply run `yarn run install && yarn run build` followed by either `yarn run benchmark` or `yarn run profile`.
+To run the benchmark and profile the libraries yourself, run `npm install` in the repository root and `npx playwright install chromium`, then `npm run build` in this directory followed by `npm run benchmark`, `npm run benchmark:warm`, or `npm run profile`. Add `-- --complexity=100` to measure with the same list sizes as the results above.
