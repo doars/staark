@@ -392,7 +392,10 @@ var prepare = (rootElement, oldAbstractTree) => {
       updateNode(node2, newAbstract, oldAbstract, inSvg);
       node2 = node2.nextSibling;
     }
-    if (start === newLength && start === oldLength) {
+    if (start === oldLength) {
+      for (; start < newLength; start++) {
+        element.insertBefore(createNode(newChildAbstracts[start], inSvg), node2);
+      }
       return;
     }
     const oldNodes = [];
