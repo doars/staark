@@ -551,7 +551,7 @@ var create = (initialOptions) => {
   const throttle = async (throttleValue) => {
     const now = Date.now();
     const waitTime = throttleValue - (now - lastExecutionTime);
-    lastExecutionTime = now + (waitTime > 0 ? waitTime : 0);
+    lastExecutionTime = now + Math.max(waitTime, 0);
     await delay(waitTime);
   };
   const drainConcurrencyQueue = () => {
