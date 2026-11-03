@@ -233,6 +233,7 @@ var attributeToString = (name, value) => typeof value === "string" ? value : nam
 var styleValueToString = (value) => isAbsent(value) ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
 
 // ../staark-common/src/compare.js
+var isPlainPrototype = (prototype) => prototype === Object.prototype || prototype === Array.prototype || prototype === null;
 var equalChild = (childA, childB, parent, path) => {
   if (!childA || !childB || typeof childA !== "object" || typeof childB !== "object") {
     return false;
@@ -254,7 +255,7 @@ var equalPlain = (valueA, valueB, path) => {
     return valueB instanceof Date && valueA.getTime() === valueB.getTime();
   }
   const prototype = Object.getPrototypeOf(valueA);
-  if (prototype !== Object.getPrototypeOf(valueB) || prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path?.includes(valueA)) {
+  if (prototype !== Object.getPrototypeOf(valueB) || !isPlainPrototype(prototype) || path?.includes(valueA)) {
     return false;
   }
   if (prototype === Array.prototype) {
@@ -292,7 +293,7 @@ var clonePlain = (value, path) => {
   }
   const prototype = Object.getPrototypeOf(value);
   path ??= [];
-  if (prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path.includes(value)) {
+  if (!isPlainPrototype(prototype) || path.includes(value)) {
     return value;
   }
   path.push(value);
