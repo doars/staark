@@ -28,7 +28,11 @@ export const childrenToNodes = (element) => {
 			}
 
 			abstractChildNodes.push(
-				node(childNode.nodeName, attributes, childrenToNodes(childNode)),
+				node(
+					childNode.localName ?? childNode.nodeName,
+					attributes,
+					childrenToNodes(childNode),
+				),
 			);
 		}
 	}

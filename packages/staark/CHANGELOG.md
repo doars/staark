@@ -9,7 +9,9 @@
 - Only write attributes, classes, and styles that changed, while keeping `value` in sync with the state.
 - Set classes through `setAttribute`, which also works for SVG elements. Object classes no longer have a leading space.
 - Dispatch events through one shared listener per mount instead of a wrapper per handler.
-- Use state proxies created by `mount` directly when passed to another `mount`, instead of wrapping them again.
+- Use supplied proxies directly as documented, instead of wrapping them again. Proxies created by `mount` are always recognised, other proxies are detected with `structuredClone`.
+- Compare memo memory with the smaller `equalPlain`. Maps, sets, and class instances in memory are now compared by identity, and circular memory always re-renders.
+- Reuse existing elements when hydrating, instead of recreating them.
 - Declare `sideEffects` so bundlers can tree-shake unused helpers.
 
 ## 1.7.17

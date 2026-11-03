@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Fix the ESM builds in `dst/` being emitted as IIFEs without exports.
+- Use a single reconciliation path for keyed and unkeyed children, with an in-place fast path for an unchanged prefix, and only move children outside the longest stable run.
+- Skip unchanged abstract nodes and stop mutating the previous abstract tree.
+- Only write attributes, classes, and styles that changed, while keeping `value` in sync.
+- Set classes through `setAttribute`, which also works for SVG elements. Object classes no longer have a leading space.
+- Reuse existing elements when hydrating, and support comments in existing content.
+- Declare `sideEffects` so bundlers can tree-shake unused helpers.
+
 ## 1.4.13
 
 - Update and improve the `README.md`.

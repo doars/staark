@@ -2,8 +2,9 @@ import {
 	arrayify,
 	arrayifyOrUndefined,
 } from "@doars/staark-common/src/array.js";
-import { equalRecursive } from "@doars/staark-common/src/compare.js";
+import { equalPlain } from "@doars/staark-common/src/compare.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
+import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 import { isProxy, proxify } from "./proxy.js";
 
 /**
@@ -19,45 +20,6 @@ import { isProxy, proxify } from "./proxy.js";
  * @property {NodeContent[]} c Remembered abstract tree after rendering.
  * @property {any} m Remembered data to compare with.
  */
-
-/**
- * Finds the longest increasing subsequence of the given old indexes.
- *
- * @param {number[]} sources Old index of each new child, or undefined if the child is new.
- * @returns {boolean[]} Whether each new child is part of the subsequence and can stay in place.
- */
-const findStable = (sources) => {
-	const tails = [];
-	const previous = [];
-	for (let index = 0; index < sources.length; index++) {
-		const source = sources[index];
-		if (source === undefined) {
-			continue;
-		}
-		let low = 0;
-		let high = tails.length;
-		while (low < high) {
-			const middle = (low + high) >> 1;
-			if (sources[tails[middle]] < source) {
-				low = middle + 1;
-			} else {
-				high = middle;
-			}
-		}
-		previous[index] = low ? tails[low - 1] : -1;
-		tails[low] = index;
-	}
-
-	const stable = [];
-	for (
-		let index = tails[tails.length - 1];
-		index >= 0;
-		index = previous[index]
-	) {
-		stable[index] = true;
-	}
-	return stable;
-};
 
 /**
  * @param {HTMLElement | Element | string} rootElement Root element to mount the view on.
@@ -76,12 +38,6 @@ export const mount = (
 		"moveBefore" in Element.prototype ? "moveBefore" : "insertBefore";
 	const getKey = (abstract) => abstract?.a?.key;
 
-	if (typeof initialState === "string") {
-		initialState = JSON.parse(initialState);
-	}
-	if (!initialState) {
-		initialState = {};
-	}
 	let updatePromise = null;
 	/**
 	 * Triggers an update to the view by scheduling the updateAbstracts function if not already updating.
@@ -92,9 +48,12 @@ export const mount = (
 		}
 		return updatePromise;
 	};
-	const state = isProxy(initialState)
-		? initialState
-		: proxify(initialState, triggerUpdate);
+	const state =
+		typeof initialState === "string"
+			? proxify(JSON.parse(initialState), triggerUpdate)
+			: isProxy(initialState)
+				? initialState
+				: proxify(initialState || {}, triggerUpdate);
 
 	// Listeners per element, all invoked through a single shared event handler.
 	const listeners = new WeakMap();
@@ -217,7 +176,7 @@ export const mount = (
 						result = abstracts.slice(0, index);
 					}
 					let match = oldMemoMap.get(abstract.r);
-					if (!match || !equalRecursive(match.m, abstract.m)) {
+					if (!match || !equalPlain(match.m, abstract.m)) {
 						match = {
 							c: expand(arrayify(abstract.r(state, abstract.m))),
 							m: abstract.m,
@@ -363,7 +322,7 @@ export const mount = (
 		}
 
 		// Place children from back to front, only moving those outside the longest stable run.
-		const stable = findStable(sources);
+		const stable = increasingSubsequence(sources);
 		let next = null;
 		for (let index = newLength; index-- > start; ) {
 			let child = newNodes[index];

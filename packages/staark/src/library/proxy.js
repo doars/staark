@@ -2,12 +2,26 @@
 const created = new WeakSet();
 
 /**
- * Checks whether the value is a state proxy created by proxify.
+ * Checks whether the value is a proxy. Proxies created by proxify are always recognised. Other proxies are detected because structured cloning rejects a proxy itself but not a plain copy of it. A proxy whose contents can not be cloned is not detected.
  *
  * @param {any} value Value to check.
- * @returns {boolean} Whether the value is a state proxy.
+ * @returns {boolean} Whether the value is a proxy.
  */
-export const isProxy = (value) => created.has(value);
+export const isProxy = (value) => {
+	if (created.has(value)) {
+		return true;
+	}
+	try {
+		structuredClone(value);
+		return false;
+	} catch {}
+	try {
+		structuredClone({ ...value });
+		return true;
+	} catch {
+		return false;
+	}
+};
 
 /**
  * Creates a proxy for the given root object to track changes and invoke the onChange callback.

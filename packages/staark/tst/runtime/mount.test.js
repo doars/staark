@@ -354,4 +354,50 @@ describe('Mount', () => {
     assert.strictEqual(first.textContent, '1')
     assert.strictEqual(second.textContent, '1')
   })
+
+  it('uses a user created proxy directly', async () => {
+    const app = document.createElement('div')
+    const proxy = new Proxy({ count: 1 }, {})
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('p', String(state.count)),
+      proxy,
+    )
+    assert.strictEqual(state, proxy)
+
+    proxy.count = 2
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.strictEqual(app.textContent, '1')
+
+    await update()
+    assert.strictEqual(app.textContent, '2')
+  })
+
+  it('still wraps plain state that contains functions', async () => {
+    const app = document.createElement('div')
+    const initial = { count: 1, format: (count) => `#${count}` }
+    const [_update, _unmount, state] = mount(
+      app,
+      (state) => node('p', state.format(state.count)),
+      initial,
+    )
+    assert.notStrictEqual(state, initial)
+
+    state.count = 2
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.strictEqual(app.textContent, '#2')
+  })
+
+  it('reuses hydrated elements', () => {
+    const app = document.createElement('div')
+    app.innerHTML = '<ul class="list"><li>one</li></ul>'
+    const list = app.firstChild
+    mount(app, () => node('ul', { class: 'list' }, [
+      node('li', 'one'),
+      node('li', 'two'),
+    ]))
+
+    assert.strictEqual(app.firstChild, list)
+    assert.strictEqual(app.innerHTML, '<ul class="list"><li>one</li><li>two</li></ul>')
+  })
 })
