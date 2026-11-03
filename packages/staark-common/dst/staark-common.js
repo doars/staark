@@ -9,6 +9,7 @@ var suffixNameIfMultiple = (attributes) => {
     attributes.name += SUFFIX_MULTIPLE;
   }
 };
+var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : `${value}`;
 
 // src/clone.js
 var cloneRecursive = (value, clones = /* @__PURE__ */ new WeakMap()) => {
@@ -424,6 +425,7 @@ var increasingSubsequence = (sources) => {
 export {
   arrayify,
   arrayifyOrUndefined,
+  attributeToString,
   childrenToNodes,
   cloneRecursive,
   conditional,
