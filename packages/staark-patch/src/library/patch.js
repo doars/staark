@@ -199,7 +199,11 @@ export const prepare = (rootElement, oldAbstractTree) => {
 			updateNode(node, newAbstract, oldAbstract, inSvg);
 			node = node.nextSibling;
 		}
-		if (start === newLength && start === oldLength) {
+		if (start === oldLength) {
+			// Nothing left to match, so append the remaining children.
+			for (; start < newLength; start++) {
+				element.insertBefore(createNode(newChildAbstracts[start], inSvg), node);
+			}
 			return;
 		}
 
