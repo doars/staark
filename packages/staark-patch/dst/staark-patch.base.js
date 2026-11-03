@@ -159,7 +159,7 @@ var prepare = (rootElement, oldAbstractTree) => {
     if (!abstract.t) {
       return document.createTextNode(abstract);
     }
-    inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+    inSvg = inSvg || abstract.t === "svg";
     const element = inSvg ? document.createElementNS("http://www.w3.org/2000/svg", abstract.t) : document.createElement(abstract.t);
     updateAttributes(element, abstract.a);
     updateChildren(element, abstract.c, void 0, inSvg);
@@ -175,7 +175,7 @@ var prepare = (rootElement, oldAbstractTree) => {
         node2,
         newAbstract.c,
         oldAbstract.c,
-        inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
+        inSvg || newAbstract.t === "svg"
       );
     } else {
       node2.textContent = newAbstract;

@@ -380,6 +380,16 @@ describe('Mount', () => {
     assert.strictEqual(div.firstChild.children[1], b)
   })
 
+  it('sets and removes hyphenated and custom style properties', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => node('p', { style: state.style }), { style: { 'font-size': '12px', '--gap': '4px' } })
+    assert.strictEqual(div.firstChild.style.fontSize, '12px')
+    assert.strictEqual(div.firstChild.style.getPropertyValue('--gap'), '4px')
+    state.style = { color: 'red' }
+    await update()
+    assert.strictEqual(div.firstChild.style.cssText, 'color: red;')
+  })
+
   it('renders zero as contents', async () => {
     const div = document.createElement('div')
     const [update, , state] = mount(div, (state) => node('p', state.count), { count: 0 })

@@ -258,7 +258,7 @@ export const mount = (
 			return document.createTextNode(abstract);
 		}
 
-		inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+		inSvg = inSvg || abstract.t === "svg";
 		const element = inSvg
 			? document.createElementNS("http://www.w3.org/2000/svg", abstract.t)
 			: document.createElement(abstract.t);
@@ -287,7 +287,7 @@ export const mount = (
 				node,
 				newAbstract.c,
 				oldAbstract.c,
-				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
+				inSvg || newAbstract.t === "svg",
 			);
 		} else {
 			node.textContent = newAbstract;
@@ -479,9 +479,7 @@ export const mount = (
 				active = false;
 				updatePromise = null;
 
-				for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
-					rootElement.childNodes[i].remove();
-				}
+				rootElement.replaceChildren();
 			}
 		},
 		state,

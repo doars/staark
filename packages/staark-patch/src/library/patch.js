@@ -150,7 +150,7 @@ export const prepare = (rootElement, oldAbstractTree) => {
 			return document.createTextNode(abstract);
 		}
 
-		inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+		inSvg = inSvg || abstract.t === "svg";
 		const element = inSvg
 			? document.createElementNS("http://www.w3.org/2000/svg", abstract.t)
 			: document.createElement(abstract.t);
@@ -177,7 +177,7 @@ export const prepare = (rootElement, oldAbstractTree) => {
 				node,
 				newAbstract.c,
 				oldAbstract.c,
-				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
+				inSvg || newAbstract.t === "svg",
 			);
 		} else {
 			node.textContent = newAbstract;

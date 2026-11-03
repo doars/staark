@@ -218,7 +218,7 @@ var proxify = (root, onChange) => {
   };
   const methods = /* @__PURE__ */ Object.create(null);
   const wrap = (names, type) => {
-    for (const name of names.split(" ")) {
+    for (const name of names) {
       const method = Array.prototype[name];
       if (method) {
         methods[name] = function(...args) {
@@ -251,13 +251,38 @@ var proxify = (root, onChange) => {
       }
     }
   };
-  wrap("includes indexOf join slice toReversed toSorted values", 0);
   wrap(
-    "every filter find findIndex findLast findLastIndex flatMap forEach map some",
+    [
+      "includes",
+      "indexOf",
+      "join",
+      "slice",
+      "toReversed",
+      "toSorted",
+      "values"
+    ],
+    0
+  );
+  wrap(
+    [
+      "every",
+      "filter",
+      "find",
+      "findIndex",
+      "findLast",
+      "findLastIndex",
+      "flatMap",
+      "forEach",
+      "map",
+      "some"
+    ],
     1
   );
-  wrap("reduce reduceRight", 2);
-  wrap("copyWithin fill reverse shift sort splice unshift", 3);
+  wrap(["reduce", "reduceRight"], 2);
+  wrap(
+    ["copyWithin", "fill", "reverse", "shift", "sort", "splice", "unshift"],
+    3
+  );
   methods[Symbol.iterator] = methods.values;
   const arrayHandler = {
     ...handler,
@@ -444,7 +469,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
     if (!abstract.t) {
       return document.createTextNode(abstract);
     }
-    inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+    inSvg = inSvg || abstract.t === "svg";
     const element = inSvg ? document.createElementNS("http://www.w3.org/2000/svg", abstract.t) : document.createElement(abstract.t);
     updateAttributes(element, abstract.a);
     abstract.c = expand(abstract.c);
@@ -462,7 +487,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         node2,
         newAbstract.c,
         oldAbstract.c,
-        inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
+        inSvg || newAbstract.t === "svg"
       );
     } else {
       node2.textContent = newAbstract;
@@ -603,9 +628,7 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
       if (active) {
         active = false;
         updatePromise = null;
-        for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
-          rootElement.childNodes[i].remove();
-        }
+        rootElement.replaceChildren();
       }
     },
     state

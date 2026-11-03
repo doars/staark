@@ -222,13 +222,11 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
-        subject[path[i]] = {};
-      }
-      subject = subject[path[i]];
+    const last = path.pop();
+    for (const key of path) {
+      subject = subject[key] && typeof subject[key] === "object" ? subject[key] : subject[key] = {};
     }
-    subject[path[path.length - 1]] = data;
+    subject[last] = data;
   };
 
   // ../staark-common/src/attribute.js
@@ -372,7 +370,7 @@
       if (!abstract.t) {
         return document.createTextNode(abstract);
       }
-      inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+      inSvg = inSvg || abstract.t === "svg";
       const element = inSvg ? document.createElementNS("http://www.w3.org/2000/svg", abstract.t) : document.createElement(abstract.t);
       updateAttributes(element, abstract.a);
       updateChildren(element, abstract.c, void 0, inSvg);
@@ -388,7 +386,7 @@
           node2,
           newAbstract.c,
           oldAbstract.c,
-          inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg"
+          inSvg || newAbstract.t === "svg"
         );
       } else {
         node2.textContent = newAbstract;
