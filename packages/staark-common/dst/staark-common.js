@@ -1,6 +1,6 @@
 // src/array.js
 var arrayify = (data) => arrayifyOrUndefined(data) || [];
-var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
 
 // src/attribute.js
 var SUFFIX_MULTIPLE = "[]";
@@ -137,6 +137,16 @@ var equalRecursive = (valueA, valueB, compared) => {
     (key) => Object.hasOwn(valueB, key) && equalRecursive(valueA[key], valueB[key], compared)
   );
 };
+var equalChild = (childA, childB, parent, path) => {
+  if (!childA || !childB || typeof childA !== "object" || typeof childB !== "object") {
+    return false;
+  }
+  path ??= [];
+  path.push(parent);
+  const equal = equalPlain(childA, childB, path);
+  path.pop();
+  return equal;
+};
 var equalPlain = (valueA, valueB, path) => {
   if (valueA === valueB) {
     return true;
@@ -151,25 +161,14 @@ var equalPlain = (valueA, valueB, path) => {
   if (prototype !== Object.getPrototypeOf(valueB) || prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path?.includes(valueA)) {
     return false;
   }
-  const equalChild = (childA, childB) => {
-    if (childA === childB) {
-      return true;
-    }
-    if (!childA || !childB || typeof childA !== "object" || typeof childB !== "object") {
-      return false;
-    }
-    path ??= [];
-    path.push(valueA);
-    const equal = equalPlain(childA, childB, path);
-    path.pop();
-    return equal;
-  };
   if (prototype === Array.prototype) {
     if (valueA.length !== valueB.length) {
       return false;
     }
     for (let index = 0; index < valueA.length; index++) {
-      if (!equalChild(valueA[index], valueB[index])) {
+      const childA = valueA[index];
+      const childB = valueB[index];
+      if (childA !== childB && !equalChild(childA, childB, valueA, path)) {
         return false;
       }
     }
@@ -179,8 +178,9 @@ var equalPlain = (valueA, valueB, path) => {
   for (const key in valueA) {
     if (Object.hasOwn(valueA, key)) {
       count++;
+      const childA = valueA[key];
       const childB = valueB[key];
-      if (childB === void 0 && !Object.hasOwn(valueB, key) || !equalChild(valueA[key], childB)) {
+      if (childB === void 0 && !Object.hasOwn(valueB, key) || childA !== childB && !equalChild(childA, childB, valueA, path)) {
         return false;
       }
     }
@@ -222,7 +222,7 @@ var marker = "n";
 
 // src/node.js
 var node = (type, attributesOrContents, contents) => {
-  if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+  if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
     contents = attributesOrContents;
     attributesOrContents = void 0;
   }

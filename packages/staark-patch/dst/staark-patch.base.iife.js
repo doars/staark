@@ -1,13 +1,13 @@
 (() => {
   // ../staark-common/src/array.js
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+  var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
 
   // ../staark-common/src/marker.js
   var marker = "n";
 
   // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
-    if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+    if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
       attributesOrContents = void 0;
     }

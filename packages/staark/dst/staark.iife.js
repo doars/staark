@@ -1,7 +1,7 @@
 (() => {
   // ../staark-common/src/array.js
   var arrayify = (data) => arrayifyOrUndefined(data) || [];
-  var arrayifyOrUndefined = (data) => data ? Array.isArray(data) ? data : [data] : void 0;
+  var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
 
   // ../staark-common/src/conditional.js
   var conditional = (condition, onTruth, onFalse) => {
@@ -17,7 +17,7 @@
 
   // ../staark-common/src/node.js
   var node = (type, attributesOrContents, contents) => {
-    if (attributesOrContents && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+    if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
       contents = attributesOrContents;
       attributesOrContents = void 0;
     }
@@ -243,6 +243,16 @@
   var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
 
   // ../staark-common/src/compare.js
+  var equalChild = (childA, childB, parent, path) => {
+    if (!childA || !childB || typeof childA !== "object" || typeof childB !== "object") {
+      return false;
+    }
+    path ??= [];
+    path.push(parent);
+    const equal = equalPlain(childA, childB, path);
+    path.pop();
+    return equal;
+  };
   var equalPlain = (valueA, valueB, path) => {
     if (valueA === valueB) {
       return true;
@@ -257,25 +267,14 @@
     if (prototype !== Object.getPrototypeOf(valueB) || prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path?.includes(valueA)) {
       return false;
     }
-    const equalChild = (childA, childB) => {
-      if (childA === childB) {
-        return true;
-      }
-      if (!childA || !childB || typeof childA !== "object" || typeof childB !== "object") {
-        return false;
-      }
-      path ??= [];
-      path.push(valueA);
-      const equal = equalPlain(childA, childB, path);
-      path.pop();
-      return equal;
-    };
     if (prototype === Array.prototype) {
       if (valueA.length !== valueB.length) {
         return false;
       }
       for (let index = 0; index < valueA.length; index++) {
-        if (!equalChild(valueA[index], valueB[index])) {
+        const childA = valueA[index];
+        const childB = valueB[index];
+        if (childA !== childB && !equalChild(childA, childB, valueA, path)) {
           return false;
         }
       }
@@ -285,8 +284,9 @@
     for (const key in valueA) {
       if (Object.hasOwn(valueA, key)) {
         count++;
+        const childA = valueA[key];
         const childB = valueB[key];
-        if (childB === void 0 && !Object.hasOwn(valueB, key) || !equalChild(valueA[key], childB)) {
+        if (childB === void 0 && !Object.hasOwn(valueB, key) || childA !== childB && !equalChild(childA, childB, valueA, path)) {
           return false;
         }
       }
@@ -428,6 +428,53 @@
         return true;
       }
     };
+    const methods = /* @__PURE__ */ Object.create(null);
+    const wrap = (names, type) => {
+      for (const name of names.split(" ")) {
+        const method = Array.prototype[name];
+        if (method) {
+          methods[name] = function(...args) {
+            const target = toTarget(this);
+            if (proxies.get(target) !== this) {
+              return method.apply(this, args);
+            }
+            const callback = args[0];
+            if (type === 3) {
+              for (let index = 0; index < args.length; index++) {
+                if (args[index] && typeof args[index] === "object") {
+                  args[index] = add(args[index]);
+                }
+              }
+              const before = target.slice();
+              const result = method.apply(target, args);
+              if (before.length !== target.length || before.some((value, index) => value !== target[index])) {
+                onChange();
+              }
+              return result === target ? this : result;
+            }
+            if (type && typeof callback === "function") {
+              const proxy = this;
+              args[0] = function(a, b, c) {
+                return type === 1 ? callback.call(this, a, b, proxy) : callback(a, b, c, proxy);
+              };
+            }
+            return method.apply(target, args);
+          };
+        }
+      }
+    };
+    wrap("includes indexOf join slice toReversed toSorted values", 0);
+    wrap(
+      "every filter find findIndex findLast findLastIndex flatMap forEach map some",
+      1
+    );
+    wrap("reduce reduceRight", 2);
+    wrap("copyWithin fill reverse shift sort splice unshift", 3);
+    methods[Symbol.iterator] = methods.values;
+    const arrayHandler = {
+      ...handler,
+      get: (target, key, receiver) => methods[key] ?? Reflect.get(target, key, receiver)
+    };
     const add = (target) => {
       let proxy = proxies.get(toTarget(target));
       if (proxy) {
@@ -437,7 +484,7 @@
       if (!Array.isArray(target) && prototype !== Object.prototype && prototype !== null) {
         return target;
       }
-      proxy = new Proxy(target, handler);
+      proxy = new Proxy(target, Array.isArray(target) ? arrayHandler : handler);
       proxies.set(target, proxy);
       targets.set(proxy, target);
       for (const key of Object.keys(target)) {
@@ -564,21 +611,39 @@
             }
             let memos = newMemoMap.get(abstract.r);
             if (!memos) {
-              memos = { l: [], i: /* @__PURE__ */ new Map() };
+              memos = [];
               newMemoMap.set(abstract.r, memos);
             }
             const oldMemos = oldMemoMap.get(abstract.r);
-            const memory = toTarget(abstract.m);
-            let match2 = oldMemos?.i.get(memory) ?? oldMemos?.l[memos.l.length];
+            const memory = abstract.m && typeof abstract.m === "object" ? toTarget(abstract.m) : abstract.m;
+            const atPosition = oldMemos?.[memos.length];
+            let match2 = atPosition;
             if (!match2 || !equalPlain(match2.m, memory)) {
+              match2 = void 0;
+              if (oldMemos && atPosition?.t !== memory) {
+                if (!oldMemos.i) {
+                  oldMemos.i = /* @__PURE__ */ new Map();
+                  for (const memo2 of oldMemos) {
+                    oldMemos.i.set(memo2.t, memo2);
+                  }
+                }
+                match2 = oldMemos.i.get(memory);
+                if (match2 && !equalPlain(match2.m, memory)) {
+                  match2 = void 0;
+                }
+              }
+            }
+            if (!match2) {
               match2 = {
                 c: expand(arrayify(abstract.r(state, abstract.m))),
                 // Copied so memory mutated in place, such as the state, is still compared with its previous contents.
-                m: clonePlain(memory)
+                m: clonePlain(memory),
+                t: memory
               };
+            } else if (match2.t !== memory) {
+              match2 = { c: match2.c, m: match2.m, t: memory };
             }
-            memos.l.push(match2);
-            memos.i.set(memory, match2);
+            memos.push(match2);
             result.push(...match2.c);
           } else if (result !== abstracts) {
             result.push(abstract);
@@ -623,10 +688,12 @@
       for (; start < newLength && start < oldLength; start++) {
         const newAbstract = newChildAbstracts[start];
         const oldAbstract = oldChildAbstracts[start];
-        if (newAbstract.t !== oldAbstract.t || getKey(newAbstract) !== getKey(oldAbstract)) {
-          break;
+        if (newAbstract !== oldAbstract) {
+          if (newAbstract.t !== oldAbstract.t || getKey(newAbstract) !== getKey(oldAbstract)) {
+            break;
+          }
+          updateNode(node2, newAbstract, oldAbstract, inSvg);
         }
-        updateNode(node2, newAbstract, oldAbstract, inSvg);
         node2 = node2.nextSibling;
       }
       let newEnd = newLength;
