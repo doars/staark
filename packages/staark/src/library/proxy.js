@@ -78,7 +78,6 @@ export const proxify = (root, onChange) => {
 				}
 				const set = Reflect.set(target, key, value, receiver);
 
-				// Dispatch set event. If the target is an array and a new item has been pushed then the length has also changed, therefore a more generalizable path will be dispatched.
 				if (set) {
 					onChange();
 				}
