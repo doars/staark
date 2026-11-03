@@ -93,11 +93,11 @@ export const proxify = (root, onChange) => {
 	/**
 	 * Adds wrappers for the given array methods.
 	 *
-	 * @param {string} names - Names of the array methods, separated by spaces.
+	 * @param {string[]} names - Names of the array methods.
 	 * @param {number} type - 0 for methods that only read, 1 for methods whose callback receives the array as the third argument, 2 as the fourth argument, and 3 for methods that move items.
 	 */
 	const wrap = (names, type) => {
-		for (const name of names.split(" ")) {
+		for (const name of names) {
 			const method = Array.prototype[name];
 			// Only methods the browser supports are wrapped, so feature detection keeps working.
 			if (method) {
@@ -138,13 +138,38 @@ export const proxify = (root, onChange) => {
 			}
 		}
 	};
-	wrap("includes indexOf join slice toReversed toSorted values", 0);
 	wrap(
-		"every filter find findIndex findLast findLastIndex flatMap forEach map some",
+		[
+			"includes",
+			"indexOf",
+			"join",
+			"slice",
+			"toReversed",
+			"toSorted",
+			"values",
+		],
+		0,
+	);
+	wrap(
+		[
+			"every",
+			"filter",
+			"find",
+			"findIndex",
+			"findLast",
+			"findLastIndex",
+			"flatMap",
+			"forEach",
+			"map",
+			"some",
+		],
 		1,
 	);
-	wrap("reduce reduceRight", 2);
-	wrap("copyWithin fill reverse shift sort splice unshift", 3);
+	wrap(["reduce", "reduceRight"], 2);
+	wrap(
+		["copyWithin", "fill", "reverse", "shift", "sort", "splice", "unshift"],
+		3,
+	);
 	methods[Symbol.iterator] = methods.values;
 	const arrayHandler = {
 		...handler,
