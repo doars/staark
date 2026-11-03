@@ -117,7 +117,7 @@ export const proxify = (root, onChange) => {
 			return result === target ? this : result;
 		};
 	const always = () => true;
-	const methods = {
+	const methods = Object.assign(Object.create(null), {
 		copyWithin: wrap("copyWithin", Infinity, always),
 		fill: wrap("fill", 0, always),
 		reverse: wrap("reverse", Infinity, always),
@@ -129,13 +129,11 @@ export const proxify = (root, onChange) => {
 			(_length, args, result) => result.length > 0 || args.length > 2,
 		),
 		unshift: wrap("unshift", 0, (_length, args) => args.length > 0),
-	};
+	});
 	const arrayHandler = {
 		...handler,
 		get: (target, key, receiver) =>
-			typeof key === "string" && Object.hasOwn(methods, key)
-				? methods[key]
-				: Reflect.get(target, key, receiver),
+			methods[key] ?? Reflect.get(target, key, receiver),
 	};
 
 	/**
