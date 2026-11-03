@@ -34,6 +34,12 @@
 		"llms.txt",
 		"README.md"
 	],
+	"sideEffects": [
+		"./src/index.iife.js",
+		"./src/index.base.iife.js",
+		"./dst/*.iife.js",
+		"./dst/*.iife.min.js"
+	],
 	"dependencies": {
 		"@doars/staark-common": "^1.5.10"
 	}

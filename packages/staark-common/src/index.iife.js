@@ -14,6 +14,7 @@ import * as match from "./match.js";
 import * as memo from "./memo.js";
 import * as nde from "./nde.js";
 import * as node from "./node.js";
+import * as sequence from "./sequence.js";
 
 iife(["staark", "common"], {
 	array,
@@ -30,4 +31,5 @@ iife(["staark", "common"], {
 	memo,
 	nde,
 	node,
+	sequence,
 });

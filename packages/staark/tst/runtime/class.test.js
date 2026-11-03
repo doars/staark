@@ -40,6 +40,6 @@ describe('Class', () => {
     const divs = app.querySelectorAll('div')
     assert.strictEqual(divs[0].className, 'class-string')
     assert.strictEqual(divs[1].className, 'class array')
-    assert.strictEqual(divs[2].className, ' class object')
+    assert.strictEqual(divs[2].className, 'class object')
   })
 })

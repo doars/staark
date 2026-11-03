@@ -22,12 +22,17 @@ export const childrenToNodes = (element) => {
 			abstractChildNodes.push(childNode.textContent ?? "");
 		} else {
 			const attributes = {};
-			for (const attribute of childNode.attributes) {
+			// Comments and other non-element nodes have no attributes.
+			for (const attribute of childNode.attributes ?? []) {
 				attributes[attribute.name] = attribute.value;
 			}
 
 			abstractChildNodes.push(
-				node(childNode.nodeName, attributes, childrenToNodes(childNode)),
+				node(
+					childNode.localName ?? childNode.nodeName,
+					attributes,
+					childrenToNodes(childNode),
+				),
 			);
 		}
 	}

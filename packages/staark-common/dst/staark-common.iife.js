@@ -9,7 +9,7 @@
   var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
         subject[path[i]] = {};
       }
       subject = subject[path[i]];
@@ -95,9 +95,10 @@
   // src/compare.js
   var compare_exports = {};
   __export(compare_exports, {
+    equalPlain: () => equalPlain,
     equalRecursive: () => equalRecursive
   });
-  var equalRecursive = (valueA, valueB, compared = /* @__PURE__ */ new WeakMap()) => {
+  var equalRecursive = (valueA, valueB, compared) => {
     if (valueA === valueB) {
       return true;
     }
@@ -110,6 +111,7 @@
     if (Object.getPrototypeOf(valueA) !== Object.getPrototypeOf(valueB)) {
       return false;
     }
+    compared ??= /* @__PURE__ */ new WeakMap();
     let comparedWithA = compared.get(valueA);
     if (comparedWithA?.has(valueB)) {
       return true;
@@ -157,6 +159,29 @@
     return keys.length === Object.keys(valueB).length && keys.every(
       (key) => Object.hasOwn(valueB, key) && equalRecursive(valueA[key], valueB[key], compared)
     );
+  };
+  var equalPlain = (valueA, valueB, path) => {
+    if (valueA === valueB) {
+      return true;
+    }
+    if (!valueA || !valueB || typeof valueA !== "object" || typeof valueB !== "object") {
+      return false;
+    }
+    if (valueA instanceof Date) {
+      return valueB instanceof Date && valueA.getTime() === valueB.getTime();
+    }
+    const prototype = Object.getPrototypeOf(valueA);
+    path ??= [];
+    if (prototype !== Object.getPrototypeOf(valueB) || prototype !== Object.prototype && prototype !== Array.prototype && prototype !== null || path.includes(valueA)) {
+      return false;
+    }
+    path.push(valueA);
+    const keys = Object.keys(valueA);
+    const equal = keys.length === Object.keys(valueB).length && keys.every(
+      (key) => Object.hasOwn(valueB, key) && equalPlain(valueA[key], valueB[key], path)
+    );
+    path.pop();
+    return equal;
   };
 
   // src/conditional.js
@@ -213,11 +238,15 @@
         abstractChildNodes.push(childNode.textContent ?? "");
       } else {
         const attributes = {};
-        for (const attribute of childNode.attributes) {
+        for (const attribute of childNode.attributes ?? []) {
           attributes[attribute.name] = attribute.value;
         }
         abstractChildNodes.push(
-          node(childNode.nodeName, attributes, childrenToNodes(childNode))
+          node(
+            childNode.localName ?? childNode.nodeName,
+            attributes,
+            childrenToNodes(childNode)
+          )
         );
       }
     }
@@ -447,6 +476,39 @@
     };
   };
 
+  // src/sequence.js
+  var sequence_exports = {};
+  __export(sequence_exports, {
+    increasingSubsequence: () => increasingSubsequence
+  });
+  var increasingSubsequence = (sources) => {
+    const tails = [];
+    const previous = [];
+    for (let index = 0; index < sources.length; index++) {
+      const source = sources[index];
+      if (source === void 0) {
+        continue;
+      }
+      let low = 0;
+      let high = tails.length;
+      while (low < high) {
+        const middle = low + high >> 1;
+        if (sources[tails[middle]] < source) {
+          low = middle + 1;
+        } else {
+          high = middle;
+        }
+      }
+      previous[index] = low ? tails[low - 1] : -1;
+      tails[low] = index;
+    }
+    const included = [];
+    for (let index = tails[tails.length - 1]; index >= 0; index = previous[index]) {
+      included[index] = true;
+    }
+    return included;
+  };
+
   // src/index.iife.js
   iife(["staark", "common"], {
     array: array_exports,
@@ -462,7 +524,8 @@
     match: match_exports,
     memo: memo_exports,
     nde: nde_exports,
-    node: node_exports
+    node: node_exports,
+    sequence: sequence_exports
   });
 })();
 //# sourceMappingURL=staark-common.iife.js.map

@@ -18,11 +18,11 @@
 		"sizes": "npm run build && node src/index.js --minified --sizes --iterations=0"
 	},
 	"devDependencies": {
-		"playwright": "^1.62.0"
+		"playwright": "^1.64.1"
 	},
 	"dependencies": {
-		"@doars/staark-patch": "x",
 		"@doars/staark": "x",
+		"@doars/staark-patch": "x",
 		"hyperapp": "^2.0.22",
 		"superfine": "^8.2.0"
 	}

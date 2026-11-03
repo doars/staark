@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Only allocate the comparison cache in `equalRecursive` when comparing objects.
+- Support comment nodes in `childrenToNodes`, and use `localName` so element types match lowercase abstract nodes. HTML element types are now lowercase.
+- Add `equalPlain`, a smaller comparison for plain data.
+- Add `increasingSubsequence`, used to minimise DOM moves when reconciling children.
+- Declare `sideEffects` so bundlers can tree-shake unused helpers.
+
 ## 1.5.10
 
 - Update and improve the `README.md`.

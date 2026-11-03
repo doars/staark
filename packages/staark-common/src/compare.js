@@ -6,7 +6,7 @@
  * @param {WeakMap<object, WeakSet<object>>} [compared] Compared object pairs.
  * @returns {boolean} Returns true if the values are equal, otherwise false.
  */
-export const equalRecursive = (valueA, valueB, compared = new WeakMap()) => {
+export const equalRecursive = (valueA, valueB, compared) => {
 	if (valueA === valueB) {
 		return true;
 	}
@@ -27,6 +27,7 @@ export const equalRecursive = (valueA, valueB, compared = new WeakMap()) => {
 		return false;
 	}
 
+	compared ??= new WeakMap();
 	let comparedWithA = compared.get(valueA);
 	if (comparedWithA?.has(valueB)) {
 		return true;
@@ -92,4 +93,53 @@ export const equalRecursive = (valueA, valueB, compared = new WeakMap()) => {
 				equalRecursive(valueA[key], valueB[key], compared),
 		)
 	);
+};
+
+/**
+ * Recursively checks if two plain data values are equal. Arrays and plain objects are compared by content and dates by time, any other object only by identity. Circular structures are never considered equal.
+ *
+ * @param {*} valueA The first value to compare.
+ * @param {*} valueB The second value to compare.
+ * @param {object[]} [path] Objects currently being compared.
+ * @returns {boolean} Returns true if the values are equal, otherwise false.
+ */
+export const equalPlain = (valueA, valueB, path) => {
+	if (valueA === valueB) {
+		return true;
+	}
+	if (
+		!valueA ||
+		!valueB ||
+		typeof valueA !== "object" ||
+		typeof valueB !== "object"
+	) {
+		return false;
+	}
+	if (valueA instanceof Date) {
+		return valueB instanceof Date && valueA.getTime() === valueB.getTime();
+	}
+
+	const prototype = Object.getPrototypeOf(valueA);
+	path ??= [];
+	if (
+		prototype !== Object.getPrototypeOf(valueB) ||
+		(prototype !== Object.prototype &&
+			prototype !== Array.prototype &&
+			prototype !== null) ||
+		path.includes(valueA)
+	) {
+		return false;
+	}
+
+	path.push(valueA);
+	const keys = Object.keys(valueA);
+	const equal =
+		keys.length === Object.keys(valueB).length &&
+		keys.every(
+			(key) =>
+				Object.hasOwn(valueB, key) &&
+				equalPlain(valueA[key], valueB[key], path),
+		);
+	path.pop();
+	return equal;
 };

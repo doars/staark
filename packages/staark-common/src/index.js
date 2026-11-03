@@ -16,3 +16,4 @@ export * from "./match.js";
 export * from "./memo.js";
 export * from "./nde.js";
 export * from "./node.js";
+export * from "./sequence.js";

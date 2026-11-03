@@ -3,7 +3,7 @@
   var iife = (path, data) => {
     let subject = window;
     for (let i = 0; i < path.length - 1; i++) {
-      if (typeof subject[path[i]] !== "object" || !Array.isArray(subject[path[i]])) {
+      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
         subject[path[i]] = {};
       }
       subject = subject[path[i]];
@@ -102,7 +102,7 @@
     const throttle = async (throttleValue) => {
       const now = Date.now();
       const waitTime = throttleValue - (now - lastExecutionTime);
-      lastExecutionTime = now + (waitTime > 0 ? waitTime : 0);
+      lastExecutionTime = now + Math.max(waitTime, 0);
       await delay(waitTime);
     };
     const drainConcurrencyQueue = () => {

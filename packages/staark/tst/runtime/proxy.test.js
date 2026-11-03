@@ -4,7 +4,7 @@ import {
   it,
 } from 'node:test'
 
-import { proxify } from '../../src/library/proxy.js'
+import { isProxy, proxify } from '../../src/library/proxy.js'
 
 describe('State proxy', () => {
   it('supports circular and shared state graphs', () => {
@@ -29,5 +29,12 @@ describe('State proxy', () => {
     const proxy = proxify({ date, map }, () => {})
     assert.strictEqual(proxy.date, date)
     assert.strictEqual(proxy.map, map)
+  })
+
+  it('recognises the proxies it creates', () => {
+    const proxy = proxify({ nested: {} }, () => {})
+    assert.strictEqual(isProxy(proxy), true)
+    assert.strictEqual(isProxy(proxy.nested), true)
+    assert.strictEqual(isProxy({}), false)
   })
 })

@@ -5,6 +5,7 @@ import {
 } from 'node:test'
 
 import {
+    equalPlain,
     equalRecursive,
 } from '../../src/index.js'
 
@@ -85,6 +86,46 @@ describe('Compare', () => {
       assert.strictEqual(equalRecursive(valueA, valueB), true)
       assert.strictEqual(equalRecursive(valueA, valueC), false)
       assert.strictEqual(equalRecursive(valueA, new Uint8Array([1, 2])), false)
+    })
+  })
+
+  describe('equalPlain', () => {
+    it('compares primitives, arrays, plain objects and dates by content', () => {
+      assert.strictEqual(equalPlain(1, 1), true)
+      assert.strictEqual(equalPlain(1, '1'), false)
+      assert.strictEqual(equalPlain(null, undefined), false)
+      assert.strictEqual(equalPlain([1, { a: [2] }], [1, { a: [2] }]), true)
+      assert.strictEqual(equalPlain([1, { a: [2] }], [1, { a: [3] }]), false)
+      assert.strictEqual(equalPlain({ a: 1 }, { a: 1, b: 2 }), false)
+      assert.strictEqual(equalPlain({ a: undefined }, { b: undefined }), false)
+      assert.strictEqual(equalPlain([1], { 0: 1 }), false)
+      assert.strictEqual(equalPlain(new Date(5), new Date(5)), true)
+      assert.strictEqual(equalPlain(new Date(5), new Date(6)), false)
+      assert.strictEqual(equalPlain(Object.create(null), Object.create(null)), true)
+    })
+
+    it('compares other objects by identity', () => {
+      const map = new Map([[1, 2]])
+      assert.strictEqual(equalPlain(map, map), true)
+      assert.strictEqual(equalPlain(map, new Map([[1, 2]])), false)
+      assert.strictEqual(equalPlain(new Map([[1, 2]]), new Map([[3, 4]])), false)
+      assert.strictEqual(equalPlain(new Set([1]), new Set([2])), false)
+      class Point { constructor(x) { this.x = x } }
+      assert.strictEqual(equalPlain(new Point(1), new Point(1)), false)
+    })
+
+    it('treats circular structures as unequal without overflowing', () => {
+      const a = { value: 1 }
+      a.self = a
+      const b = { value: 1 }
+      b.self = b
+      assert.strictEqual(equalPlain(a, b), false)
+      assert.strictEqual(equalPlain(a, a), true)
+    })
+
+    it('compares shared references that are not circular', () => {
+      const shared = { x: 1 }
+      assert.strictEqual(equalPlain({ a: shared, b: shared }, { a: { x: 1 }, b: { x: 1 } }), true)
     })
   })
 })

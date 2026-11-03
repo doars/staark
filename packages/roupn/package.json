@@ -40,6 +40,6 @@
 	},
 	"devDependencies": {
 		"@doars/staark": "x",
-		"ws": "^8.21.1"
+		"ws": "^8.22.1"
 	}
 }

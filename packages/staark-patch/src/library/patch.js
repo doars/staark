@@ -1,5 +1,6 @@
 import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
+import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 
 /**
  * @typedef {import('@doars/staark-common/src/node.js').NodeContent} NodeContent
@@ -25,64 +26,59 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 					const type = typeof value;
 					if (type === "function") {
 						if (oldValue !== value) {
-							if (oldValue) {
+							if (typeof oldValue === "function") {
 								element.removeEventListener(name, oldValue);
 							}
 
 							element.addEventListener(name, value);
 						}
-					} else {
-						if (name === "class") {
-							if (typeof value === "object") {
-								if (Array.isArray(value)) {
-									value = value.join(" ");
-								} else {
-									let classNames = "";
-									for (const className of Object.keys(value)) {
-										if (value[className]) {
-											classNames += ` ${className}`;
-										}
-									}
-									value = classNames;
-								}
-							}
-							element.className = value;
-						} else if (name === "style" && typeof value === "object") {
-							// Apply updated styles.
-							for (const styleName of Object.keys(value)) {
-								const styleValue = value[styleName];
+					} else if (name === "style" && type === "object") {
+						const oldStyle =
+							oldValue && typeof oldValue === "object" ? oldValue : null;
+						if (!oldStyle) {
+							element.style.cssText = "";
+						}
+
+						// Apply changed styles.
+						for (const styleName of Object.keys(value)) {
+							const styleValue = value[styleName];
+							if (oldStyle?.[styleName] !== styleValue) {
 								if (styleName.includes("-", 1)) {
 									element.style.setProperty(styleName, styleValue);
 								} else {
 									element.style[styleName] = styleValue;
 								}
 							}
+						}
 
-							// Remove old styles.
-							if (
-								oldValue &&
-								typeof oldValue === "object" &&
-								!Array.isArray(oldValue)
-							) {
-								for (const styleName of Object.keys(oldValue)) {
-									if (!Object.hasOwn(value, styleName)) {
-										if (styleName.includes("-", 1)) {
-											element.style.removeProperty(styleName);
-										} else {
-											element.style[styleName] = null;
-										}
+						// Remove old styles.
+						if (oldStyle) {
+							for (const styleName of Object.keys(oldStyle)) {
+								if (!Object.hasOwn(value, styleName)) {
+									if (styleName.includes("-", 1)) {
+										element.style.removeProperty(styleName);
+									} else {
+										element.style[styleName] = null;
 									}
 								}
 							}
-						} else {
+						}
+					} else {
+						if (name === "class" && type === "object") {
+							value = Array.isArray(value)
+								? value.join(" ")
+								: Object.keys(value)
+										.filter((className) => value[className])
+										.join(" ");
+						} else if (type !== "string") {
 							// Ensure it is of type string.
-							if (type !== "string") {
-								value = value.toString();
-							}
+							value = value.toString();
+						}
+						if (element.getAttribute(name) !== value) {
 							element.setAttribute(name, value);
-							if (name === "value") {
-								element.value = value;
-							}
+						}
+						if (name === "value" && element.value !== value) {
+							element.value = value;
 						}
 					}
 				}
@@ -96,23 +92,15 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 			if (name !== "key") {
 				const value = oldAttributes[name];
 				const newValue = newAttributes?.[name];
-				if (
-					!Object.hasOwn(newAttributes || {}, name) ||
-					newValue === null ||
-					newValue === undefined ||
-					newValue === false
-				) {
+				if (newValue === null || newValue === undefined || newValue === false) {
 					if (typeof value === "function") {
 						element.removeEventListener(name, value);
-					} else if (name === "class") {
-						element.className = "";
-					} else if (name === "style") {
-						element.style.cssText = "";
-					} else if (name === "value") {
-						element.value = "";
-						// Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
 					} else {
 						element.removeAttribute(name);
+						if (name === "value") {
+							element.value = "";
+							// Don't dispatch the input change event, the rerendering should update everything: element.dispatchEvent(new Event('change'))
+						}
 					}
 				}
 			}
@@ -163,6 +151,9 @@ export const prepare = (rootElement, oldAbstractTree) => {
 	 * @param {boolean} inSvg Whether the node is inside an SVG element.
 	 */
 	const updateNode = (node, newAbstract, oldAbstract, inSvg) => {
+		if (newAbstract === oldAbstract) {
+			return;
+		}
 		if (newAbstract.t) {
 			updateAttributes(node, newAbstract.a, oldAbstract.a);
 			updateChildren(
@@ -171,7 +162,7 @@ export const prepare = (rootElement, oldAbstractTree) => {
 				oldAbstract.c,
 				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
 			);
-		} else if (oldAbstract !== newAbstract) {
+		} else {
 			node.textContent = newAbstract;
 		}
 	};
@@ -182,167 +173,99 @@ export const prepare = (rootElement, oldAbstractTree) => {
 	 * @param {Element} element The element to update.
 	 * @param {NodeContent[]} [newChildAbstracts] The new children to apply.
 	 * @param {NodeContent[]} [oldChildAbstracts] The old children to cleanup.
+	 * @param {boolean} [inSvg] Whether the element is inside an SVG element.
 	 */
-	updateChildren = (element, newChildAbstracts, oldChildAbstracts, inSvg) => {
-		let hasKeys = false;
-		if (newChildAbstracts) {
-			for (let index = 0; index < newChildAbstracts.length; index++) {
-				const key = getKey(newChildAbstracts[index]);
-				if (key != null) {
-					hasKeys = true;
-					break;
+	updateChildren = (
+		element,
+		newChildAbstracts = [],
+		oldChildAbstracts = [],
+		inSvg,
+	) => {
+		const newLength = newChildAbstracts.length;
+		const oldLength = oldChildAbstracts.length;
+
+		// Update the shared prefix in place.
+		let start = 0;
+		let node = element.firstChild;
+		for (; start < newLength && start < oldLength; start++) {
+			const newAbstract = newChildAbstracts[start];
+			const oldAbstract = oldChildAbstracts[start];
+			if (
+				newAbstract.t !== oldAbstract.t ||
+				getKey(newAbstract) !== getKey(oldAbstract)
+			) {
+				break;
+			}
+			updateNode(node, newAbstract, oldAbstract, inSvg);
+			node = node.nextSibling;
+		}
+		if (start === oldLength) {
+			// Nothing left to match, so append the remaining children.
+			for (; start < newLength; start++) {
+				element.insertBefore(createNode(newChildAbstracts[start], inSvg), node);
+			}
+			return;
+		}
+
+		// Index the remaining old children by key, or by type when unkeyed.
+		const oldNodes = [];
+		for (let index = start; index < oldLength; index++) {
+			oldNodes[index] = node;
+			node = node?.nextSibling;
+		}
+		const keyedIndexes = new Map();
+		const unkeyedIndexes = new Map();
+		for (let index = oldLength; index-- > start; ) {
+			const abstract = oldChildAbstracts[index];
+			const key = getKey(abstract);
+			if (key != null) {
+				keyedIndexes.set(key, index);
+			} else {
+				let indexes = unkeyedIndexes.get(abstract.t);
+				if (!indexes) {
+					indexes = [];
+					unkeyedIndexes.set(abstract.t, indexes);
 				}
+				// Stored in reverse so pop returns the first remaining match.
+				indexes.push(index);
 			}
 		}
-		if (!hasKeys && oldChildAbstracts) {
-			for (let index = 0; index < oldChildAbstracts.length; index++) {
-				const key = getKey(oldChildAbstracts[index]);
-				if (key != null) {
-					hasKeys = true;
-					break;
-				}
+
+		// Match the remaining new children to old ones.
+		const newNodes = [];
+		const sources = [];
+		for (let index = start; index < newLength; index++) {
+			const newAbstract = newChildAbstracts[index];
+			const key = getKey(newAbstract);
+			const oldIndex =
+				key != null
+					? keyedIndexes.get(key)
+					: unkeyedIndexes.get(newAbstract.t)?.pop();
+			const oldNode = oldNodes[oldIndex];
+			if (oldNode && oldChildAbstracts[oldIndex].t === newAbstract.t) {
+				oldNodes[oldIndex] = null;
+				newNodes[index] = oldNode;
+				sources[index] = oldIndex;
+				updateNode(oldNode, newAbstract, oldChildAbstracts[oldIndex], inSvg);
 			}
 		}
 
-		if (hasKeys) {
-			const oldNodes = [];
-			const keyedEntries = new Map();
-			const unkeyedEntries = new Map();
-			if (oldChildAbstracts) {
-				for (let index = 0; index < oldChildAbstracts.length; index++) {
-					const abstract = oldChildAbstracts[index];
-					oldNodes.push(element.childNodes[index]);
+		for (let index = start; index < oldLength; index++) {
+			oldNodes[index]?.remove();
+		}
 
-					const key = getKey(abstract);
-					if (key != null) {
-						keyedEntries.set(key, index);
-					} else {
-						const type = abstract.t || null;
-						let entries = unkeyedEntries.get(type);
-						if (!entries) {
-							entries = {
-								indexes: [],
-								index: 0,
-							};
-							unkeyedEntries.set(type, entries);
-						}
-						entries.indexes.push(index);
-					}
-				}
+		// Place children from back to front, only moving those outside the longest stable run.
+		const stable = increasingSubsequence(sources);
+		let next = null;
+		for (let index = newLength; index-- > start; ) {
+			let child = newNodes[index];
+			if (!child) {
+				child = createNode(newChildAbstracts[index], inSvg);
+				element.insertBefore(child, next);
+			} else if (!stable[index]) {
+				element[setBefore](child, next);
 			}
-
-			if (newChildAbstracts) {
-				for (
-					let newIndex = 0;
-					newIndex < newChildAbstracts.length;
-					newIndex++
-				) {
-					const newAbstract = newChildAbstracts[newIndex];
-					const key = getKey(newAbstract);
-					let oldIndex;
-					if (key != null) {
-						oldIndex = keyedEntries.get(key);
-					} else {
-						const type = newAbstract.t || null;
-						const entries = unkeyedEntries.get(type);
-						if (entries) {
-							oldIndex = entries.indexes[entries.index++];
-						}
-					}
-					const oldAbstract = oldChildAbstracts?.[oldIndex];
-					const oldNode = oldNodes[oldIndex];
-
-					if (
-						oldIndex !== undefined &&
-						oldNode &&
-						((oldAbstract.t && newAbstract.t === oldAbstract.t) ||
-							(!oldAbstract.t && !newAbstract.t))
-					) {
-						oldNodes[oldIndex] = undefined;
-						if (oldNode !== element.childNodes[newIndex]) {
-							element[setBefore](oldNode, element.childNodes[newIndex]);
-						}
-
-						updateNode(oldNode, newAbstract, oldAbstract, inSvg);
-						continue;
-					}
-
-					const newNode = createNode(newAbstract, inSvg);
-					element.insertBefore(newNode, element.childNodes[newIndex]);
-				}
-			}
-
-			for (let index = 0; index < oldNodes.length; index++) {
-				const oldNode = oldNodes[index];
-				if (oldNode?.parentNode === element) {
-					oldNode.remove();
-				}
-			}
-		} else {
-			let newIndex = 0;
-			let newCount = 0;
-			if (newChildAbstracts) {
-				for (; newIndex < newChildAbstracts.length; newIndex++) {
-					const newAbstract = newChildAbstracts[newIndex];
-
-					// Try to find the matching old abstract.
-					let matched = false;
-					if (oldChildAbstracts) {
-						for (
-							let oldIndex = newIndex - newCount;
-							oldIndex < oldChildAbstracts.length;
-							oldIndex++
-						) {
-							const oldAbstract = oldChildAbstracts[oldIndex];
-							if (
-								(oldAbstract.t && newAbstract.t === oldAbstract.t) ||
-								(!oldAbstract.t && !newAbstract.t)
-							) {
-								matched = true;
-
-								if (newIndex !== oldIndex + newCount) {
-									// Move node in dom.
-									element[setBefore](
-										element.childNodes[oldIndex + newCount],
-										element.childNodes[newIndex],
-									);
-									// Move node in abstract tree. TODO: Remove this pesky splicing so the old abstract tree is not mutated.
-									oldChildAbstracts.splice(
-										newIndex - newCount,
-										0,
-										oldChildAbstracts.splice(oldIndex, 1)[0],
-									);
-								}
-
-								updateNode(
-									element.childNodes[newIndex],
-									newAbstract,
-									oldAbstract,
-									inSvg,
-								);
-								break;
-							}
-						}
-					}
-
-					if (!matched) {
-						const newNode = createNode(newAbstract, inSvg);
-						element.insertBefore(newNode, element.childNodes[newIndex]);
-						newCount++;
-					}
-				}
-			}
-
-			// Remove old elements.
-			if (oldChildAbstracts) {
-				for (
-					let i = oldChildAbstracts.length + newCount - 1;
-					i >= newIndex;
-					i--
-				) {
-					element.childNodes[i].remove();
-				}
-			}
+			next = child;
 		}
 	};
 

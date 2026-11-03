@@ -172,4 +172,123 @@ describe('Patch', () => {
     assert.strictEqual(reorderedElements[1], initialElements[0])
     assert.strictEqual(reorderedElements[2], initialElements[1])
   })
+
+  const countMoves = (element) => {
+    const counter = { moves: 0 }
+    for (const method of ['insertBefore', 'moveBefore']) {
+      const original = element[method]
+      if (original) {
+        element[method] = function (...args) {
+          if (args[0].parentNode === element) {
+            counter.moves++
+          }
+          return original.apply(this, args)
+        }
+      }
+    }
+    return counter
+  }
+  const list = (items) => node('ul', items.map((item) => node('li', { key: item }, String(item))))
+
+  it('does not move nodes when the first keyed item is removed', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    patch(list([1, 2, 3, 4, 5]))
+    const ul = div.firstChild
+    const kept = Array.from(ul.children).slice(1)
+    const counter = countMoves(ul)
+
+    patch(list([2, 3, 4, 5]))
+
+    assert.strictEqual(counter.moves, 0)
+    assert.deepStrictEqual(Array.from(ul.children), kept)
+  })
+
+  it('moves only the swapped keyed items', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    const items = Array.from({ length: 50 }, (_, index) => index)
+    patch(list(items))
+    const ul = div.firstChild
+    const initial = Array.from(ul.children)
+    const counter = countMoves(ul)
+
+    const swapped = items.slice()
+    swapped[1] = 48
+    swapped[48] = 1
+    patch(list(swapped))
+
+    assert.ok(counter.moves <= 2, `expected at most 2 moves, got ${counter.moves}`)
+    assert.strictEqual(ul.children[1], initial[48])
+    assert.strictEqual(ul.children[48], initial[1])
+    assert.strictEqual(ul.textContent, swapped.join(''))
+  })
+
+  it('does not rewrite unchanged attributes', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    const view = (text) => node('p', { class: { active: true }, style: { color: 'red' }, title: 'same' }, text)
+    patch(view('a'))
+    const paragraph = div.firstChild
+    let writes = 0
+    const setAttribute = paragraph.setAttribute
+    paragraph.setAttribute = function (...args) {
+      writes++
+      return setAttribute.apply(this, args)
+    }
+
+    patch(view('b'))
+
+    assert.strictEqual(paragraph.textContent, 'b')
+    assert.strictEqual(writes, 0)
+    assert.strictEqual(paragraph.className, 'active')
+  })
+
+  it('swaps and removes event listeners', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    const calls = []
+    function first() { calls.push(['a', this]) }
+    const second = () => calls.push(['b'])
+    patch(node('button', { click: first }))
+    const button = div.firstChild
+
+    button.click()
+    patch(node('button', { click: second }))
+    button.click()
+    patch(node('button'))
+    button.click()
+
+    assert.deepStrictEqual(calls, [['a', button], ['b']])
+  })
+
+  it('keeps input values controlled', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    patch(node('input', { value: 'state' }))
+    const input = div.firstChild
+
+    input.value = 'typed'
+    patch(node('input', { value: 'state' }))
+
+    assert.strictEqual(input.value, 'state')
+  })
+
+  it('sets classes on SVG elements', () => {
+    const div = document.createElement('div')
+    prepare(div)(node('svg', { class: ['icon', 'large'] }))
+
+    assert.strictEqual(div.firstChild.getAttribute('class'), 'icon large')
+  })
+
+  it('hydrates existing content that contains comments and reuses elements', () => {
+    const div = document.createElement('div')
+    div.innerHTML = '<!-- server --><ul class="list"><li>one</li></ul>'
+    const ul = div.querySelector('ul')
+
+    prepare(div)(node('ul', { class: 'list' }, [node('li', 'one'), node('li', 'two')]))
+
+    assert.strictEqual(div.firstChild, ul)
+    assert.strictEqual(div.innerHTML, '<ul class="list"><li>one</li><li>two</li></ul>')
+  })
 })

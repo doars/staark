@@ -32,7 +32,7 @@ describe('Element', () => {
 
       const result = childrenToNodes(mockElement)
       assert.strictEqual(result.length, 1)
-      assert.strictEqual(result[0].t, 'DIV')
+      assert.strictEqual(result[0].t, 'div')
       assert.deepStrictEqual(result[0].a, { class: 'test' })
       assert.deepStrictEqual(result[0].c, [])
     })
@@ -47,7 +47,7 @@ describe('Element', () => {
       const result = childrenToNodes(mockElement)
       assert.strictEqual(result.length, 2)
       assert.strictEqual(result[0], 'Hello World')
-      assert.strictEqual(result[1].t, 'SPAN')
+      assert.strictEqual(result[1].t, 'span')
     })
 
     it('should handle empty childNodes', () => {
@@ -55,6 +55,17 @@ describe('Element', () => {
 
       const result = childrenToNodes(mockElement)
       assert.deepStrictEqual(result, [])
+    })
+  
+    it('should convert comments without attributes', () => {
+      const mockElement = document.createElement('div')
+      mockElement.innerHTML = '<!-- note --><svg><linearGradient></linearGradient></svg>'
+
+      const result = childrenToNodes(mockElement)
+      assert.strictEqual(result[0].t, '#comment')
+      assert.deepStrictEqual(result[0].a, {})
+      assert.strictEqual(result[1].t, 'svg')
+      assert.strictEqual(result[1].c[0].t, 'linearGradient')
     })
   })
 })

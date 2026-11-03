@@ -9,6 +9,7 @@ const window = new Window()
 globalThis.window = window
 globalThis.document = window.document
 globalThis.Element = window.Element
+globalThis.Text = window.Text
 
 import {
     memo,
@@ -160,5 +161,243 @@ describe('Mount', () => {
     assert.strictEqual(reorderedElements[0], initialElements[0])
     assert.strictEqual(reorderedElements[1], initialElements[2])
     assert.strictEqual(reorderedElements[2], initialElements[1])
+  })
+
+  const countMoves = (element) => {
+    const counter = { moves: 0 }
+    for (const method of ['insertBefore', 'moveBefore']) {
+      const original = element[method]
+      if (original) {
+        element[method] = function (...args) {
+          if (args[0].parentNode === element) {
+            counter.moves++
+          }
+          return original.apply(this, args)
+        }
+      }
+    }
+    return counter
+  }
+
+  it('does not move nodes when the first keyed item is removed', async () => {
+    const app = document.createElement('div')
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('ul', state.items.map(
+        (item) => node('li', { key: item }, item),
+      )),
+      { items: [1, 2, 3, 4, 5, 6, 7, 8] },
+    )
+    const list = app.firstChild
+    const kept = Array.from(list.children).slice(1)
+    const counter = countMoves(list)
+
+    state.items.shift()
+    await update()
+
+    assert.strictEqual(counter.moves, 0)
+    assert.deepStrictEqual(Array.from(list.children), kept)
+  })
+
+  it('moves only the swapped keyed items', async () => {
+    const app = document.createElement('div')
+    const items = Array.from({ length: 50 }, (_, index) => index)
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('ul', state.items.map(
+        (item) => node('li', { key: item }, String(item)),
+      )),
+      { items },
+    )
+    const list = app.firstChild
+    const initial = Array.from(list.children)
+    const counter = countMoves(list)
+
+    const first = state.items[1]
+    state.items[1] = state.items[48]
+    state.items[48] = first
+    await update()
+
+    assert.ok(counter.moves <= 2, `expected at most 2 moves, got ${counter.moves}`)
+    const expected = initial.slice()
+    expected[1] = initial[48]
+    expected[48] = initial[1]
+    assert.deepStrictEqual(Array.from(list.children), expected)
+    assert.strictEqual(list.textContent, state.items.join(''))
+  })
+
+  it('does not rewrite unchanged attributes', async () => {
+    const app = document.createElement('div')
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('p', {
+        class: { active: true },
+        style: { color: 'red' },
+        title: 'same',
+      }, String(state.count)),
+      { count: 0 },
+    )
+    const paragraph = app.firstChild
+    let writes = 0
+    const setAttribute = paragraph.setAttribute
+    paragraph.setAttribute = function (...args) {
+      writes++
+      return setAttribute.apply(this, args)
+    }
+
+    state.count++
+    await update()
+
+    assert.strictEqual(paragraph.textContent, '1')
+    assert.strictEqual(writes, 0)
+  })
+
+  it('skips unchanged memo contents and supports empty and nested memos', async () => {
+    const app = document.createElement('div')
+    let renders = 0
+    const renderInner = () => node('span', 'inner')
+    const renderMemo = () => {
+      renders++
+      return node('section', memo(renderInner, null))
+    }
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => [
+        memo(() => null, null),
+        memo(renderMemo, null),
+        node('p', String(state.count)),
+      ],
+      { count: 0 },
+    )
+    const section = app.firstChild
+    assert.strictEqual(section.innerHTML, '<span>inner</span>')
+
+    state.count++
+    await update()
+
+    assert.strictEqual(renders, 1)
+    assert.strictEqual(app.firstChild, section)
+    assert.strictEqual(app.innerHTML, '<section><span>inner</span></section><p>1</p>')
+  })
+
+  it('swaps and removes event listeners', async () => {
+    const app = document.createElement('div')
+    const calls = []
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('button', state.mode === 'none'
+        ? {}
+        : { click: state.mode === 'a' ? () => calls.push('a') : () => calls.push('b') }),
+      { mode: 'a' },
+    )
+    const button = app.firstChild
+
+    button.click()
+    state.mode = 'b'
+    await update()
+    button.click()
+    state.mode = 'none'
+    await update()
+    button.click()
+
+    assert.deepStrictEqual(calls, ['a', 'b'])
+  })
+
+  it('keeps input values controlled by the state', async () => {
+    const app = document.createElement('div')
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('input', { value: state.value }),
+      { value: 'state' },
+    )
+    const input = app.firstChild
+
+    input.value = 'typed'
+    await update()
+
+    assert.strictEqual(input.value, 'state')
+  })
+
+  it('sets classes on SVG elements', () => {
+    const app = document.createElement('div')
+    mount(app, () => node('svg', { class: ['icon', 'large'] }))
+
+    assert.strictEqual(app.firstChild.getAttribute('class'), 'icon large')
+  })
+
+  it('hydrates existing content that contains comments', () => {
+    const app = document.createElement('div')
+    app.innerHTML = '<!-- server --><p>old</p>'
+    mount(app, () => node('p', 'new'))
+
+    assert.strictEqual(app.innerHTML, '<p>new</p>')
+  })
+
+  it('uses a state proxy from another mount directly', async () => {
+    const first = document.createElement('div')
+    const second = document.createElement('div')
+    const [_update, _unmount, state] = mount(
+      first,
+      (state) => node('p', String(state.nested.count)),
+      { nested: { count: 0 } },
+    )
+    const [updateSecond, _unmountSecond, secondState] = mount(
+      second,
+      (state) => node('p', String(state.nested.count)),
+      state,
+    )
+
+    assert.strictEqual(secondState, state)
+    state.nested.count++
+    await updateSecond()
+
+    assert.strictEqual(first.textContent, '1')
+    assert.strictEqual(second.textContent, '1')
+  })
+
+  it('uses a user created proxy directly', async () => {
+    const app = document.createElement('div')
+    const proxy = new Proxy({ count: 1 }, {})
+    const [update, _unmount, state] = mount(
+      app,
+      (state) => node('p', String(state.count)),
+      proxy,
+    )
+    assert.strictEqual(state, proxy)
+
+    proxy.count = 2
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.strictEqual(app.textContent, '1')
+
+    await update()
+    assert.strictEqual(app.textContent, '2')
+  })
+
+  it('still wraps plain state that contains functions', async () => {
+    const app = document.createElement('div')
+    const initial = { count: 1, format: (count) => `#${count}` }
+    const [_update, _unmount, state] = mount(
+      app,
+      (state) => node('p', state.format(state.count)),
+      initial,
+    )
+    assert.notStrictEqual(state, initial)
+
+    state.count = 2
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.strictEqual(app.textContent, '#2')
+  })
+
+  it('reuses hydrated elements', () => {
+    const app = document.createElement('div')
+    app.innerHTML = '<ul class="list"><li>one</li></ul>'
+    const list = app.firstChild
+    mount(app, () => node('ul', { class: 'list' }, [
+      node('li', 'one'),
+      node('li', 'two'),
+    ]))
+
+    assert.strictEqual(app.firstChild, list)
+    assert.strictEqual(app.innerHTML, '<ul class="list"><li>one</li><li>two</li></ul>')
   })
 })

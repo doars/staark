@@ -27,6 +27,11 @@
 		"develop": "NODE_ENV=development node config.bundle.js",
 		"build": "NODE_ENV=production node config.bundle.js"
 	},
+	"sideEffects": [
+		"./src/index.iife.js",
+		"./dst/*.iife.js",
+		"./dst/*.iife.min.js"
+	],
 	"files": [
 		"dst",
 		"src",
