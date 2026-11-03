@@ -80,10 +80,6 @@ export const equalRecursive = (valueA, valueB, compared) => {
 		return true;
 	}
 
-	// if (valueA.prototype !== valueB.prototype) {
-	//   return false
-	// }
-
 	const keys = Object.keys(valueA);
 	return (
 		keys.length === Object.keys(valueB).length &&
@@ -94,6 +90,17 @@ export const equalRecursive = (valueA, valueB, compared) => {
 		)
 	);
 };
+
+/**
+ * Checks whether a prototype belongs to plain data, which `equalPlain` compares and `clonePlain` copies by content: plain objects, objects without a prototype, and arrays.
+ *
+ * @param {object | null} prototype Prototype to check.
+ * @returns {boolean} Whether the prototype belongs to plain data.
+ */
+const isPlainPrototype = (prototype) =>
+	prototype === Object.prototype ||
+	prototype === Array.prototype ||
+	prototype === null;
 
 /**
  * Checks if two children of a value compared by `equalPlain` are equal, given that they are not identical.
@@ -147,9 +154,7 @@ export const equalPlain = (valueA, valueB, path) => {
 	const prototype = Object.getPrototypeOf(valueA);
 	if (
 		prototype !== Object.getPrototypeOf(valueB) ||
-		(prototype !== Object.prototype &&
-			prototype !== Array.prototype &&
-			prototype !== null) ||
+		!isPlainPrototype(prototype) ||
 		path?.includes(valueA)
 	) {
 		return false;
@@ -203,12 +208,7 @@ export const clonePlain = (value, path) => {
 
 	const prototype = Object.getPrototypeOf(value);
 	path ??= [];
-	if (
-		(prototype !== Object.prototype &&
-			prototype !== Array.prototype &&
-			prototype !== null) ||
-		path.includes(value)
-	) {
+	if (!isPlainPrototype(prototype) || path.includes(value)) {
 		return value;
 	}
 
