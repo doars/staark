@@ -1,14 +1,27 @@
-import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
+import {
+	arrayify,
+	arrayifyOrUndefined,
+} from "@doars/staark-common/src/array.js";
+import {
+	attributeToString,
+	styleToString,
+} from "@doars/staark-common/src/attribute.js";
 
+// Elements that can not have contents, so they are rendered without a closing tag.
 const SELF_CLOSING = new Set([
+	"area",
 	"base",
 	"br",
+	"col",
+	"embed",
 	"hr",
 	"img",
 	"input",
 	"link",
 	"meta",
+	"param",
 	"source",
+	"track",
 	"wbr",
 ]);
 
@@ -35,16 +48,6 @@ const ESCAPED_CHARACTERS = {
  * @param {Record<string, any>} state Current state.
  * @returns {NodeContent[] | NodeContent} Abstract tree.
  */
-
-const MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
-/**
- * Converts a string part to hyphenated form based on offset.
- *
- * @param {string} part - The part to hyphenate.
- * @param {number} offset - The offset position.
- * @returns {string} The hyphenated part.
- */
-const HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
 
 /**
  * Escape a character for use in HTML.
@@ -107,43 +110,23 @@ const renderAttributes = (attributes) => {
 	for (const name of Object.keys(attributes)) {
 		const validatedName = validateName(name, "attribute");
 		let value = attributes[name];
-		if (value === null || value === undefined) {
+		// Skip the same values the DOM renderers do not write: removed attributes, keys, and listeners.
+		if (
+			value === null ||
+			value === undefined ||
+			value === false ||
+			validatedName === "key" ||
+			typeof value === "function"
+		) {
 			continue;
 		}
 
-		if (validatedName === "class" && typeof value === "object") {
-			if (Array.isArray(value)) {
-				value = value.join(" ");
-			} else {
-				const classNames = [];
-				for (const className of Object.keys(value)) {
-					if (value[className]) {
-						classNames.push(className);
-					}
-				}
-				value = classNames.join(" ");
-			}
-		} else if (validatedName === "style" && typeof value === "object") {
-			if (Array.isArray(value)) {
-				value = value.join(";");
-			} else {
-				const styles = [];
-				for (let styleProperty of Object.keys(value)) {
-					const styleValue = value[styleProperty];
-					styleProperty = styleProperty
-						.replace(MATCH_CAPITALS, HYPHENATE)
-						.toLowerCase();
-
-					styles.push(
-						`${styleProperty}:${
-							Array.isArray(styleValue) ? styleValue.join(" ") : styleValue
-						}`,
-					);
-				}
-				value = styles.join(";");
-			}
-		}
-
+		value =
+			validatedName === "style" &&
+			typeof value === "object" &&
+			!Array.isArray(value)
+				? styleToString(value)
+				: attributeToString(validatedName, value);
 		rendered += ` ${validatedName}="${escapeAttribute(value)}"`;
 	}
 
@@ -151,37 +134,69 @@ const renderAttributes = (attributes) => {
 };
 
 /**
- * Render elements to string.
+ * Expand memos into their contents and normalize text, so the tree matches the DOM the browser parses from the rendered string. Adjacent text is merged into one text node and empty text is left out, as the browser would. Missing contents such as `null` and `false` are left out as well.
  *
  * @param {NodeContent[]} [abstracts] Abstract tree.
+ * @param {Record<string, any>} [state] Current state.
+ * @returns {NodeContent[] | undefined} Expanded abstract tree.
+ */
+const expand = (abstracts, state) => {
+	if (!abstracts) {
+		return abstracts;
+	}
+
+	const expanded = [];
+	const add = (abstract) => {
+		if (abstract === null || abstract === undefined || abstract === false) {
+			return;
+		}
+		if (abstract.r) {
+			for (const child of arrayify(abstract.r(state, abstract.m))) {
+				add(child);
+			}
+		} else if (abstract.t) {
+			expanded.push({
+				...abstract,
+				c: expand(abstract.c, state),
+			});
+		} else if (abstract !== "") {
+			const last = expanded.length - 1;
+			if (last >= 0 && !expanded[last].t) {
+				expanded[last] += `${abstract}`;
+			} else {
+				expanded.push(`${abstract}`);
+			}
+		}
+	};
+	for (const abstract of abstracts) {
+		add(abstract);
+	}
+	return expanded;
+};
+
+/**
+ * Render an expanded abstract tree to a string.
+ *
+ * @param {NodeContent[]} [abstracts] Expanded abstract tree.
  * @returns {string} Rendered elements.
  */
-const renderElements = (abstracts, state) => {
+const renderElements = (abstracts) => {
 	let rendered = "";
 	if (!abstracts) {
 		return rendered;
 	}
 
 	for (const abstract of abstracts) {
-		if (abstract === null || abstract === undefined || abstract === false) {
-			continue;
-		}
-
-		if (abstract.m) {
-			rendered += renderElements(
-				arrayifyOrUndefined(abstract.r(state, abstract.m)),
-				state,
-			);
-		} else if (abstract.t) {
-			const type = validateName(abstract.t, "element").toLocaleLowerCase();
+		if (abstract.t) {
+			const type = validateName(abstract.t, "element").toLowerCase();
 			rendered += `<${type}${renderAttributes(abstract.a)}`;
 			if (SELF_CLOSING.has(type)) {
 				rendered += "/>";
 			} else {
-				rendered += `>${renderElements(abstract.c, state)}</${type}>`;
+				rendered += `>${renderElements(abstract.c)}</${type}>`;
 			}
 		} else {
-			rendered += ` ${escapeText(abstract)} `;
+			rendered += escapeText(abstract);
 		}
 	}
 
@@ -195,7 +210,7 @@ const renderElements = (abstracts, state) => {
  * @returns {[string, NodeContent[] | undefined]} Rendered elements and abstract tree.
  */
 export const stringifyPatch = (abstractTree) => {
-	abstractTree = arrayifyOrUndefined(abstractTree);
+	abstractTree = expand(arrayifyOrUndefined(abstractTree));
 	return [renderElements(abstractTree), abstractTree];
 };
 
@@ -211,8 +226,11 @@ export const stringify = (renderView, initialState) => {
 		initialState = {};
 	}
 
-	const abstractTree = arrayifyOrUndefined(renderView(initialState));
-	return [renderElements(abstractTree, initialState), abstractTree];
+	const abstractTree = expand(
+		arrayifyOrUndefined(renderView(initialState)),
+		initialState,
+	);
+	return [renderElements(abstractTree), abstractTree];
 };
 
 /**
@@ -243,10 +261,16 @@ const customStringify = (data) => {
 	}
 
 	if (typeof data === "object") {
-		const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
 		const values = [];
-		for (const key of keys) {
-			values.push(`${JSON.stringify(key)}:${customStringify(data[key])}`);
+		for (const key of Object.keys(data)) {
+			// Like JSON, leave out undefined values and functions such as listeners.
+			if (
+				!key.startsWith("_") &&
+				data[key] !== undefined &&
+				typeof data[key] !== "function"
+			) {
+				values.push(`${JSON.stringify(key)}:${customStringify(data[key])}`);
+			}
 		}
 		return `{${values.join(",")}}`;
 	}

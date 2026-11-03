@@ -6,6 +6,8 @@ import {
 
 import {
     attributeToString,
+    styleToString,
+    styleValueToString,
     suffixNameIfMultiple,
 } from '../../src/index.js'
 
@@ -58,6 +60,28 @@ describe('Attribute', () => {
 
     it('should join truthy keys of class objects', () => {
       assert.strictEqual(attributeToString('class', { a: true, b: false, c: 1 }), 'a c')
+    })
+  })
+
+  describe('style helpers', () => {
+    it('joins style arrays into declarations', () => {
+      assert.strictEqual(attributeToString('style', ['color:red', 'margin:0']), 'color:red;margin:0')
+    })
+
+    it('converts style values', () => {
+      assert.strictEqual(styleValueToString('red'), 'red')
+      assert.strictEqual(styleValueToString(0), '0')
+      assert.strictEqual(styleValueToString(['0', 'auto']), '0 auto')
+      assert.strictEqual(styleValueToString(false), '')
+      assert.strictEqual(styleValueToString(null), '')
+      assert.strictEqual(styleValueToString(undefined), '')
+    })
+
+    it('converts style objects to declarations', () => {
+      assert.strictEqual(
+        styleToString({ color: 'red', marginTop: 0, WebkitTransform: 'none', '--gap': ['1px', '2px'], hidden: false, empty: null }),
+        'color:red;margin-top:0;-webkit-transform:none;--gap:1px 2px',
+      )
     })
   })
 })

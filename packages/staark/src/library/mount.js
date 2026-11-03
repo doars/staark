@@ -2,7 +2,10 @@ import {
 	arrayify,
 	arrayifyOrUndefined,
 } from "@doars/staark-common/src/array.js";
-import { attributeToString } from "@doars/staark-common/src/attribute.js";
+import {
+	attributeToString,
+	styleValueToString,
+} from "@doars/staark-common/src/attribute.js";
 import { clonePlain, equalPlain } from "@doars/staark-common/src/compare.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
@@ -90,9 +93,17 @@ export const mount = (
 							element.addEventListener(name, handleEvent);
 						}
 						elementListeners[name] = value;
-					} else if (name === "style" && type === "object") {
+					} else if (
+						name === "style" &&
+						type === "object" &&
+						!Array.isArray(value)
+					) {
 						const oldStyle =
-							oldValue && typeof oldValue === "object" ? oldValue : null;
+							oldValue &&
+							typeof oldValue === "object" &&
+							!Array.isArray(oldValue)
+								? oldValue
+								: null;
 						if (!oldStyle) {
 							element.style.cssText = "";
 						}
@@ -103,9 +114,12 @@ export const mount = (
 								oldStyle?.[styleName] !== styleValue
 							) {
 								if (styleName.includes("-", 1)) {
-									element.style.setProperty(styleName, styleValue);
+									element.style.setProperty(
+										styleName,
+										styleValueToString(styleValue),
+									);
 								} else {
-									element.style[styleName] = styleValue;
+									element.style[styleName] = styleValueToString(styleValue);
 								}
 							}
 						}

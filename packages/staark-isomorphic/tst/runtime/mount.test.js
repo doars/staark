@@ -27,7 +27,7 @@ describe('Mount with Stringify', () => {
       state,
     )
 
-    assert.strictEqual(rendered, '<p> Hello there </p>')
+    assert.strictEqual(rendered, '<p>Hello there</p>')
 
     const app = document.createElement('div')
     app.innerHTML = rendered
@@ -42,7 +42,7 @@ describe('Mount with Stringify', () => {
       abstractTree,
     )
 
-    assert.strictEqual(app.innerHTML, '<p> Hello there </p><p>General Kenobi</p>')
+    assert.strictEqual(app.innerHTML, '<p>Hello there</p><p>General Kenobi</p>')
     assert.strictEqual(Array.isArray(result), true)
   })
 })

@@ -376,6 +376,23 @@ describe('Mount', () => {
     assert.strictEqual(div.firstChild.lastChild, d)
   })
 
+  it('removes styles set to false and supports style arrays', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => node('p', { style: state.style }), { style: { color: 'red', marginTop: '1px' } })
+    state.style = { color: false, marginTop: '1px' }
+    await update()
+    assert.strictEqual(div.firstChild.style.color, '')
+    assert.strictEqual(div.firstChild.style.marginTop, '1px')
+
+    state.style = ['color:blue', 'margin:0']
+    await update()
+    assert.strictEqual(div.firstChild.style.color, 'blue')
+    state.style = { padding: '0' }
+    await update()
+    assert.strictEqual(div.firstChild.style.color, '')
+    assert.strictEqual(div.firstChild.style.padding, '0px')
+  })
+
   it('skips unchanged memo contents and supports empty and nested memos', async () => {
     const app = document.createElement('div')
     let renders = 0

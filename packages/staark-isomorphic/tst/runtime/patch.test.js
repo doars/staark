@@ -27,7 +27,7 @@ describe('Patch with Stringify', () => {
       state,
     )
 
-    assert.strictEqual(rendered, '<p> Hello there </p>')
+    assert.strictEqual(rendered, '<p>Hello there</p>')
 
     const app = document.createElement('div')
     app.innerHTML = rendered
@@ -43,6 +43,6 @@ describe('Patch with Stringify', () => {
       node('p', 'General Kenobi'),
     ])
 
-    assert.strictEqual(app.innerHTML, '<p> Hello there </p><p>General Kenobi</p>')
+    assert.strictEqual(app.innerHTML, '<p>Hello there</p><p>General Kenobi</p>')
   })
 })

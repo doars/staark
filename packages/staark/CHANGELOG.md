@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix style properties set to `null`, `undefined`, or `false` not being removed. Browsers ignore them as invalid values, so the previous value was kept.
+- Support style arrays, which are joined into a list of declarations, and arrays as style values, which are joined with spaces.
 - Update a shared suffix of keyed children in place, so inserting or removing children near the start of a list only touches those children.
 - Fix memos not re-rendering when their memory, such as a state object, is mutated in place. A copy of the memory is now compared instead.
 - Reuse memos rendered in lists. Memos sharing a render function were previously cached as one, so only the last one could be reused. They are now matched by their memory first and their position second.
