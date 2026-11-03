@@ -404,20 +404,47 @@
         updateNode(node2, newAbstract, oldAbstract, inSvg);
         node2 = node2.nextSibling;
       }
-      if (start === oldLength) {
-        for (; start < newLength; start++) {
-          element.insertBefore(createNode(newChildAbstracts[start], inSvg), node2);
+      let newEnd = newLength;
+      let oldEnd = oldLength;
+      let end = null;
+      if (start < oldLength && start < newLength) {
+        let tail = element.lastChild;
+        while (start < newEnd && start < oldEnd) {
+          const newAbstract = newChildAbstracts[newEnd - 1];
+          const oldAbstract = oldChildAbstracts[oldEnd - 1];
+          const key = getKey(oldAbstract);
+          if (key == null || newAbstract.t !== oldAbstract.t || getKey(newAbstract) !== key) {
+            break;
+          }
+          updateNode(tail, newAbstract, oldAbstract, inSvg);
+          end = tail;
+          tail = tail.previousSibling;
+          newEnd--;
+          oldEnd--;
+        }
+      }
+      if (start === oldEnd) {
+        for (; start < newEnd; start++) {
+          element.insertBefore(createNode(newChildAbstracts[start], inSvg), end);
+        }
+        return;
+      }
+      if (start === newEnd) {
+        for (; start < oldEnd; start++) {
+          const next2 = node2.nextSibling;
+          node2.remove();
+          node2 = next2;
         }
         return;
       }
       const oldNodes = [];
-      for (let index = start; index < oldLength; index++) {
+      for (let index = start; index < oldEnd; index++) {
         oldNodes[index] = node2;
         node2 = node2?.nextSibling;
       }
       const keyedIndexes = /* @__PURE__ */ new Map();
       const unkeyedIndexes = /* @__PURE__ */ new Map();
-      for (let index = oldLength; index-- > start; ) {
+      for (let index = oldEnd; index-- > start; ) {
         const abstract = oldChildAbstracts[index];
         const key = getKey(abstract);
         if (key != null) {
@@ -433,7 +460,7 @@
       }
       const newNodes = [];
       const sources = [];
-      for (let index = start; index < newLength; index++) {
+      for (let index = start; index < newEnd; index++) {
         const newAbstract = newChildAbstracts[index];
         const key = getKey(newAbstract);
         const oldIndex = key != null ? keyedIndexes.get(key) : unkeyedIndexes.get(newAbstract.t)?.pop();
@@ -445,12 +472,12 @@
           updateNode(oldNode, newAbstract, oldChildAbstracts[oldIndex], inSvg);
         }
       }
-      for (let index = start; index < oldLength; index++) {
+      for (let index = start; index < oldEnd; index++) {
         oldNodes[index]?.remove();
       }
       const stable = increasingSubsequence(sources);
-      let next = null;
-      for (let index = newLength; index-- > start; ) {
+      let next = end;
+      for (let index = newEnd; index-- > start; ) {
         let child = newNodes[index];
         if (!child) {
           child = createNode(newChildAbstracts[index], inSvg);

@@ -1,14 +1,14 @@
-// Root proxies created by proxify, so they are not wrapped again when passed back in.
-const created = new WeakSet();
+// Targets of the proxies created by proxify, so proxies are recognised and not wrapped again when passed back in.
+const targets = new WeakMap();
 
 /**
- * Checks whether the value is a proxy. Root proxies created by proxify are always recognised. Other proxies are detected because structured cloning rejects a proxy itself but not a plain copy of it. A proxy whose contents can not be cloned is not detected.
+ * Checks whether the value is a proxy. Proxies created by proxify are always recognised. Other proxies are detected because structured cloning rejects a proxy itself but not a plain copy of it. A proxy whose contents can not be cloned is not detected.
  *
  * @param {any} value Value to check.
  * @returns {boolean} Whether the value is a proxy.
  */
 export const isProxy = (value) => {
-	if (created.has(value)) {
+	if (targets.has(value)) {
 		return true;
 	}
 	try {
@@ -22,6 +22,14 @@ export const isProxy = (value) => {
 		return false;
 	}
 };
+
+/**
+ * Returns the object wrapped by a proxy created by proxify, or the value itself otherwise. Reading the target directly avoids the cost of going through the proxy.
+ *
+ * @param {any} value Value to unwrap.
+ * @returns {any} The target of the proxy, or the value.
+ */
+export const toTarget = (value) => targets.get(value) ?? value;
 
 /**
  * Creates a proxy for the given root object to track changes and invoke the onChange callback.
@@ -87,7 +95,7 @@ export const proxify = (root, onChange) => {
 	 * @returns {Record<string, any>} - The proxified object.
 	 */
 	const add = (target) => {
-		let proxy = proxies.get(target);
+		let proxy = proxies.get(toTarget(target));
 		if (proxy) {
 			return proxy;
 		}
@@ -102,6 +110,7 @@ export const proxify = (root, onChange) => {
 
 		proxy = new Proxy(target, handler);
 		proxies.set(target, proxy);
+		targets.set(proxy, target);
 		// Recursively create proxies for each property.
 		for (const key of Object.keys(target)) {
 			if (target[key] && typeof target[key] === "object") {
@@ -112,9 +121,5 @@ export const proxify = (root, onChange) => {
 		return proxy;
 	};
 
-	const proxy = add(root);
-	if (proxy !== root) {
-		created.add(proxy);
-	}
-	return proxy;
+	return add(root);
 };

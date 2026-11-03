@@ -72,6 +72,7 @@ a('.button[href=/next]', 'Next')
 - `cloneRecursive(value, clones?)` deeply clones supported values while preserving cycles and shared references.
 - `equalRecursive(valueA, valueB, compared?)` recursively compares supported values, including maps, sets, typed arrays, and circular structures.
 - `equalPlain(valueA, valueB)` is a smaller comparison for plain data. Arrays and plain objects are compared by content and dates by time; any other object only by identity. Circular structures are never equal.
+- `clonePlain(value)` copies plain data so it can later be compared with `equalPlain`, even after the original is mutated in place. Arrays and plain objects are copied recursively and dates by time; other objects and circular references are kept by reference.
 - `increasingSubsequence(sources)` marks the longest increasing subsequence of a sparse number array, used to minimise DOM moves.
 - `childrenToNodes(element)` converts an element's DOM children into abstract nodes using their lowercase-preserving `localName`, and requires DOM APIs. Comments become `#comment` nodes.
 - `identifier(prefix)` returns a process-unique string using the prefix.

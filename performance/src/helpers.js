@@ -60,6 +60,47 @@ window.benchmarkHelpers = {
 		}
 	},
 
+	createRows: (count) => {
+		const rows = [];
+		for (let index = 0; index < count; index++) {
+			rows.push({ id: index, label: `row ${index}` });
+		}
+		return rows;
+	},
+
+	recordRows: (rootNode) => {
+		const elements = new Map();
+		for (const element of window.benchmarkHelpers.getElementChildren(
+			rootNode,
+			"ul",
+		)) {
+			elements.set(element.getAttribute("data-id"), element);
+		}
+		window.initialRows = elements;
+	},
+
+	verifyRows: (rootNode, rows) => {
+		const { assert, getElementChildren } = window.benchmarkHelpers;
+		const items = getElementChildren(rootNode, "ul");
+		assert(items.length === rows.length, "Unexpected row count.");
+		for (let index = 0; index < rows.length; index++) {
+			const id = `${rows[index].id}`;
+			assert(
+				items[index].getAttribute("data-id") === id,
+				"Incorrect row order.",
+			);
+			assert(
+				items[index].firstChild.textContent === rows[index].label,
+				"Incorrect row label.",
+			);
+			const initial = window.initialRows?.get(id);
+			assert(
+				!initial || initial === items[index],
+				"Keyed row identity was not preserved.",
+			);
+		}
+	},
+
 	resolveWhenDone: async (
 		waitForFirstCheck = null,
 		verificationCheck = null,

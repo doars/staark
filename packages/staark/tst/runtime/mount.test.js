@@ -300,6 +300,82 @@ describe('Mount', () => {
     assert.strictEqual(div.innerHTML, '<p id="b" style="padding: 0px;"></p>')
   })
 
+  it('re-renders memos whose memory is mutated in place', async () => {
+    const div = document.createElement('div')
+    const renderItem = (_state, todo) => node('li', todo.text)
+    const [update, , state] = mount(
+      div,
+      (state) => node('ul', memo(renderItem, state.todo)),
+      { todo: { text: 'a' } },
+    )
+    assert.strictEqual(div.innerHTML, '<ul><li>a</li></ul>')
+
+    state.todo.text = 'b'
+    await update()
+    assert.strictEqual(div.innerHTML, '<ul><li>b</li></ul>')
+  })
+
+  it('reuses memos in lists by memory and by position', async () => {
+    const div = document.createElement('div')
+    const rendered = []
+    const renderItem = (_state, todo) => {
+      rendered.push(todo.text)
+      return node('li', todo.text)
+    }
+    const renderLabel = (_state, label) => {
+      rendered.push(label.text)
+      return node('li', label.text)
+    }
+    const [update, , state] = mount(
+      div,
+      (state) => node('ul', [
+        ...state.todos.map((todo) => memo(renderItem, todo)),
+        ...state.labels.map((label) => memo(renderLabel, { text: label })),
+      ]),
+      { todos: [{ text: 'a' }, { text: 'b' }, { text: 'c' }], labels: ['x', 'y'] },
+    )
+    assert.deepStrictEqual(rendered, ['a', 'b', 'c', 'x', 'y'])
+
+    rendered.length = 0
+    state.todos[1].text = 'B'
+    await update()
+    assert.deepStrictEqual(rendered, ['B'])
+    assert.strictEqual(div.innerHTML, '<ul><li>a</li><li>B</li><li>c</li><li>x</li><li>y</li></ul>')
+
+    rendered.length = 0
+    state.todos.reverse()
+    state.labels = ['x', 'z']
+    await update()
+    assert.deepStrictEqual(rendered, ['z'])
+    assert.strictEqual(div.innerHTML, '<ul><li>c</li><li>B</li><li>a</li><li>x</li><li>z</li></ul>')
+  })
+
+  it('creates and updates single text children', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => state.items.map((item) => node('p', [item])), { items: ['', 'a', '0'] })
+    assert.strictEqual(div.innerHTML, '<p></p><p>a</p><p>0</p>')
+    assert.strictEqual(div.firstChild.childNodes.length, 1)
+    state.items = ['x', 'b', 'c']
+    await update()
+    assert.strictEqual(div.innerHTML, '<p>x</p><p>b</p><p>c</p>')
+  })
+
+  it('keeps a shared keyed suffix in place', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => node('ul', state.keys.map((key) => node('li', { key }, key))), { keys: ['a', 'b', 'c', 'd'] })
+    const [a, b, c, d] = div.firstChild.children
+
+    state.keys = ['a', 'c', 'b', 'x', 'd']
+    await update()
+    assert.strictEqual(div.innerHTML, '<ul><li>a</li><li>c</li><li>b</li><li>x</li><li>d</li></ul>')
+    assert.deepStrictEqual([...div.firstChild.children].filter((child) => child.textContent !== 'x'), [a, c, b, d])
+
+    state.keys = ['y', 'a', 'b', 'x', 'd']
+    await update()
+    assert.strictEqual(div.innerHTML, '<ul><li>y</li><li>a</li><li>b</li><li>x</li><li>d</li></ul>')
+    assert.strictEqual(div.firstChild.lastChild, d)
+  })
+
   it('skips unchanged memo contents and supports empty and nested memos', async () => {
     const app = document.createElement('div')
     let renders = 0

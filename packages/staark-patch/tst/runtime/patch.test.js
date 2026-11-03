@@ -283,6 +283,34 @@ describe('Patch', () => {
     assert.strictEqual(div.innerHTML, '<p id="b" style="padding: 0px;"></p>')
   })
 
+  it('creates and updates single text children', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    patch([node('p', ['']), node('p', 'a'), node('p', '0')])
+    assert.strictEqual(div.innerHTML, '<p></p><p>a</p><p>0</p>')
+    assert.strictEqual(div.firstChild.childNodes.length, 1)
+    patch([node('p', 'x'), node('p', 'b'), node('p', [node('span', 'c')])])
+    assert.strictEqual(div.innerHTML, '<p>x</p><p>b</p><p><span>c</span></p>')
+  })
+
+  it('keeps a shared keyed suffix in place', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    const view = (keys) => node('ul', keys.map((key) => node('li', { key }, key)))
+    patch(view(['a', 'b', 'c', 'd']))
+    const [a, b, c, d] = div.firstChild.children
+
+    patch(view(['a', 'c', 'b', 'x', 'd']))
+    assert.strictEqual(div.innerHTML, '<ul><li>a</li><li>c</li><li>b</li><li>x</li><li>d</li></ul>')
+    assert.deepStrictEqual([...div.firstChild.children].filter((child) => child.textContent !== 'x'), [a, c, b, d])
+
+    patch(view(['y', 'a', 'c', 'b', 'x', 'd']))
+    assert.strictEqual(div.firstChild.children[1], a)
+    patch(view(['y', 'a', 'b', 'x', 'd']))
+    assert.strictEqual(div.innerHTML, '<ul><li>y</li><li>a</li><li>b</li><li>x</li><li>d</li></ul>')
+    assert.strictEqual(div.firstChild.lastChild, d)
+  })
+
   it('swaps and removes event listeners', () => {
     const div = document.createElement('div')
     const patch = prepare(div)

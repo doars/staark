@@ -202,23 +202,58 @@ export const prepare = (rootElement, oldAbstractTree) => {
 			updateNode(node, newAbstract, oldAbstract, inSvg);
 			node = node.nextSibling;
 		}
-		if (start === oldLength) {
-			// Nothing left to match, so append the remaining children.
-			for (; start < newLength; start++) {
-				element.insertBefore(createNode(newChildAbstracts[start], inSvg), node);
+
+		// Update the shared suffix of keyed children in place.
+		let newEnd = newLength;
+		let oldEnd = oldLength;
+		let end = null;
+		if (start < oldLength && start < newLength) {
+			let tail = element.lastChild;
+			while (start < newEnd && start < oldEnd) {
+				const newAbstract = newChildAbstracts[newEnd - 1];
+				const oldAbstract = oldChildAbstracts[oldEnd - 1];
+				const key = getKey(oldAbstract);
+				if (
+					key == null ||
+					newAbstract.t !== oldAbstract.t ||
+					getKey(newAbstract) !== key
+				) {
+					break;
+				}
+				updateNode(tail, newAbstract, oldAbstract, inSvg);
+				end = tail;
+				tail = tail.previousSibling;
+				newEnd--;
+				oldEnd--;
+			}
+		}
+
+		if (start === oldEnd) {
+			// Nothing left to match, so insert the remaining children.
+			for (; start < newEnd; start++) {
+				element.insertBefore(createNode(newChildAbstracts[start], inSvg), end);
+			}
+			return;
+		}
+		if (start === newEnd) {
+			// Nothing left to create, so remove the remaining children.
+			for (; start < oldEnd; start++) {
+				const next = node.nextSibling;
+				node.remove();
+				node = next;
 			}
 			return;
 		}
 
 		// Index the remaining old children by key, or by type when unkeyed.
 		const oldNodes = [];
-		for (let index = start; index < oldLength; index++) {
+		for (let index = start; index < oldEnd; index++) {
 			oldNodes[index] = node;
 			node = node?.nextSibling;
 		}
 		const keyedIndexes = new Map();
 		const unkeyedIndexes = new Map();
-		for (let index = oldLength; index-- > start; ) {
+		for (let index = oldEnd; index-- > start; ) {
 			const abstract = oldChildAbstracts[index];
 			const key = getKey(abstract);
 			if (key != null) {
@@ -237,7 +272,7 @@ export const prepare = (rootElement, oldAbstractTree) => {
 		// Match the remaining new children to old ones.
 		const newNodes = [];
 		const sources = [];
-		for (let index = start; index < newLength; index++) {
+		for (let index = start; index < newEnd; index++) {
 			const newAbstract = newChildAbstracts[index];
 			const key = getKey(newAbstract);
 			const oldIndex =
@@ -253,14 +288,14 @@ export const prepare = (rootElement, oldAbstractTree) => {
 			}
 		}
 
-		for (let index = start; index < oldLength; index++) {
+		for (let index = start; index < oldEnd; index++) {
 			oldNodes[index]?.remove();
 		}
 
 		// Place children from back to front, only moving those outside the longest stable run.
 		const stable = increasingSubsequence(sources);
-		let next = null;
-		for (let index = newLength; index-- > start; ) {
+		let next = end;
+		for (let index = newEnd; index-- > start; ) {
 			let child = newNodes[index];
 			if (!child) {
 				child = createNode(newChildAbstracts[index], inSvg);
