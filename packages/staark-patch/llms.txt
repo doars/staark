@@ -31,7 +31,7 @@ node(
 ): NodeAbstract
 ```
 
-The second argument can be attributes or contents. Function-valued attributes become DOM event listeners receiving only the browser event; state remains the caller's responsibility. `class`, `style`, `value`, and removal values are handled like Staark. A `key` preserves DOM element identity during sibling insertion, removal, or reordering and is never written to the DOM. Keys must be stable and unique among siblings.
+The second argument can be attributes or contents. Function-valued attributes become DOM event listeners receiving only the browser event; state remains the caller's responsibility. `class`, `style`, `value`, and removal values are handled like Staark. Attributes, classes, and styles are compared with the previous patch rather than read back from the DOM, so only changed values are written. A `key` preserves DOM element identity during sibling insertion, removal, or reordering and is never written to the DOM. Keys must be stable and unique among siblings.
 
 ## Helper functions
 

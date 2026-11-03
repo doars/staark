@@ -5,7 +5,9 @@
 - Fix the ESM builds in `dst/` being emitted as IIFEs without exports.
 - Use a single reconciliation path for keyed and unkeyed children, with an in-place fast path for an unchanged prefix, and only move children outside the longest stable run.
 - Skip unchanged abstract nodes and stop mutating the previous abstract tree.
-- Only write attributes, classes, and styles that changed, while keeping `value` in sync.
+- Only write attributes, classes, and styles that changed, while keeping `value` in sync. Attributes and classes are compared with the previous patch instead of being read back from the DOM.
+- Iterate attributes and styles with `for…in` and an own property check instead of allocating key arrays, which roughly halves the time to update a large list.
+- Clear removed styles with an empty string instead of `null`.
 - Set classes through `setAttribute`, which also works for SVG elements. Object classes no longer have a leading space.
 - Reuse existing elements when hydrating, and support comments in existing content.
 - Declare `sideEffects` so bundlers can tree-shake unused helpers.
