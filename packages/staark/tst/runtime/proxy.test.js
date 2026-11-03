@@ -79,6 +79,8 @@ describe('State proxy', () => {
     state.empty.shift()
     state.list.unshift()
     state.list.splice(0, 0)
+    state.list.sort()
+    state.list.splice(0, 1, state.list[0])
     assert.strictEqual(changes, 0)
 
     state.list.splice(0, 1)
