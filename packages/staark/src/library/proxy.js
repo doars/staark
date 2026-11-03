@@ -88,116 +88,64 @@ export const proxify = (root, onChange) => {
 		},
 	};
 
+	// Array methods that run on the target instead of through the proxy, where every item they read or move passes through a trap, which is slow for long arrays. The target holds the same proxied items, so the results are the same.
+	const methods = Object.create(null);
 	/**
-	 * Wraps an array method that moves existing items, so it runs on the target instead of through the proxy. Otherwise every moved item passes through the set trap, which is slow for long arrays.
+	 * Adds wrappers for the given array methods.
 	 *
-	 * @param {string} name - Name of the array method.
-	 * @param {number} start - Index of the first argument that is an item to insert.
-	 * @param {(length: number, args: any[], result: any) => boolean} changed - Whether the call changed the array, given the length before the call.
-	 * @returns {Function} - The wrapped method.
+	 * @param {string} names - Names of the array methods, separated by spaces.
+	 * @param {number} type - 0 for methods that only read, 1 for methods whose callback receives the array as the third argument, 2 as the fourth argument, and 3 for methods that move items.
 	 */
-	const wrap = (name, start, changed) =>
-		function (...args) {
-			const target = toTarget(this);
-			// Only wrap calls on arrays that are tracked by this proxify call.
-			if (proxies.get(target) !== this) {
-				return Array.prototype[name].apply(this, args);
+	const wrap = (names, type) => {
+		for (const name of names.split(" ")) {
+			const method = Array.prototype[name];
+			// Only methods the browser supports are wrapped, so feature detection keeps working.
+			if (method) {
+				methods[name] = function (...args) {
+					const target = toTarget(this);
+					if (proxies.get(target) !== this) {
+						return method.apply(this, args);
+					}
+					const callback = args[0];
+					if (type === 3) {
+						for (let index = 0; index < args.length; index++) {
+							if (args[index] && typeof args[index] === "object") {
+								args[index] = add(args[index]);
+							}
+						}
+						const before = target.slice();
+						const result = method.apply(target, args);
+						// Only report a change when an item or the length changed, the same as the set trap.
+						if (
+							before.length !== target.length ||
+							before.some((value, index) => value !== target[index])
+						) {
+							onChange();
+						}
+						return result === target ? this : result;
+					}
+					if (type && typeof callback === "function") {
+						const proxy = this;
+						// Callbacks receive the proxy as the array, so changes made through it are tracked.
+						args[0] = function (a, b, c) {
+							return type === 1
+								? callback.call(this, a, b, proxy)
+								: callback(a, b, c, proxy);
+						};
+					}
+					return method.apply(target, args);
+				};
 			}
-			for (let index = start; index < args.length; index++) {
-				const value = args[index];
-				if (value && typeof value === "object") {
-					args[index] = add(value);
-				}
-			}
-			const length = target.length;
-			const result = Array.prototype[name].apply(target, args);
-			if (changed(length, args, result)) {
-				onChange();
-			}
-			return result === target ? this : result;
-		};
-	/**
-	 * Wraps an array method that only reads, so it runs on the target instead of reading every item through the proxy. The target holds the same proxied items, and callbacks still receive the proxy as the array.
-	 *
-	 * @param {string | symbol} name - Name of the array method.
-	 * @param {number} [callback] - 1 when the first argument is a callback receiving the item, 2 when it also receives an accumulator first.
-	 * @returns {Function} - The wrapped method.
-	 */
-	const read = (name, callback) =>
-		function (...args) {
-			const target = toTarget(this);
-			if (proxies.get(target) !== this) {
-				return Array.prototype[name].apply(this, args);
-			}
-			const original = args[0];
-			if (callback && typeof original === "function") {
-				const proxy = this;
-				args[0] =
-					callback === 2
-						? (accumulator, value, index) =>
-								original(accumulator, value, index, proxy)
-						: function (value, index) {
-								return original.call(this, value, index, proxy);
-							};
-			}
-			return Array.prototype[name].apply(target, args);
-		};
-	const always = () => true;
-	const methods = Object.assign(Object.create(null), {
-		copyWithin: wrap("copyWithin", Infinity, always),
-		fill: wrap("fill", 0, always),
-		reverse: wrap("reverse", Infinity, always),
-		shift: wrap("shift", Infinity, (length) => length > 0),
-		sort: wrap("sort", Infinity, always),
-		splice: wrap(
-			"splice",
-			2,
-			(_length, args, result) => result.length > 0 || args.length > 2,
-		),
-		unshift: wrap("unshift", 0, (_length, args) => args.length > 0),
-	});
-	// Only methods the browser supports are added, so feature detection keeps working.
-	for (const name of [
-		"every",
-		"filter",
-		"find",
-		"findIndex",
-		"findLast",
-		"findLastIndex",
-		"flatMap",
-		"forEach",
-		"map",
-		"some",
-	]) {
-		if (Array.prototype[name]) {
-			methods[name] = read(name, 1);
 		}
-	}
-	for (const name of ["reduce", "reduceRight"]) {
-		methods[name] = read(name, 2);
-	}
-	for (const name of [
-		"at",
-		"concat",
-		"entries",
-		"flat",
-		"includes",
-		"indexOf",
-		"join",
-		"keys",
-		"lastIndexOf",
-		"slice",
-		"toReversed",
-		"toSorted",
-		"toSpliced",
-		"values",
-		"with",
-		Symbol.iterator,
-	]) {
-		if (Array.prototype[name]) {
-			methods[name] = read(name);
-		}
-	}
+	};
+	wrap("includes indexOf join slice toReversed toSorted values", 0);
+	wrap(
+		"every filter find findIndex findLast findLastIndex flatMap forEach map some",
+		1,
+	);
+	wrap("reduce reduceRight", 2);
+	wrap("copyWithin fill reverse shift sort splice unshift", 3);
+	methods[Symbol.iterator] = methods.values;
 	const arrayHandler = {
 		...handler,
 		get: (target, key, receiver) =>
