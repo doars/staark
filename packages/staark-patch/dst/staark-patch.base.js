@@ -1,15 +1,12 @@
-// ../staark-common/src/absent.js
-var isAbsent = (value) => value === null || value === void 0 || value === false;
-
 // ../staark-common/src/array.js
-var arrayifyOrUndefined = (data) => isAbsent(data) ? void 0 : Array.isArray(data) ? data : [data];
+var arrayifyOrUndefined = (data) => data === null || data === void 0 || data === false ? void 0 : Array.isArray(data) ? data : [data];
 
 // ../staark-common/src/marker.js
 var marker = "n";
 
 // ../staark-common/src/node.js
 var node = (type, attributesOrContents, contents) => {
-  if (!isAbsent(attributesOrContents) && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
+  if (attributesOrContents !== null && attributesOrContents !== void 0 && attributesOrContents !== false && (typeof attributesOrContents !== "object" || attributesOrContents._ === marker || Array.isArray(attributesOrContents))) {
     contents = attributesOrContents;
     attributesOrContents = void 0;
   }
@@ -23,16 +20,9 @@ var node = (type, attributesOrContents, contents) => {
 
 // ../staark-common/src/attribute.js
 var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
-var styleValueToString = (value) => isAbsent(value) ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
 
 // ../staark-common/src/element.js
-var setStyle = (element, name, value) => {
-  if (name.includes("-", 1)) {
-    element.style.setProperty(name, value);
-  } else {
-    element.style[name] = value;
-  }
-};
 var childrenToNodes = (element) => {
   const abstractChildNodes = [];
   for (const childNode of element.childNodes) {
@@ -91,7 +81,7 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
       if (name !== "key" && Object.hasOwn(newAttributes, name)) {
         let value = newAttributes[name];
         const oldValue = oldAttributes?.[name];
-        if (!isAbsent(value)) {
+        if (value !== null && value !== void 0 && value !== false) {
           const type = typeof value;
           if (type === "function") {
             if (oldValue !== value) {
@@ -108,19 +98,30 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
             for (const styleName in value) {
               const styleValue = value[styleName];
               if (Object.hasOwn(value, styleName) && oldStyle?.[styleName] !== styleValue) {
-                setStyle(element, styleName, styleValueToString(styleValue));
+                if (styleName.includes("-", 1)) {
+                  element.style.setProperty(
+                    styleName,
+                    styleValueToString(styleValue)
+                  );
+                } else {
+                  element.style[styleName] = styleValueToString(styleValue);
+                }
               }
             }
             if (oldStyle) {
               for (const styleName in oldStyle) {
                 if (Object.hasOwn(oldStyle, styleName) && !Object.hasOwn(value, styleName)) {
-                  setStyle(element, styleName, "");
+                  if (styleName.includes("-", 1)) {
+                    element.style.removeProperty(styleName);
+                  } else {
+                    element.style[styleName] = "";
+                  }
                 }
               }
             }
           } else if (value !== oldValue || name === "value") {
             value = attributeToString(name, value);
-            if (isAbsent(oldValue) || attributeToString(name, oldValue) !== value) {
+            if (oldValue === null || oldValue === void 0 || oldValue === false || attributeToString(name, oldValue) !== value) {
               element.setAttribute(name, value);
             }
             if (name === "value" && element.value !== value) {
@@ -136,7 +137,7 @@ var updateAttributes = (element, newAttributes, oldAttributes) => {
       if (name !== "key" && Object.hasOwn(oldAttributes, name)) {
         const value = oldAttributes[name];
         const newValue = newAttributes?.[name];
-        if (isAbsent(newValue)) {
+        if (newValue === null || newValue === void 0 || newValue === false) {
           if (typeof value === "function") {
             element.removeEventListener(name, value);
           } else {
