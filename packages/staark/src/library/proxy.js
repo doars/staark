@@ -116,6 +116,32 @@ export const proxify = (root, onChange) => {
 			}
 			return result === target ? this : result;
 		};
+	/**
+	 * Wraps an array method that only reads, so it runs on the target instead of reading every item through the proxy. The target holds the same proxied items, and callbacks still receive the proxy as the array.
+	 *
+	 * @param {string | symbol} name - Name of the array method.
+	 * @param {number} [callback] - 1 when the first argument is a callback receiving the item, 2 when it also receives an accumulator first.
+	 * @returns {Function} - The wrapped method.
+	 */
+	const read = (name, callback) =>
+		function (...args) {
+			const target = toTarget(this);
+			if (proxies.get(target) !== this) {
+				return Array.prototype[name].apply(this, args);
+			}
+			const original = args[0];
+			if (callback && typeof original === "function") {
+				const proxy = this;
+				args[0] =
+					callback === 2
+						? (accumulator, value, index) =>
+								original(accumulator, value, index, proxy)
+						: function (value, index) {
+								return original.call(this, value, index, proxy);
+							};
+			}
+			return Array.prototype[name].apply(target, args);
+		};
 	const always = () => true;
 	const methods = Object.assign(Object.create(null), {
 		copyWithin: wrap("copyWithin", Infinity, always),
@@ -130,6 +156,48 @@ export const proxify = (root, onChange) => {
 		),
 		unshift: wrap("unshift", 0, (_length, args) => args.length > 0),
 	});
+	// Only methods the browser supports are added, so feature detection keeps working.
+	for (const name of [
+		"every",
+		"filter",
+		"find",
+		"findIndex",
+		"findLast",
+		"findLastIndex",
+		"flatMap",
+		"forEach",
+		"map",
+		"some",
+	]) {
+		if (Array.prototype[name]) {
+			methods[name] = read(name, 1);
+		}
+	}
+	for (const name of ["reduce", "reduceRight"]) {
+		methods[name] = read(name, 2);
+	}
+	for (const name of [
+		"at",
+		"concat",
+		"entries",
+		"flat",
+		"includes",
+		"indexOf",
+		"join",
+		"keys",
+		"lastIndexOf",
+		"slice",
+		"toReversed",
+		"toSorted",
+		"toSpliced",
+		"values",
+		"with",
+		Symbol.iterator,
+	]) {
+		if (Array.prototype[name]) {
+			methods[name] = read(name);
+		}
+	}
 	const arrayHandler = {
 		...handler,
 		get: (target, key, receiver) =>

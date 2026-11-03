@@ -110,4 +110,41 @@ describe('State proxy', () => {
     assert.deepStrictEqual(other, [4, 3])
     assert.strictEqual(changes, 0)
   })
+
+  it('reads arrays through methods with the same results', () => {
+    let changes = 0
+    const state = proxify({ list: [{ value: 1 }, { value: 2 }] }, () => changes++)
+    const list = state.list
+    const [first, second] = [list[0], list[1]]
+
+    const context = {}
+    assert.deepStrictEqual(list.map(function (item, index, array) {
+      assert.strictEqual(this, context)
+      assert.strictEqual(array, list)
+      return item
+    }, context), [first, second])
+    assert.strictEqual(list.find((item) => item.value === 2), second)
+    assert.strictEqual(list.includes(first), true)
+    assert.strictEqual(list.indexOf(second), 1)
+    assert.deepStrictEqual([...list], [first, second])
+    assert.deepStrictEqual(list.slice(1), [second])
+    assert.strictEqual(list.reduce((sum, item, index, array) => {
+      assert.strictEqual(array, list)
+      return sum + item.value
+    }, 0), 3)
+    assert.strictEqual(list.reduce((a, b) => a.value > b.value ? a : b), second)
+    assert.throws(() => proxify({ list: [] }, () => {}).list.reduce((a) => a), TypeError)
+    assert.strictEqual(changes, 0)
+
+    list.forEach((item, index, array) => {
+      array[index] = { value: item.value * 10 }
+    })
+    assert.strictEqual(changes, 2)
+    assert.strictEqual(isProxy(list[0]), true)
+    for (const item of list) {
+      item.value++
+    }
+    assert.strictEqual(changes, 4)
+    assert.deepStrictEqual(list.map((item) => item.value), [11, 21])
+  })
 })
