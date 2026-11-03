@@ -86,7 +86,7 @@ memo(
 ): MemoAbstract
 ```
 
-Reuses a rendered subtree while the render function identity is stable and `memory` remains equal. Arrays and plain objects are compared by content and dates by time; maps, sets, class instances, and other objects only by identity, and circular memory always re-renders. Define the render function outside its parent view. Nested memo nodes are discouraged because memo caches are cleared after updates. Unchanged memo contents are not diffed again, so changes made to their DOM outside staark are kept.
+Reuses a rendered subtree while the render function identity is stable and `memory` remains equal. A copy of `memory` is kept, so state objects mutated in place are compared with their previous contents. Arrays and plain objects are compared by content and dates by time; maps, sets, class instances, and other objects only by identity, as are circular references. Memos sharing a render function, such as those rendering the items of a list, are matched by their `memory` first and their order second, so mapping state items to memos reuses unchanged items even after reordering. Define the render function outside its parent view. Nested memo nodes are discouraged because memo caches are cleared after updates. Unchanged memo contents are not diffed again, so changes made to their DOM outside staark are kept.
 
 ## View helpers
 

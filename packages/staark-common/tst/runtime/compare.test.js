@@ -5,7 +5,8 @@ import {
 } from 'node:test'
 
 import {
-    equalPlain,
+    clonePlain,
+  equalPlain,
     equalRecursive,
 } from '../../src/index.js'
 
@@ -86,6 +87,42 @@ describe('Compare', () => {
       assert.strictEqual(equalRecursive(valueA, valueB), true)
       assert.strictEqual(equalRecursive(valueA, valueC), false)
       assert.strictEqual(equalRecursive(valueA, new Uint8Array([1, 2])), false)
+    })
+  })
+
+  describe('clonePlain', () => {
+    it('copies plain data so it stays equal to the original contents', () => {
+      const original = { list: [1, { a: 2 }], date: new Date(5), empty: Object.create(null) }
+      const copy = clonePlain(original)
+      assert.notStrictEqual(copy, original)
+      assert.notStrictEqual(copy.list, original.list)
+      assert.strictEqual(equalPlain(copy, original), true)
+      original.list[1].a = 3
+      original.date.setTime(6)
+      assert.strictEqual(copy.list[1].a, 2)
+      assert.strictEqual(copy.date.getTime(), 5)
+      assert.strictEqual(equalPlain(copy, original), false)
+    })
+
+    it('keeps other objects by reference', () => {
+      const map = new Map()
+      class Point { constructor(x) { this.x = x } }
+      const point = new Point(1)
+      const copy = clonePlain({ map, point })
+      assert.strictEqual(copy.map, map)
+      assert.strictEqual(copy.point, point)
+    })
+
+    it('handles primitives and circular structures', () => {
+      assert.strictEqual(clonePlain(1), 1)
+      assert.strictEqual(clonePlain(null), null)
+      const circular = { value: 1 }
+      circular.self = circular
+      const copy = clonePlain(circular)
+      assert.strictEqual(copy.value, 1)
+      assert.strictEqual(copy.self, circular)
+      circular.value = 2
+      assert.strictEqual(equalPlain(copy, circular), false)
     })
   })
 

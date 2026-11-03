@@ -4,7 +4,7 @@
 
 - Only allocate the comparison cache in `equalRecursive` when comparing objects.
 - Support comment nodes in `childrenToNodes`, and use `localName` so element types match lowercase abstract nodes. HTML element types are now lowercase.
-- Add `equalPlain`, a smaller comparison for plain data.
+- Add `equalPlain`, a smaller comparison for plain data, and `clonePlain` to copy plain data for it.
 - Add `attributeToString`, used to convert attribute values to the strings written to the DOM.
 - Add `increasingSubsequence`, used to minimise DOM moves when reconciling children.
 - Declare `sideEffects` so bundlers can tree-shake unused helpers.

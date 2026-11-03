@@ -3,7 +3,7 @@ import {
 	arrayifyOrUndefined,
 } from "@doars/staark-common/src/array.js";
 import { attributeToString } from "@doars/staark-common/src/attribute.js";
-import { equalPlain } from "@doars/staark-common/src/compare.js";
+import { clonePlain, equalPlain } from "@doars/staark-common/src/compare.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 import { isProxy, proxify } from "./proxy.js";
@@ -182,14 +182,24 @@ export const mount = (
 					if (result === abstracts) {
 						result = abstracts.slice(0, index);
 					}
-					let match = oldMemoMap.get(abstract.r);
+					// Memos are cached per render function, and found by their memory first so reordered state objects are reused, then by their position.
+					let memos = newMemoMap.get(abstract.r);
+					if (!memos) {
+						memos = { l: [], i: new Map() };
+						newMemoMap.set(abstract.r, memos);
+					}
+					const oldMemos = oldMemoMap.get(abstract.r);
+					let match =
+						oldMemos?.i.get(abstract.m) ?? oldMemos?.l[memos.l.length];
 					if (!match || !equalPlain(match.m, abstract.m)) {
 						match = {
 							c: expand(arrayify(abstract.r(state, abstract.m))),
-							m: abstract.m,
+							// Copied so memory mutated in place, such as the state, is still compared with its previous contents.
+							m: clonePlain(abstract.m),
 						};
 					}
-					newMemoMap.set(abstract.r, match);
+					memos.l.push(match);
+					memos.i.set(abstract.m, match);
 					result.push(...match.c);
 				} else if (result !== abstracts) {
 					result.push(abstract);

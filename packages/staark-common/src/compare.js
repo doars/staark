@@ -143,3 +143,42 @@ export const equalPlain = (valueA, valueB, path) => {
 	path.pop();
 	return equal;
 };
+
+/**
+ * Copies plain data so it can later be compared with `equalPlain`, even when the original is mutated in place. Arrays and plain objects are copied recursively, dates by time, and other objects are kept by reference. Circular references are kept by reference.
+ *
+ * @param {any} value Value to copy.
+ * @param {any[]} [path] Objects being copied, used to detect cycles.
+ * @returns {any} Copy of the value.
+ */
+export const clonePlain = (value, path) => {
+	if (!value || typeof value !== "object") {
+		return value;
+	}
+	if (value instanceof Date) {
+		return new Date(value.getTime());
+	}
+
+	const prototype = Object.getPrototypeOf(value);
+	path ??= [];
+	if (
+		(prototype !== Object.prototype &&
+			prototype !== Array.prototype &&
+			prototype !== null) ||
+		path.includes(value)
+	) {
+		return value;
+	}
+
+	path.push(value);
+	const copy = Array.isArray(value)
+		? []
+		: prototype
+			? {}
+			: Object.create(null);
+	for (const key of Object.keys(value)) {
+		copy[key] = clonePlain(value[key], path);
+	}
+	path.pop();
+	return copy;
+};

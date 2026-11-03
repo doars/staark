@@ -102,6 +102,8 @@ export const proxify = (root, onChange) => {
 
 		proxy = new Proxy(target, handler);
 		proxies.set(target, proxy);
+		// Also map the proxy to itself, so assigning it again, for example when sorting an array, does not wrap it twice.
+		proxies.set(proxy, proxy);
 		// Recursively create proxies for each property.
 		for (const key of Object.keys(target)) {
 			if (target[key] && typeof target[key] === "object") {
