@@ -238,16 +238,37 @@
     subject[path[path.length - 1]] = data;
   };
 
+  // ../staark-common/src/attribute.js
+  var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
+  var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+  var styleToString = (style) => {
+    const declarations = [];
+    for (const name of Object.keys(style)) {
+      const value = styleValueToString(style[name]);
+      if (value) {
+        declarations.push(
+          `${name.includes("-") ? name : name.replace(/[A-Z]/g, (capital) => `-${capital.toLowerCase()}`)}:${value}`
+        );
+      }
+    }
+    return declarations.join(";");
+  };
+
   // src/library/stringify.js
   var SELF_CLOSING = /* @__PURE__ */ new Set([
+    "area",
     "base",
     "br",
+    "col",
+    "embed",
     "hr",
     "img",
     "input",
     "link",
     "meta",
+    "param",
     "source",
+    "track",
     "wbr"
   ]);
   var UNSAFE_NAME_CHARACTERS = /[\s"'<>/=]/;
@@ -260,8 +281,6 @@
     '"': "&quot;",
     "'": "&#39;"
   };
-  var MATCH_CAPITALS = /[A-Z]+(?![a-z])|[A-Z]/g;
-  var HYPHENATE = (part, offset) => (offset ? "-" : "") + part;
   var escapeCharacter = (character) => ESCAPED_CHARACTERS[character];
   var escapeText = (value) => String(value).replace(TEXT_CHARACTERS, escapeCharacter);
   var escapeAttribute = (value) => String(value).replace(ATTRIBUTE_CHARACTERS, escapeCharacter);
@@ -279,78 +298,79 @@
     for (const name of Object.keys(attributes)) {
       const validatedName = validateName(name, "attribute");
       let value = attributes[name];
-      if (value === null || value === void 0) {
+      if (value === null || value === void 0 || value === false || validatedName === "key" || typeof value === "function") {
         continue;
       }
-      if (validatedName === "class" && typeof value === "object") {
-        if (Array.isArray(value)) {
-          value = value.join(" ");
-        } else {
-          const classNames = [];
-          for (const className of Object.keys(value)) {
-            if (value[className]) {
-              classNames.push(className);
-            }
-          }
-          value = classNames.join(" ");
-        }
-      } else if (validatedName === "style" && typeof value === "object") {
-        if (Array.isArray(value)) {
-          value = value.join(";");
-        } else {
-          const styles = [];
-          for (let styleProperty of Object.keys(value)) {
-            const styleValue = value[styleProperty];
-            styleProperty = styleProperty.replace(MATCH_CAPITALS, HYPHENATE).toLowerCase();
-            styles.push(
-              `${styleProperty}:${Array.isArray(styleValue) ? styleValue.join(" ") : styleValue}`
-            );
-          }
-          value = styles.join(";");
-        }
-      }
+      value = validatedName === "style" && typeof value === "object" && !Array.isArray(value) ? styleToString(value) : attributeToString(validatedName, value);
       rendered += ` ${validatedName}="${escapeAttribute(value)}"`;
     }
     return rendered;
   };
-  var renderElements = (abstracts, state) => {
+  var expand = (abstracts, state) => {
+    if (!abstracts) {
+      return abstracts;
+    }
+    const expanded = [];
+    const add = (abstract) => {
+      if (abstract === null || abstract === void 0 || abstract === false) {
+        return;
+      }
+      if (abstract.r) {
+        for (const child of arrayify(abstract.r(state, abstract.m))) {
+          add(child);
+        }
+      } else if (abstract.t) {
+        expanded.push({
+          ...abstract,
+          c: expand(abstract.c, state)
+        });
+      } else if (abstract !== "") {
+        const last = expanded.length - 1;
+        if (last >= 0 && !expanded[last].t) {
+          expanded[last] += `${abstract}`;
+        } else {
+          expanded.push(`${abstract}`);
+        }
+      }
+    };
+    for (const abstract of abstracts) {
+      add(abstract);
+    }
+    return expanded;
+  };
+  var renderElements = (abstracts) => {
     let rendered = "";
     if (!abstracts) {
       return rendered;
     }
     for (const abstract of abstracts) {
-      if (abstract === null || abstract === void 0 || abstract === false) {
-        continue;
-      }
-      if (abstract.m) {
-        rendered += renderElements(
-          arrayifyOrUndefined(abstract.r(state, abstract.m)),
-          state
-        );
-      } else if (abstract.t) {
-        const type = validateName(abstract.t, "element").toLocaleLowerCase();
+      if (abstract.t) {
+        const type = validateName(abstract.t, "element").toLowerCase();
         rendered += `<${type}${renderAttributes(abstract.a)}`;
         if (SELF_CLOSING.has(type)) {
           rendered += "/>";
         } else {
-          rendered += `>${renderElements(abstract.c, state)}</${type}>`;
+          rendered += `>${renderElements(abstract.c)}</${type}>`;
         }
       } else {
-        rendered += ` ${escapeText(abstract)} `;
+        rendered += escapeText(abstract);
       }
     }
     return rendered;
   };
   var stringifyPatch = (abstractTree) => {
-    abstractTree = arrayifyOrUndefined(abstractTree);
+    abstractTree = expand(arrayifyOrUndefined(abstractTree));
     return [renderElements(abstractTree), abstractTree];
   };
   var stringify = (renderView, initialState) => {
     if (!initialState) {
       initialState = {};
     }
-    const abstractTree = arrayifyOrUndefined(renderView(initialState));
-    return [renderElements(abstractTree, initialState), abstractTree];
+    const abstractTree = expand(
+      arrayifyOrUndefined(renderView(initialState)),
+      initialState
+    );
+    return [renderElements(abstractTree), abstractTree];
   };
   var customStringify = (data) => {
     if (data === null) {
@@ -370,10 +390,11 @@
       return `[${values.join(",")}]`;
     }
     if (typeof data === "object") {
-      const keys = Object.keys(data).filter((key) => !key.startsWith("_"));
       const values = [];
-      for (const key of keys) {
-        values.push(`${JSON.stringify(key)}:${customStringify(data[key])}`);
+      for (const key of Object.keys(data)) {
+        if (!key.startsWith("_") && data[key] !== void 0 && typeof data[key] !== "function") {
+          values.push(`${JSON.stringify(key)}:${customStringify(data[key])}`);
+        }
       }
       return `{${values.join(",")}}`;
     }

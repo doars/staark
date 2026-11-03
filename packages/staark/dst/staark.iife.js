@@ -239,7 +239,8 @@
   };
 
   // ../staark-common/src/attribute.js
-  var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : `${value}`;
+  var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
+  var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
 
   // ../staark-common/src/compare.js
   var equalPlain = (valueA, valueB, path) => {
@@ -488,8 +489,8 @@
                 element.addEventListener(name, handleEvent);
               }
               elementListeners[name] = value;
-            } else if (name === "style" && type === "object") {
-              const oldStyle = oldValue && typeof oldValue === "object" ? oldValue : null;
+            } else if (name === "style" && type === "object" && !Array.isArray(value)) {
+              const oldStyle = oldValue && typeof oldValue === "object" && !Array.isArray(oldValue) ? oldValue : null;
               if (!oldStyle) {
                 element.style.cssText = "";
               }
@@ -497,9 +498,12 @@
                 const styleValue = value[styleName];
                 if (Object.hasOwn(value, styleName) && oldStyle?.[styleName] !== styleValue) {
                   if (styleName.includes("-", 1)) {
-                    element.style.setProperty(styleName, styleValue);
+                    element.style.setProperty(
+                      styleName,
+                      styleValueToString(styleValue)
+                    );
                   } else {
-                    element.style[styleName] = styleValue;
+                    element.style[styleName] = styleValueToString(styleValue);
                   }
                 }
               }

@@ -30,6 +30,8 @@
   var attribute_exports = {};
   __export(attribute_exports, {
     attributeToString: () => attributeToString,
+    styleToString: () => styleToString,
+    styleValueToString: () => styleValueToString,
     suffixNameIfMultiple: () => suffixNameIfMultiple
   });
   var SUFFIX_MULTIPLE = "[]";
@@ -38,7 +40,20 @@
       attributes.name += SUFFIX_MULTIPLE;
     }
   };
-  var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : `${value}`;
+  var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : name === "style" && Array.isArray(value) ? value.join(";") : `${value}`;
+  var styleValueToString = (value) => value === null || value === void 0 || value === false ? "" : Array.isArray(value) ? value.join(" ") : `${value}`;
+  var styleToString = (style) => {
+    const declarations = [];
+    for (const name of Object.keys(style)) {
+      const value = styleValueToString(style[name]);
+      if (value) {
+        declarations.push(
+          `${name.includes("-") ? name : name.replace(/[A-Z]/g, (capital) => `-${capital.toLowerCase()}`)}:${value}`
+        );
+      }
+    }
+    return declarations.join(";");
+  };
 
   // src/clone.js
   var clone_exports = {};
