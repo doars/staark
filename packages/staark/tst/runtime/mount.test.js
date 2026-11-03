@@ -252,6 +252,54 @@ describe('Mount', () => {
     assert.strictEqual(writes, 0)
   })
 
+  it('compares attributes with the previous render', async () => {
+    const div = document.createElement('div')
+    div.innerHTML = '<p class="old" title="kept" data-id="1"></p>'
+    const paragraph = div.firstChild
+    let writes = 0
+    const setAttribute = paragraph.setAttribute
+    paragraph.setAttribute = function (...args) {
+      writes++
+      return setAttribute.apply(this, args)
+    }
+    const [update, , state] = mount(div, (state) =>
+      node('p', { class: state.class, title: 'kept', 'data-id': state.id }),
+      { class: { new: true }, id: 1 },
+    )
+    assert.strictEqual(paragraph.outerHTML, '<p class="new" title="kept" data-id="1"></p>')
+    assert.strictEqual(writes, 1)
+
+    state.class = ['new']
+    state.id = '1'
+    await update()
+    assert.strictEqual(writes, 1)
+
+    state.class = { new: false, other: true }
+    state.id = 2
+    await update()
+    assert.strictEqual(paragraph.outerHTML, '<p class="other" title="kept" data-id="2"></p>')
+    assert.strictEqual(writes, 3)
+  })
+
+  it('ignores inherited attributes and styles', async () => {
+    const div = document.createElement('div')
+    Object.prototype.title = 'polluted'
+    Object.prototype.color = 'red'
+    try {
+      const [update, , state] = mount(div, (state) =>
+        node('p', { id: state.id, style: state.style }),
+        { id: 'a', style: { margin: '0' } },
+      )
+      state.id = 'b'
+      state.style = { padding: '0' }
+      await update()
+    } finally {
+      delete Object.prototype.title
+      delete Object.prototype.color
+    }
+    assert.strictEqual(div.innerHTML, '<p id="b" style="padding: 0px;"></p>')
+  })
+
   it('skips unchanged memo contents and supports empty and nested memos', async () => {
     const app = document.createElement('div')
     let renders = 0

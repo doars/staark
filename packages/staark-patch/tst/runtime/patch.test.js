@@ -244,6 +244,45 @@ describe('Patch', () => {
     assert.strictEqual(paragraph.className, 'active')
   })
 
+  it('compares attributes with the previous render', () => {
+    const div = document.createElement('div')
+    div.innerHTML = '<p class="old" title="kept" data-id="1"></p>'
+    const paragraph = div.firstChild
+    let writes = 0
+    const setAttribute = paragraph.setAttribute
+    paragraph.setAttribute = function (...args) {
+      writes++
+      return setAttribute.apply(this, args)
+    }
+    const patch = prepare(div)
+
+    patch(node('p', { class: { new: true }, title: 'kept', 'data-id': 1 }))
+    assert.strictEqual(paragraph.outerHTML, '<p class="new" title="kept" data-id="1"></p>')
+    assert.strictEqual(writes, 1)
+
+    patch(node('p', { class: ['new'], title: 'kept', 'data-id': '1' }))
+    assert.strictEqual(writes, 1)
+
+    patch(node('p', { class: { new: false, other: true }, title: 'kept', 'data-id': 2 }))
+    assert.strictEqual(paragraph.outerHTML, '<p class="other" title="kept" data-id="2"></p>')
+    assert.strictEqual(writes, 3)
+  })
+
+  it('ignores inherited attributes and styles', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    Object.prototype.title = 'polluted'
+    Object.prototype.color = 'red'
+    try {
+      patch(node('p', { id: 'a', style: { margin: '0' } }))
+      patch(node('p', { id: 'b', style: { padding: '0' } }))
+    } finally {
+      delete Object.prototype.title
+      delete Object.prototype.color
+    }
+    assert.strictEqual(div.innerHTML, '<p id="b" style="padding: 0px;"></p>')
+  })
+
   it('swaps and removes event listeners', () => {
     const div = document.createElement('div')
     const patch = prepare(div)

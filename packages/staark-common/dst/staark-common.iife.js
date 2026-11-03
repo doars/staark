@@ -29,6 +29,7 @@
   // src/attribute.js
   var attribute_exports = {};
   __export(attribute_exports, {
+    attributeToString: () => attributeToString,
     suffixNameIfMultiple: () => suffixNameIfMultiple
   });
   var SUFFIX_MULTIPLE = "[]";
@@ -37,6 +38,7 @@
       attributes.name += SUFFIX_MULTIPLE;
     }
   };
+  var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : `${value}`;
 
   // src/clone.js
   var clone_exports = {};

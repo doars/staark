@@ -1,8 +1,8 @@
-// Proxies created by proxify, so they are not wrapped again when passed back in.
+// Root proxies created by proxify, so they are not wrapped again when passed back in.
 const created = new WeakSet();
 
 /**
- * Checks whether the value is a proxy. Proxies created by proxify are always recognised. Other proxies are detected because structured cloning rejects a proxy itself but not a plain copy of it. A proxy whose contents can not be cloned is not detected.
+ * Checks whether the value is a proxy. Root proxies created by proxify are always recognised. Other proxies are detected because structured cloning rejects a proxy itself but not a plain copy of it. A proxy whose contents can not be cloned is not detected.
  *
  * @param {any} value Value to check.
  * @returns {boolean} Whether the value is a proxy.
@@ -102,7 +102,6 @@ export const proxify = (root, onChange) => {
 
 		proxy = new Proxy(target, handler);
 		proxies.set(target, proxy);
-		created.add(proxy);
 		// Recursively create proxies for each property.
 		for (const key of Object.keys(target)) {
 			if (target[key] && typeof target[key] === "object") {
@@ -113,5 +112,9 @@ export const proxify = (root, onChange) => {
 		return proxy;
 	};
 
-	return add(root);
+	const proxy = add(root);
+	if (proxy !== root) {
+		created.add(proxy);
+	}
+	return proxy;
 };

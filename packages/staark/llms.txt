@@ -44,7 +44,7 @@ mount(
 
 Mounts a view on an element. A string root is treated as a query selector. If it does not match, Staark appends a new `div` to `document.body` and uses that element.
 
-The initial state defaults to `{}`. A plain object is wrapped in a recursive proxy; mutations schedule a microtask render. A supplied proxy is used directly, so call `update()` when its mutations should render. Proxies are detected with `structuredClone`; a proxy whose contents can not be cloned (for example functions) is not detected and is wrapped instead. Serialized initial state is parsed as JSON.
+The initial state defaults to `{}`. A plain object is wrapped in a recursive proxy; mutations schedule a microtask render. A supplied proxy is used directly, so call `update()` when its mutations should render. The state proxy returned by `mount` is always recognised; other proxies are detected with `structuredClone`; a proxy whose contents can not be cloned (for example functions) is not detected and is wrapped instead. Serialized initial state is parsed as JSON.
 
 `oldAbstractTree` hydrates existing DOM produced by `@doars/staark-isomorphic`. A serialized tree is parsed as JSON. When no old tree is supplied, the root's existing children are converted into an abstract tree before reconciliation.
 
@@ -74,6 +74,7 @@ Attribute behavior in the DOM renderer:
 - `style` accepts a CSS string or an object. Camel-case properties are assigned through `element.style`; names containing hyphens use `style.setProperty`.
 - `value` updates both the attribute and live element property.
 - `null`, `undefined`, and `false` remove or omit an attribute.
+- Attributes, classes, and styles are compared with the previous render rather than read back from the DOM, so only changed values are written. Changes made to them outside staark are kept until the rendered value changes. Only own properties of attribute and style objects are applied.
 - `key` is sibling reconciliation metadata and is never written to the DOM. Keys must be stable and unique among siblings.
 
 ## `memo`

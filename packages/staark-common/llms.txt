@@ -76,6 +76,7 @@ a('.button[href=/next]', 'Next')
 - `childrenToNodes(element)` converts an element's DOM children into abstract nodes using their lowercase-preserving `localName`, and requires DOM APIs. Comments become `#comment` nodes.
 - `identifier(prefix)` returns a process-unique string using the prefix.
 - `marker` is the abstract-node discriminator string `'n'`.
+- `attributeToString(name, value)` converts an attribute value to the string written to the DOM, joining class arrays and the truthy keys of class objects.
 - `suffixNameIfMultiple(attributes)` normalizes multiple select-like attribute names.
 - `propertyNameToType(propertyName)` maps DOM property names to attribute types.
 - `selectorToTokenizer(selector)` tokenizes the selector syntax used by `nde` and `fctory`.

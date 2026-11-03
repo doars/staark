@@ -5,6 +5,7 @@ import {
 } from 'node:test'
 
 import {
+    attributeToString,
     suffixNameIfMultiple,
 } from '../../src/index.js'
 
@@ -38,6 +39,25 @@ describe('Attribute', () => {
       const attributes = { name: 'test' }
       suffixNameIfMultiple(attributes)
       assert.strictEqual(attributes.name, 'test')
+    })
+  })
+
+  describe('attributeToString', () => {
+    it('should return strings unchanged', () => {
+      assert.strictEqual(attributeToString('id', 'test'), 'test')
+    })
+
+    it('should convert other values to strings', () => {
+      assert.strictEqual(attributeToString('data-id', 1), '1')
+      assert.strictEqual(attributeToString('hidden', true), 'true')
+    })
+
+    it('should join class arrays', () => {
+      assert.strictEqual(attributeToString('class', ['a', 'b']), 'a b')
+    })
+
+    it('should join truthy keys of class objects', () => {
+      assert.strictEqual(attributeToString('class', { a: true, b: false, c: 1 }), 'a c')
     })
   })
 })

@@ -6,10 +6,12 @@
 - Move only the children outside the longest stable run when reconciling, so removing or swapping keyed items no longer moves every sibling.
 - Use a single reconciliation path for keyed and unkeyed children, with an in-place fast path for an unchanged prefix.
 - Skip diffing unchanged memo contents instead of cloning and re-diffing them, and allow memos that render nothing.
-- Only write attributes, classes, and styles that changed, while keeping `value` in sync with the state.
+- Only write attributes, classes, and styles that changed, while keeping `value` in sync with the state. Attributes and classes are compared with the previous render instead of being read back from the DOM.
+- Iterate attributes and styles with `for…in` and an own property check instead of allocating key arrays, which roughly halves the time to update a large list.
+- Clear removed styles with an empty string instead of `null`.
 - Set classes through `setAttribute`, which also works for SVG elements. Object classes no longer have a leading space.
-- Dispatch events through one shared listener per mount instead of a wrapper per handler.
-- Use supplied proxies directly as documented, instead of wrapping them again. Proxies created by `mount` are always recognised, other proxies are detected with `structuredClone`.
+- Dispatch events through one shared listener per mount instead of a wrapper per handler, and skip listeners that did not change.
+- Use supplied proxies directly as documented, instead of wrapping them again. State proxies returned by `mount` are always recognised, other proxies are detected with `structuredClone`. Nested objects are no longer registered individually, which makes assigning large objects to the state faster.
 - Compare memo memory with the smaller `equalPlain`. Maps, sets, and class instances in memory are now compared by identity, and circular memory always re-renders.
 - Reuse existing elements when hydrating, instead of recreating them.
 - Declare `sideEffects` so bundlers can tree-shake unused helpers.

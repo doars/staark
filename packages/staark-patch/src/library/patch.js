@@ -1,4 +1,5 @@
 import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
+import { attributeToString } from "@doars/staark-common/src/attribute.js";
 import { childrenToNodes } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 
@@ -18,8 +19,8 @@ import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
  */
 const updateAttributes = (element, newAttributes, oldAttributes) => {
 	if (newAttributes) {
-		for (const name of Object.keys(newAttributes)) {
-			if (name !== "key") {
+		for (const name in newAttributes) {
+			if (name !== "key" && Object.hasOwn(newAttributes, name)) {
 				let value = newAttributes[name];
 				const oldValue = oldAttributes?.[name];
 				if (value !== null && value !== undefined && value !== false) {
@@ -40,9 +41,12 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 						}
 
 						// Apply changed styles.
-						for (const styleName of Object.keys(value)) {
+						for (const styleName in value) {
 							const styleValue = value[styleName];
-							if (oldStyle?.[styleName] !== styleValue) {
+							if (
+								Object.hasOwn(value, styleName) &&
+								oldStyle?.[styleName] !== styleValue
+							) {
 								if (styleName.includes("-", 1)) {
 									element.style.setProperty(styleName, styleValue);
 								} else {
@@ -53,28 +57,27 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 
 						// Remove old styles.
 						if (oldStyle) {
-							for (const styleName of Object.keys(oldStyle)) {
-								if (!Object.hasOwn(value, styleName)) {
+							for (const styleName in oldStyle) {
+								if (
+									Object.hasOwn(oldStyle, styleName) &&
+									!Object.hasOwn(value, styleName)
+								) {
 									if (styleName.includes("-", 1)) {
 										element.style.removeProperty(styleName);
 									} else {
-										element.style[styleName] = null;
+										element.style[styleName] = "";
 									}
 								}
 							}
 						}
-					} else {
-						if (name === "class" && type === "object") {
-							value = Array.isArray(value)
-								? value.join(" ")
-								: Object.keys(value)
-										.filter((className) => value[className])
-										.join(" ");
-						} else if (type !== "string") {
-							// Ensure it is of type string.
-							value = value.toString();
-						}
-						if (element.getAttribute(name) !== value) {
+					} else if (value !== oldValue || name === "value") {
+						value = attributeToString(name, value);
+						if (
+							oldValue === null ||
+							oldValue === undefined ||
+							oldValue === false ||
+							attributeToString(name, oldValue) !== value
+						) {
 							element.setAttribute(name, value);
 						}
 						if (name === "value" && element.value !== value) {
@@ -88,8 +91,8 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 
 	// Cleanup old attributes.
 	if (oldAttributes) {
-		for (const name of Object.keys(oldAttributes)) {
-			if (name !== "key") {
+		for (const name in oldAttributes) {
+			if (name !== "key" && Object.hasOwn(oldAttributes, name)) {
 				const value = oldAttributes[name];
 				const newValue = newAttributes?.[name];
 				if (newValue === null || newValue === undefined || newValue === false) {

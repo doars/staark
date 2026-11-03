@@ -26,6 +26,9 @@ var node = (type, attributesOrContents, contents) => {
   };
 };
 
+// ../staark-common/src/attribute.js
+var attributeToString = (name, value) => typeof value === "string" ? value : name === "class" && typeof value === "object" ? Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ") : `${value}`;
+
 // ../staark-common/src/compare.js
 var equalPlain = (valueA, valueB, path) => {
   if (valueA === valueB) {
@@ -165,25 +168,28 @@ var proxify = (root, onChange) => {
     }
   };
   const add = (target) => {
-    let proxy = proxies.get(target);
-    if (proxy) {
-      return proxy;
+    let proxy2 = proxies.get(target);
+    if (proxy2) {
+      return proxy2;
     }
     const prototype = Object.getPrototypeOf(target);
     if (!Array.isArray(target) && prototype !== Object.prototype && prototype !== null) {
       return target;
     }
-    proxy = new Proxy(target, handler);
-    proxies.set(target, proxy);
-    created.add(proxy);
+    proxy2 = new Proxy(target, handler);
+    proxies.set(target, proxy2);
     for (const key of Object.keys(target)) {
       if (target[key] && typeof target[key] === "object") {
         target[key] = add(target[key]);
       }
     }
-    return proxy;
+    return proxy2;
   };
-  return add(root);
+  const proxy = add(root);
+  if (proxy !== root) {
+    created.add(proxy);
+  }
+  return proxy;
 };
 
 // src/library/mount.js
@@ -204,8 +210,8 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
   };
   const updateAttributes = (element, newAttributes, oldAttributes) => {
     if (newAttributes) {
-      for (const name of Object.keys(newAttributes)) {
-        if (name === "key") {
+      for (const name in newAttributes) {
+        if (name === "key" || !Object.hasOwn(newAttributes, name)) {
           continue;
         }
         let value = newAttributes[name];
@@ -213,6 +219,9 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
         if (value !== null && value !== void 0 && value !== false) {
           const type = typeof value;
           if (type === "function") {
+            if (value === oldValue) {
+              continue;
+            }
             let elementListeners = listeners.get(element);
             if (!elementListeners) {
               elementListeners = {};
@@ -227,9 +236,9 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
             if (!oldStyle) {
               element.style.cssText = "";
             }
-            for (const styleName of Object.keys(value)) {
+            for (const styleName in value) {
               const styleValue = value[styleName];
-              if (oldStyle?.[styleName] !== styleValue) {
+              if (Object.hasOwn(value, styleName) && oldStyle?.[styleName] !== styleValue) {
                 if (styleName.includes("-", 1)) {
                   element.style.setProperty(styleName, styleValue);
                 } else {
@@ -238,23 +247,19 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
               }
             }
             if (oldStyle) {
-              for (const styleName of Object.keys(oldStyle)) {
-                if (!Object.hasOwn(value, styleName)) {
+              for (const styleName in oldStyle) {
+                if (Object.hasOwn(oldStyle, styleName) && !Object.hasOwn(value, styleName)) {
                   if (styleName.includes("-", 1)) {
                     element.style.removeProperty(styleName);
                   } else {
-                    element.style[styleName] = null;
+                    element.style[styleName] = "";
                   }
                 }
               }
             }
-          } else {
-            if (name === "class" && type === "object") {
-              value = Array.isArray(value) ? value.join(" ") : Object.keys(value).filter((className) => value[className]).join(" ");
-            } else if (type !== "string") {
-              value = value.toString();
-            }
-            if (element.getAttribute(name) !== value) {
+          } else if (value !== oldValue || name === "value") {
+            value = attributeToString(name, value);
+            if (oldValue === null || oldValue === void 0 || oldValue === false || attributeToString(name, oldValue) !== value) {
               element.setAttribute(name, value);
             }
             if (name === "value" && element.value !== value) {
@@ -265,8 +270,8 @@ var mount = (rootElement, renderView, initialState, oldAbstractTree) => {
       }
     }
     if (oldAttributes) {
-      for (const name of Object.keys(oldAttributes)) {
-        if (name === "key") {
+      for (const name in oldAttributes) {
+        if (name === "key" || !Object.hasOwn(oldAttributes, name)) {
           continue;
         }
         const newValue = newAttributes?.[name];
