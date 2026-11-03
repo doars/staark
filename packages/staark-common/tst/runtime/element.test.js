@@ -7,6 +7,7 @@ import { Text, Window } from 'happy-dom'
 
 import {
   childrenToNodes,
+  setStyle,
 } from '../../src/index.js'
 
 const window = new Window()
@@ -66,6 +67,23 @@ describe('Element', () => {
       assert.deepStrictEqual(result[0].a, {})
       assert.strictEqual(result[1].t, 'svg')
       assert.strictEqual(result[1].c[0].t, 'linearGradient')
+    })
+  })
+
+  describe('setStyle', () => {
+    it('sets and removes camel cased and hyphenated properties', () => {
+      const element = document.createElement('div')
+      setStyle(element, 'backgroundColor', 'red')
+      setStyle(element, 'font-size', '12px')
+      setStyle(element, '--gap', '4px')
+      assert.strictEqual(element.style.backgroundColor, 'red')
+      assert.strictEqual(element.style.fontSize, '12px')
+      assert.strictEqual(element.style.getPropertyValue('--gap'), '4px')
+
+      setStyle(element, 'backgroundColor', '')
+      setStyle(element, 'font-size', '')
+      setStyle(element, '--gap', '')
+      assert.strictEqual(element.style.cssText, '')
     })
   })
 })

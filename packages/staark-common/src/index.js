@@ -2,6 +2,7 @@
  * @module staark-common
  */
 
+export * from "./absent.js";
 export * from "./array.js";
 export * from "./attribute.js";
 export * from "./clone.js";

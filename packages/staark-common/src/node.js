@@ -1,3 +1,4 @@
+import { isAbsent } from "./absent.js";
 import { arrayifyOrUndefined } from "./array.js";
 import { marker } from "./marker.js";
 
@@ -36,9 +37,7 @@ import { marker } from "./marker.js";
  */
 export const node = (type, attributesOrContents, contents) => {
 	if (
-		attributesOrContents !== null &&
-		attributesOrContents !== undefined &&
-		attributesOrContents !== false &&
+		!isAbsent(attributesOrContents) &&
 		(typeof attributesOrContents !== "object" ||
 			attributesOrContents._ === marker ||
 			Array.isArray(attributesOrContents))

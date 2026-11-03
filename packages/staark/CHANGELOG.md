@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clear the root element with `replaceChildren` when unmounting.
+- Only treat lowercase `svg` as the start of SVG content. Element types are lowercase, so `SVG` never created a valid SVG element.
 - Fix `node("p", 0)` and other zero or empty string contents rendering nothing. Only `null`, `undefined`, and `false` mean no contents.
 - Run `unshift`, `shift`, `splice`, `sort`, `reverse`, `fill`, and `copyWithin` on the state's arrays without going through the proxy for every moved item, and report a single change when an item or the length changed. Inserting or removing an item at the start of a long list is about a third faster.
 - Run array methods that only read, such as `map`, `filter`, `find`, `includes`, and iteration with `for…of`, on the state's arrays without reading every item through the proxy. Callbacks still receive the proxy as the array argument. Rendering a list of 10,000 rows is about 0.6 ms faster.

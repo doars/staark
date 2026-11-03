@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add `isAbsent`, which checks for `null`, `undefined`, and `false`, the values that mean an attribute or contents are not set.
+- Add `setStyle`, used by the DOM renderers to set and remove style properties.
 - Treat only `null`, `undefined`, and `false` as no contents in `node`, `arrayify`, and `arrayifyOrUndefined`, so zero and empty strings are kept.
 - Avoid creating a closure per call in `equalPlain`.
 - Only allocate the comparison cache in `equalRecursive` when comparing objects.

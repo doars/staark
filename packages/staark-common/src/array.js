@@ -1,3 +1,5 @@
+import { isAbsent } from "./absent.js";
+
 /**
  * Ensure the data is an array if it isn't already. `null`, `undefined`, and `false` are converted to empty arrays.
  *
@@ -15,8 +17,4 @@ export const arrayify = (data) => arrayifyOrUndefined(data) || [];
  * @returns {(T[]|undefined)} An array containing the data or undefined.
  */
 export const arrayifyOrUndefined = (data) =>
-	data === null || data === undefined || data === false
-		? undefined
-		: Array.isArray(data)
-			? data
-			: [data];
+	isAbsent(data) ? undefined : Array.isArray(data) ? data : [data];

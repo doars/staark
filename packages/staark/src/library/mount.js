@@ -1,3 +1,4 @@
+import { isAbsent } from "@doars/staark-common/src/absent.js";
 import {
 	arrayify,
 	arrayifyOrUndefined,
@@ -7,7 +8,7 @@ import {
 	styleValueToString,
 } from "@doars/staark-common/src/attribute.js";
 import { clonePlain, equalPlain } from "@doars/staark-common/src/compare.js";
-import { childrenToNodes } from "@doars/staark-common/src/element.js";
+import { childrenToNodes, setStyle } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 import { isProxy, proxify, toTarget } from "./proxy.js";
 
@@ -78,7 +79,7 @@ export const mount = (
 				}
 				let value = newAttributes[name];
 				const oldValue = oldAttributes?.[name];
-				if (value !== null && value !== undefined && value !== false) {
+				if (!isAbsent(value)) {
 					const type = typeof value;
 					if (type === "function") {
 						if (value === oldValue) {
@@ -113,14 +114,7 @@ export const mount = (
 								Object.hasOwn(value, styleName) &&
 								oldStyle?.[styleName] !== styleValue
 							) {
-								if (styleName.includes("-", 1)) {
-									element.style.setProperty(
-										styleName,
-										styleValueToString(styleValue),
-									);
-								} else {
-									element.style[styleName] = styleValueToString(styleValue);
-								}
+								setStyle(element, styleName, styleValueToString(styleValue));
 							}
 						}
 
@@ -130,20 +124,14 @@ export const mount = (
 									Object.hasOwn(oldStyle, styleName) &&
 									!Object.hasOwn(value, styleName)
 								) {
-									if (styleName.includes("-", 1)) {
-										element.style.removeProperty(styleName);
-									} else {
-										element.style[styleName] = "";
-									}
+									setStyle(element, styleName, "");
 								}
 							}
 						}
 					} else if (value !== oldValue || name === "value") {
 						value = attributeToString(name, value);
 						if (
-							oldValue === null ||
-							oldValue === undefined ||
-							oldValue === false ||
+							isAbsent(oldValue) ||
 							attributeToString(name, oldValue) !== value
 						) {
 							element.setAttribute(name, value);
@@ -162,7 +150,7 @@ export const mount = (
 					continue;
 				}
 				const newValue = newAttributes?.[name];
-				if (newValue === null || newValue === undefined || newValue === false) {
+				if (isAbsent(newValue)) {
 					if (typeof oldAttributes[name] === "function") {
 						element.removeEventListener(name, handleEvent);
 						delete listeners.get(element)[name];
@@ -258,7 +246,7 @@ export const mount = (
 			return document.createTextNode(abstract);
 		}
 
-		inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+		inSvg = inSvg || abstract.t === "svg";
 		const element = inSvg
 			? document.createElementNS("http://www.w3.org/2000/svg", abstract.t)
 			: document.createElement(abstract.t);
@@ -287,7 +275,7 @@ export const mount = (
 				node,
 				newAbstract.c,
 				oldAbstract.c,
-				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
+				inSvg || newAbstract.t === "svg",
 			);
 		} else {
 			node.textContent = newAbstract;
@@ -479,9 +467,7 @@ export const mount = (
 				active = false;
 				updatePromise = null;
 
-				for (let i = rootElement.childNodes.length - 1; i >= 0; i--) {
-					rootElement.childNodes[i].remove();
-				}
+				rootElement.replaceChildren();
 			}
 		},
 		state,

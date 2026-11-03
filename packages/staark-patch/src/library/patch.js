@@ -1,9 +1,10 @@
+import { isAbsent } from "@doars/staark-common/src/absent.js";
 import { arrayifyOrUndefined } from "@doars/staark-common/src/array.js";
 import {
 	attributeToString,
 	styleValueToString,
 } from "@doars/staark-common/src/attribute.js";
-import { childrenToNodes } from "@doars/staark-common/src/element.js";
+import { childrenToNodes, setStyle } from "@doars/staark-common/src/element.js";
 import { increasingSubsequence } from "@doars/staark-common/src/sequence.js";
 
 /**
@@ -26,7 +27,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 			if (name !== "key" && Object.hasOwn(newAttributes, name)) {
 				let value = newAttributes[name];
 				const oldValue = oldAttributes?.[name];
-				if (value !== null && value !== undefined && value !== false) {
+				if (!isAbsent(value)) {
 					const type = typeof value;
 					if (type === "function") {
 						if (oldValue !== value) {
@@ -58,14 +59,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 								Object.hasOwn(value, styleName) &&
 								oldStyle?.[styleName] !== styleValue
 							) {
-								if (styleName.includes("-", 1)) {
-									element.style.setProperty(
-										styleName,
-										styleValueToString(styleValue),
-									);
-								} else {
-									element.style[styleName] = styleValueToString(styleValue);
-								}
+								setStyle(element, styleName, styleValueToString(styleValue));
 							}
 						}
 
@@ -76,20 +70,14 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 									Object.hasOwn(oldStyle, styleName) &&
 									!Object.hasOwn(value, styleName)
 								) {
-									if (styleName.includes("-", 1)) {
-										element.style.removeProperty(styleName);
-									} else {
-										element.style[styleName] = "";
-									}
+									setStyle(element, styleName, "");
 								}
 							}
 						}
 					} else if (value !== oldValue || name === "value") {
 						value = attributeToString(name, value);
 						if (
-							oldValue === null ||
-							oldValue === undefined ||
-							oldValue === false ||
+							isAbsent(oldValue) ||
 							attributeToString(name, oldValue) !== value
 						) {
 							element.setAttribute(name, value);
@@ -109,7 +97,7 @@ const updateAttributes = (element, newAttributes, oldAttributes) => {
 			if (name !== "key" && Object.hasOwn(oldAttributes, name)) {
 				const value = oldAttributes[name];
 				const newValue = newAttributes?.[name];
-				if (newValue === null || newValue === undefined || newValue === false) {
+				if (isAbsent(newValue)) {
 					if (typeof value === "function") {
 						element.removeEventListener(name, value);
 					} else {
@@ -150,7 +138,7 @@ export const prepare = (rootElement, oldAbstractTree) => {
 			return document.createTextNode(abstract);
 		}
 
-		inSvg = inSvg || abstract.t === "SVG" || abstract.t === "svg";
+		inSvg = inSvg || abstract.t === "svg";
 		const element = inSvg
 			? document.createElementNS("http://www.w3.org/2000/svg", abstract.t)
 			: document.createElement(abstract.t);
@@ -177,7 +165,7 @@ export const prepare = (rootElement, oldAbstractTree) => {
 				node,
 				newAbstract.c,
 				oldAbstract.c,
-				inSvg || newAbstract.t === "SVG" || newAbstract.t === "svg",
+				inSvg || newAbstract.t === "svg",
 			);
 		} else {
 			node.textContent = newAbstract;

@@ -283,6 +283,16 @@ describe('Patch', () => {
     assert.strictEqual(div.innerHTML, '<p id="b" style="padding: 0px;"></p>')
   })
 
+  it('sets and removes hyphenated and custom style properties', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    patch(node('p', { style: { 'font-size': '12px', '--gap': '4px' } }))
+    assert.strictEqual(div.firstChild.style.fontSize, '12px')
+    assert.strictEqual(div.firstChild.style.getPropertyValue('--gap'), '4px')
+    patch(node('p', { style: { color: 'red' } }))
+    assert.strictEqual(div.firstChild.style.cssText, 'color: red;')
+  })
+
   it('renders zero as contents', () => {
     const div = document.createElement('div')
     const patch = prepare(div)
