@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix `node("p", 0)` and other zero or empty string contents rendering nothing. Only `null`, `undefined`, and `false` mean no contents.
 - Fix `false` attributes being rendered, for example `hidden="false"`, which hid the element and was kept after hydration.
 - Fix keys and event listeners being written to the HTML, including the listener's source code.
 - Fix memos whose memory is falsy rendering as `[object Object]`.

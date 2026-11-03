@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix `node("p", 0)` and other zero or empty string contents rendering nothing. Only `null`, `undefined`, and `false` mean no contents.
 - Fix style properties set to `null`, `undefined`, or `false` not being removed. Browsers ignore them as invalid values, so the previous value was kept.
 - Support style arrays, which are joined into a list of declarations, and arrays as style values, which are joined with spaces.
 - Update a shared suffix of keyed children in place, so inserting or removing children near the start of a list only touches those children.
