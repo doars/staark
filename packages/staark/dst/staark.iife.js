@@ -229,13 +229,11 @@
   // ../../helpers/iife.js
   var iife = (path, data) => {
     let subject = window;
-    for (let i = 0; i < path.length - 1; i++) {
-      if (!subject[path[i]] || typeof subject[path[i]] !== "object") {
-        subject[path[i]] = {};
-      }
-      subject = subject[path[i]];
+    const last = path.pop();
+    for (const key of path) {
+      subject = subject[key] && typeof subject[key] === "object" ? subject[key] : subject[key] = {};
     }
-    subject[path[path.length - 1]] = data;
+    subject[last] = data;
   };
 
   // ../staark-common/src/attribute.js
@@ -430,7 +428,7 @@
     };
     const methods = /* @__PURE__ */ Object.create(null);
     const wrap = (names, type) => {
-      for (const name of names.split(" ")) {
+      for (const name of names) {
         const method = Array.prototype[name];
         if (method) {
           methods[name] = function(...args) {
@@ -463,13 +461,38 @@
         }
       }
     };
-    wrap("includes indexOf join slice toReversed toSorted values", 0);
     wrap(
-      "every filter find findIndex findLast findLastIndex flatMap forEach map some",
+      [
+        "includes",
+        "indexOf",
+        "join",
+        "slice",
+        "toReversed",
+        "toSorted",
+        "values"
+      ],
+      0
+    );
+    wrap(
+      [
+        "every",
+        "filter",
+        "find",
+        "findIndex",
+        "findLast",
+        "findLastIndex",
+        "flatMap",
+        "forEach",
+        "map",
+        "some"
+      ],
       1
     );
-    wrap("reduce reduceRight", 2);
-    wrap("copyWithin fill reverse shift sort splice unshift", 3);
+    wrap(["reduce", "reduceRight"], 2);
+    wrap(
+      ["copyWithin", "fill", "reverse", "shift", "sort", "splice", "unshift"],
+      3
+    );
     methods[Symbol.iterator] = methods.values;
     const arrayHandler = {
       ...handler,

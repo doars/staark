@@ -218,7 +218,7 @@ var proxify = (root, onChange) => {
   };
   const methods = /* @__PURE__ */ Object.create(null);
   const wrap = (names, type) => {
-    for (const name of names.split(" ")) {
+    for (const name of names) {
       const method = Array.prototype[name];
       if (method) {
         methods[name] = function(...args) {
@@ -251,13 +251,38 @@ var proxify = (root, onChange) => {
       }
     }
   };
-  wrap("includes indexOf join slice toReversed toSorted values", 0);
   wrap(
-    "every filter find findIndex findLast findLastIndex flatMap forEach map some",
+    [
+      "includes",
+      "indexOf",
+      "join",
+      "slice",
+      "toReversed",
+      "toSorted",
+      "values"
+    ],
+    0
+  );
+  wrap(
+    [
+      "every",
+      "filter",
+      "find",
+      "findIndex",
+      "findLast",
+      "findLastIndex",
+      "flatMap",
+      "forEach",
+      "map",
+      "some"
+    ],
     1
   );
-  wrap("reduce reduceRight", 2);
-  wrap("copyWithin fill reverse shift sort splice unshift", 3);
+  wrap(["reduce", "reduceRight"], 2);
+  wrap(
+    ["copyWithin", "fill", "reverse", "shift", "sort", "splice", "unshift"],
+    3
+  );
   methods[Symbol.iterator] = methods.values;
   const arrayHandler = {
     ...handler,
