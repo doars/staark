@@ -350,6 +350,32 @@ describe('Mount', () => {
     assert.strictEqual(div.innerHTML, '<ul><li>c</li><li>B</li><li>a</li><li>x</li><li>z</li></ul>')
   })
 
+  it('creates and updates single text children', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => state.items.map((item) => node('p', [item])), { items: ['', 'a', '0'] })
+    assert.strictEqual(div.innerHTML, '<p></p><p>a</p><p>0</p>')
+    assert.strictEqual(div.firstChild.childNodes.length, 1)
+    state.items = ['x', 'b', 'c']
+    await update()
+    assert.strictEqual(div.innerHTML, '<p>x</p><p>b</p><p>c</p>')
+  })
+
+  it('keeps a shared keyed suffix in place', async () => {
+    const div = document.createElement('div')
+    const [update, , state] = mount(div, (state) => node('ul', state.keys.map((key) => node('li', { key }, key))), { keys: ['a', 'b', 'c', 'd'] })
+    const [a, b, c, d] = div.firstChild.children
+
+    state.keys = ['a', 'c', 'b', 'x', 'd']
+    await update()
+    assert.strictEqual(div.innerHTML, '<ul><li>a</li><li>c</li><li>b</li><li>x</li><li>d</li></ul>')
+    assert.deepStrictEqual([...div.firstChild.children].filter((child) => child.textContent !== 'x'), [a, c, b, d])
+
+    state.keys = ['y', 'a', 'b', 'x', 'd']
+    await update()
+    assert.strictEqual(div.innerHTML, '<ul><li>y</li><li>a</li><li>b</li><li>x</li><li>d</li></ul>')
+    assert.strictEqual(div.firstChild.lastChild, d)
+  })
+
   it('skips unchanged memo contents and supports empty and nested memos', async () => {
     const app = document.createElement('div')
     let renders = 0

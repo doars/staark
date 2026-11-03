@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Update a shared suffix of keyed children in place, so inserting or removing children near the start of a list only touches those children.
 - Fix memos not re-rendering when their memory, such as a state object, is mutated in place. A copy of the memory is now compared instead.
 - Reuse memos rendered in lists. Memos sharing a render function were previously cached as one, so only the last one could be reused. They are now matched by their memory first and their position second.
 - Fix proxies being wrapped again when assigned back to the state, for example when sorting or reversing an array, which stacked proxies and triggered an update per layer.

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Update a shared suffix of keyed children in place, so inserting or removing children near the start of a list only touches those children.
 - Fix the ESM builds in `dst/` being emitted as IIFEs without exports.
 - Use a single reconciliation path for keyed and unkeyed children, with an in-place fast path for an unchanged prefix, and only move children outside the longest stable run.
 - Skip unchanged abstract nodes and stop mutating the previous abstract tree.
