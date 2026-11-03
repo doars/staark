@@ -89,6 +89,56 @@ export const proxify = (root, onChange) => {
 	};
 
 	/**
+	 * Wraps an array method that moves existing items, so it runs on the target instead of through the proxy. Otherwise every moved item passes through the set trap, which is slow for long arrays.
+	 *
+	 * @param {string} name - Name of the array method.
+	 * @param {number} start - Index of the first argument that is an item to insert.
+	 * @param {(length: number, args: any[], result: any) => boolean} changed - Whether the call changed the array, given the length before the call.
+	 * @returns {Function} - The wrapped method.
+	 */
+	const wrap = (name, start, changed) =>
+		function (...args) {
+			const target = toTarget(this);
+			// Only wrap calls on arrays that are tracked by this proxify call.
+			if (proxies.get(target) !== this) {
+				return Array.prototype[name].apply(this, args);
+			}
+			for (let index = start; index < args.length; index++) {
+				const value = args[index];
+				if (value && typeof value === "object") {
+					args[index] = add(value);
+				}
+			}
+			const length = target.length;
+			const result = Array.prototype[name].apply(target, args);
+			if (changed(length, args, result)) {
+				onChange();
+			}
+			return result === target ? this : result;
+		};
+	const always = () => true;
+	const methods = {
+		copyWithin: wrap("copyWithin", Infinity, always),
+		fill: wrap("fill", 0, always),
+		reverse: wrap("reverse", Infinity, always),
+		shift: wrap("shift", Infinity, (length) => length > 0),
+		sort: wrap("sort", Infinity, always),
+		splice: wrap(
+			"splice",
+			2,
+			(_length, args, result) => result.length > 0 || args.length > 2,
+		),
+		unshift: wrap("unshift", 0, (_length, args) => args.length > 0),
+	};
+	const arrayHandler = {
+		...handler,
+		get: (target, key, receiver) =>
+			typeof key === "string" && Object.hasOwn(methods, key)
+				? methods[key]
+				: Reflect.get(target, key, receiver),
+	};
+
+	/**
 	 * Recursively creates proxies for each property of the target object to track changes.
 	 *
 	 * @param {Record<string, any>} target - The object to be proxified.
@@ -108,7 +158,7 @@ export const proxify = (root, onChange) => {
 			return target;
 		}
 
-		proxy = new Proxy(target, handler);
+		proxy = new Proxy(target, Array.isArray(target) ? arrayHandler : handler);
 		proxies.set(target, proxy);
 		targets.set(proxy, target);
 		// Recursively create proxies for each property.
