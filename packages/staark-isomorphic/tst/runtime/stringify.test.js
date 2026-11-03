@@ -17,7 +17,7 @@ describe('Stringify', () => {
     const [rendered, abstractTree] = stringify(
       () => node('h1', 'Hello world'),
     )
-    assert.strictEqual(rendered, '<h1> Hello world </h1>')
+    assert.strictEqual(rendered, '<h1>Hello world</h1>')
     assert.notStrictEqual(abstractTree, undefined)
     assert.strictEqual(abstractTree[0].t, 'h1')
     assert.deepStrictEqual(abstractTree[0].c, ['Hello world'])
@@ -27,7 +27,7 @@ describe('Stringify', () => {
     const [rendered, abstractTree] = stringifyPatch(
       node('h1', 'hello world'),
     )
-    assert.strictEqual(rendered, '<h1> hello world </h1>')
+    assert.strictEqual(rendered, '<h1>hello world</h1>')
     assert.notStrictEqual(abstractTree, undefined)
     assert.strictEqual(abstractTree[0].t, 'h1')
     assert.deepStrictEqual(abstractTree[0].c, ['hello world'])
@@ -43,7 +43,7 @@ describe('Stringify', () => {
         enabled: true,
       },
     )
-    assert.strictEqual(rendered, '<h1 title="Greeting"> hello "world" </h1>')
+    assert.strictEqual(rendered, '<h1 title="Greeting">hello "world"</h1>')
     assert.deepStrictEqual(JSON.parse(abstractTreeString), [{
       a: {
         title: 'Greeting',
@@ -61,9 +61,8 @@ describe('Stringify', () => {
     const [rendered, abstractTreeString] = stringifyPatchFull(
       node('h1', 'hello world'),
     )
-    assert.strictEqual(rendered, '<h1> hello world </h1>')
+    assert.strictEqual(rendered, '<h1>hello world</h1>')
     assert.deepStrictEqual(JSON.parse(abstractTreeString), [{
-      a: null,
       c: ['hello world'],
       t: 'h1',
     }])
@@ -78,7 +77,7 @@ describe('Stringify', () => {
       },
       '<script>alert("unsafe")</script> & text',
     )
-    const expected = '<custom-element aria-label="&quot;&#39; &amp; &lt; &gt;" xlink:href="javascript:alert(&#39;unsafe&#39;)"> &lt;script&gt;alert("unsafe")&lt;/script&gt; &amp; text </custom-element>'
+    const expected = '<custom-element aria-label="&quot;&#39; &amp; &lt; &gt;" xlink:href="javascript:alert(&#39;unsafe&#39;)">&lt;script&gt;alert("unsafe")&lt;/script&gt; &amp; text</custom-element>'
 
     assert.strictEqual(stringify(() => abstractTree)[0], expected)
     assert.strictEqual(stringifyPatch(abstractTree)[0], expected)

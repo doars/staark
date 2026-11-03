@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix style properties set to `null`, `undefined`, or `false` not being removed. Browsers ignore them as invalid values, so the previous value was kept.
+- Support style arrays, which are joined into a list of declarations, and arrays as style values, which are joined with spaces.
 - Update a shared suffix of keyed children in place, so inserting or removing children near the start of a list only touches those children.
 - Fix the ESM builds in `dst/` being emitted as IIFEs without exports.
 - Use a single reconciliation path for keyed and unkeyed children, with an in-place fast path for an unchanged prefix, and only move children outside the longest stable run.

@@ -311,6 +311,21 @@ describe('Patch', () => {
     assert.strictEqual(div.firstChild.lastChild, d)
   })
 
+  it('removes styles set to false and supports style arrays', () => {
+    const div = document.createElement('div')
+    const patch = prepare(div)
+    patch(node('p', { style: { color: 'red', marginTop: '1px' } }))
+    patch(node('p', { style: { color: false, marginTop: '1px' } }))
+    assert.strictEqual(div.firstChild.style.color, '')
+    assert.strictEqual(div.firstChild.style.marginTop, '1px')
+
+    patch(node('p', { style: ['color:blue', 'margin:0'] }))
+    assert.strictEqual(div.firstChild.style.color, 'blue')
+    patch(node('p', { style: { padding: '0' } }))
+    assert.strictEqual(div.firstChild.style.color, '')
+    assert.strictEqual(div.firstChild.style.padding, '0px')
+  })
+
   it('swaps and removes event listeners', () => {
     const div = document.createElement('div')
     const patch = prepare(div)

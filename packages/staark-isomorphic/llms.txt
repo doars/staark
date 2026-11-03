@@ -52,10 +52,12 @@ Renders a view and serializes both the normalized tree and initial state. Pass t
 
 - Text and attribute values are HTML-escaped.
 - Element and attribute names containing unsafe characters are rejected.
-- Function-valued attributes such as event listeners are not written to HTML.
-- `class` arrays and truth maps are normalized; style objects use kebab-case property names in rendered HTML.
+- Attributes are written the same way the DOM renderers write them. `null`, `undefined`, and `false` values, keys, and function-valued attributes such as event listeners are not written to HTML.
+- `class` arrays and truth maps are normalized. Style arrays are joined into declarations, and style objects use kebab-case property names, join array values with spaces, and leave out `null`, `undefined`, and `false` values.
+- Elements that can not have contents, such as `input`, `br`, and `col`, are rendered without a closing tag.
+- Memos are rendered into their contents. The returned and serialized tree is normalized to match the DOM a browser parses from the HTML: memos are replaced by their contents, adjacent text is merged, and empty text is left out. Hydrating with it reuses the server-rendered elements.
 - Keys are reconciliation metadata and are omitted from HTML but retained in serialized hydration data.
-- The custom abstract-tree serializer omits object keys beginning with `_`. Unsupported values such as functions become `null`.
+- The custom abstract-tree serializer omits object keys beginning with `_`. Like JSON, functions and `undefined` values are left out of objects, other unsupported values become `null`.
 - State is serialized with `JSON.stringify`, so it must satisfy normal JSON serialization constraints.
 - `stringifyPatch` and `stringifyPatchFull` cannot render a memo node meaningfully because they receive no state. Use `stringify` or `stringifyFull` for views containing `memo`.
 

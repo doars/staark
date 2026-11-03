@@ -78,6 +78,8 @@ a('.button[href=/next]', 'Next')
 - `identifier(prefix)` returns a process-unique string using the prefix.
 - `marker` is the abstract-node discriminator string `'n'`.
 - `attributeToString(name, value)` converts an attribute value to the string written to the DOM, joining class arrays and the truthy keys of class objects.
+- `styleValueToString(value)` converts a style property value, joining arrays with spaces and turning `null`, `undefined`, and `false` into an empty string.
+- `styleToString(style)` converts a style object to declarations with kebab-case names, leaving out empty values.
 - `suffixNameIfMultiple(attributes)` normalizes multiple select-like attribute names.
 - `propertyNameToType(propertyName)` maps DOM property names to attribute types.
 - `selectorToTokenizer(selector)` tokenizes the selector syntax used by `nde` and `fctory`.

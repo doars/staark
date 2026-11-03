@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Fix `false` attributes being rendered, for example `hidden="false"`, which hid the element and was kept after hydration.
+- Fix keys and event listeners being written to the HTML, including the listener's source code.
+- Fix memos whose memory is falsy rendering as `[object Object]`.
+- Stop padding text with spaces, which changed the spacing of inline content.
+- Return and serialize the tree normalized to match the DOM a browser parses from the HTML: memos are replaced by their contents, adjacent text is merged, and empty text is left out. Hydrating now reuses the server-rendered elements, including those rendered by memos.
+- Leave out `undefined` values and functions when serializing the tree, like JSON.
+- Share attribute and style conversion with the DOM renderers. Style objects leave out `null`, `undefined`, and `false` values.
+- Render `area`, `col`, `embed`, `param`, and `track` without a closing tag.
+- Lowercase element types without depending on the locale.
+
 ## 1.6.10
 
 - Update and improve the `README.md`.
