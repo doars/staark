@@ -1142,19 +1142,20 @@ var cloneRecursive = (value, clones = /* @__PURE__ */ new WeakMap()) => {
   clones.set(value, clone);
   for (const key of Object.keys(value)) {
     if (key === "__proto__") {
-      throw new TypeError("Unsafe diff path component: __proto__");
+      Object.defineProperty(clone, key, {
+        configurable: true,
+        enumerable: true,
+        value: cloneRecursive(value[key], clones),
+        writable: true
+      });
+    } else {
+      clone[key] = cloneRecursive(value[key], clones);
     }
-    clone[key] = cloneRecursive(value[key], clones);
   }
   return clone;
 };
 
 // ../tiedliene/src/library/diff.js
-var FORBIDDEN_PATH_COMPONENTS = /* @__PURE__ */ new Set([
-  "__proto__",
-  "constructor",
-  "prototype"
-]);
 var ARRAY_INDEX = /^(0|[1-9]\d*)$/;
 var validatePath = (path) => {
   if (!Array.isArray(path) || path.length === 0) {
@@ -1165,9 +1166,6 @@ var validatePath = (path) => {
       throw new TypeError(
         "Diff path components must be strings or array indices"
       );
-    }
-    if (FORBIDDEN_PATH_COMPONENTS.has(String(component))) {
-      throw new TypeError(`Unsafe diff path component: ${String(component)}`);
     }
   }
   return path;
@@ -1270,8 +1268,12 @@ var setValueAtPath = (record, path, value, inserting) => {
   for (let index = 0; index < path.length - 1; index++) {
     const key2 = getKey(current, path[index]);
     if (!Object.hasOwn(current, key2)) {
-      const nextComponent = path[index + 1];
-      current[key2] = typeof nextComponent === "number" ? [] : /* @__PURE__ */ Object.create(null);
+      Object.defineProperty(current, key2, {
+        configurable: true,
+        enumerable: true,
+        value: typeof path[index + 1] === "number" ? [] : /* @__PURE__ */ Object.create(null),
+        writable: true
+      });
     }
     if (!isContainer(current[key2])) {
       throw new TypeError("Cannot traverse a non-record diff path value");
@@ -1282,7 +1284,12 @@ var setValueAtPath = (record, path, value, inserting) => {
   if (inserting && Array.isArray(current)) {
     current.splice(key, 0, cloneRecursive(value));
   } else {
-    current[key] = cloneRecursive(value);
+    Object.defineProperty(current, key, {
+      configurable: true,
+      enumerable: true,
+      value: cloneRecursive(value),
+      writable: true
+    });
   }
 };
 var deleteValueAtPath = (record, path) => {
@@ -1346,9 +1353,6 @@ var determineDiff = (before, after, path = [], paired = /* @__PURE__ */ new Map(
   const keys = isArray ? [...before.keys()] : Object.keys(before);
   for (let index = keys.length; index-- > 0; ) {
     const key = keys[index];
-    if (key === "__proto__") {
-      throw new TypeError("Unsafe diff path component: __proto__");
-    }
     if (isArray ? key >= after.length : !Object.hasOwn(after, key)) {
       changes.push({
         type: "delete",
@@ -1367,9 +1371,6 @@ var determineDiff = (before, after, path = [], paired = /* @__PURE__ */ new Map(
     }
   }
   for (const key of isArray ? [...after.keys()] : Object.keys(after)) {
-    if (key === "__proto__") {
-      throw new TypeError("Unsafe diff path component: __proto__");
-    }
     if (isArray ? key >= before.length : !Object.hasOwn(before, key)) {
       changes.push({
         type: "set",
@@ -1380,18 +1381,14 @@ var determineDiff = (before, after, path = [], paired = /* @__PURE__ */ new Map(
   }
   return changes;
 };
-var applyDiff = (state, diff, trusted) => {
+var applyDiff = (state, diff) => {
   validateDiff(diff);
-  if (!trusted) {
-    applyValidatedDiff(cloneRecursive(state), diff, false);
-  }
+  applyValidatedDiff(cloneRecursive(state), diff, false);
   return applyValidatedDiff(state, diff, false);
 };
-var revertDiff = (state, diff, trusted) => {
+var revertDiff = (state, diff) => {
   validateDiff(diff);
-  if (!trusted) {
-    applyValidatedDiff(cloneRecursive(state), diff, true);
-  }
+  applyValidatedDiff(cloneRecursive(state), diff, true);
   return applyValidatedDiff(state, diff, true);
 };
 
@@ -1418,7 +1415,12 @@ var createClientSynchronizer = (options = {}, privateState = {}, publicState = {
     }
   }
   const serializedBytes = (value) => {
-    const serialized = JSON.stringify(value);
+    const serialized = JSON.stringify(value, (key, entry) => {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") {
+        throw new TypeError("unsafe_state_key");
+      }
+      return entry;
+    });
     if (serialized === void 0) {
       throw new TypeError("invalid_serialized_value");
     }
