@@ -460,3 +460,105 @@ describe('Private data', { timeout: 20000 }, () => {
     })
   }
 })
+
+describe('Connection robustness', { timeout: 20000 }, () => {
+  it('stays connected when an onMessage listener throws', async () => {
+    const server = await startServer()
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    await joinAndVerify(creator, joiner, roomCode)
+    const logged = []
+    const consoleError = console.error
+    console.error = (error) => logged.push(error)
+    try {
+      creator.onMessage.addListener(() => {
+        throw new Error('listener bug')
+      })
+      const texts = []
+      const both = new Promise((resolve) => creator.onMessage.addListener(({ data }) => {
+        if (texts.push(data.text) === 2) {
+          resolve()
+        }
+      }))
+      await joiner.messageRoom({ text: 'one' })
+      await joiner.messageRoom({ text: 'two' })
+      await both
+
+      assert.deepStrictEqual(texts, ['one', 'two'])
+      assert.strictEqual(logged[0].message, 'listener bug')
+      assert.strictEqual(logged.length, 2)
+    } finally {
+      console.error = consoleError
+    }
+    await server.close()
+  })
+
+  it('buffers a shared message that arrives before _X4 after rejoining', async () => {
+    const server = await startServer()
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    await joinAndVerify(creator, joiner, roomCode)
+    const left = next(creator.onUserLeave)
+    joiner.leaveRoom()
+    await left
+
+    // Deliver the second message encrypted with the handshake key, _X4, after the first room message.
+    const NativeWebSocket = globalThis.WebSocket
+    let reordered = 0
+    globalThis.WebSocket = class extends NativeWebSocket {
+      addEventListener (type, listener, options) {
+        if (type !== 'message') {
+          return super.addEventListener(type, listener, options)
+        }
+        let handshakes = 0
+        let held = null
+        super.addEventListener('message', (event) => {
+          const parts = decode(event.data, base64ToString)
+          if (parts.P && !parts.K && ++handshakes === 2) {
+            held = event
+            return
+          }
+          listener(event)
+          if (held && parts.E) {
+            listener(held)
+            held = null
+            reordered++
+          }
+        }, options)
+      }
+    }
+    creator.onUserVerified.addListener(() => creator.messageRoom({ text: 'early' }), { once: true })
+    const received = next(joiner.onMessage)
+    const errors = []
+    joiner.onError.addListener(({ error }) => errors.push(error))
+    try {
+      await joinAndVerify(creator, joiner, roomCode)
+    } finally {
+      globalThis.WebSocket = NativeWebSocket
+    }
+
+    assert.strictEqual((await received).data.text, 'early')
+    assert.strictEqual(reordered, 1)
+    const after = next(joiner.onMessage)
+    await creator.messageRoom({ text: 'later' })
+    assert.strictEqual((await after).data.text, 'later')
+    assert.deepStrictEqual(errors, [])
+    await server.close()
+  })
+
+  it('reports socket errors as { error, event } and disconnects', async () => {
+    const server = await startServer()
+    const client = createClient(server)
+    await server.close()
+    const error = next(client.onError)
+    const disconnected = next(client.onConnection, ({ state }) => state === CONNECTION_DISCONNECTED)
+    client.joinRoom('ABCDEF')
+
+    const data = await error
+    assert.strictEqual(data.error.message, 'socket_error')
+    assert.ok(data.event)
+    await disconnected
+  })
+})

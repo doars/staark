@@ -190,8 +190,8 @@ export const createClientConnector = (options = {}) => {
 		_publicDataVerify,
 		_roomCode,
 		_sharedKey,
-		_sharedMessagesBuffer = [],
 		_socket;
+	const _sharedMessagesBuffer = [];
 	/**
 	 * The handshake with, and the keys of, each user this user exchanged keys with: its commitment, its imported public keys, the handshake key, the hash the verification code is made from, and whether it was verified.
 	 *
@@ -393,15 +393,20 @@ export const createClientConnector = (options = {}) => {
 	};
 
 	/**
-	 * Closes the current socket connection and resets the socket reference. This function should be called when leaving a room to ensure that the socket connection is properly closed and the state is cleaned up.
+	 * Closes the current socket connection and resets the state of the room. Dispatches the room leave event first.
+	 *
+	 * @param {CloseEvent} [event] - The close event, if the connection was closed by the other end.
 	 */
-	const leaveRoom = () => {
+	const leaveRoom = (event) => {
 		if (
 			_connectionState === CONNECTION_DISCONNECTED ||
 			_connectionState === CONNECTION_DISCONNECTING
 		) {
 			return;
 		}
+		onRoomLeave.dispatch({
+			event,
+		});
 		_setConnectionState(CONNECTION_DISCONNECTING);
 
 		if (_socket) {
@@ -421,9 +426,9 @@ export const createClientConnector = (options = {}) => {
 			_publicData =
 			_publicDataVerify =
 			_sharedKey =
-			_sharedMessagesBuffer =
 			_socket =
 				null;
+		_sharedMessagesBuffer.length = 0;
 		_users.clear();
 
 		// Setup new keys right away.
@@ -461,10 +466,12 @@ export const createClientConnector = (options = {}) => {
 			url.searchParams.append("creator", "1");
 		}
 
-		_socket = new WebSocket(url.toString());
+		// Keep the socket of this connection, so its events don't affect a later one.
+		const socket = new WebSocket(url.toString());
+		_socket = socket;
 		if (creatorConnectionToken) {
-			_socket.addEventListener("open", () => {
-				_socket.send(
+			socket.addEventListener("open", () => {
+				socket.send(
 					encode(
 						{ [CREATOR_AUTHENTICATION]: creatorConnectionToken },
 						stringToBase64,
@@ -473,44 +480,51 @@ export const createClientConnector = (options = {}) => {
 			});
 		}
 
-		_socket.addEventListener("close", (event) => {
-			onRoomLeave.dispatch({
-				event,
-			});
-
-			leaveRoom();
+		socket.addEventListener("close", (event) => {
+			if (socket === _socket) {
+				leaveRoom(event);
+			}
 		});
 
-		_socket.addEventListener("error", (event) => {
+		socket.addEventListener("error", (event) => {
 			onError.dispatch({
+				error: new Error("socket_error"),
 				event,
 			});
-			leaveRoom();
 		});
 
-		_socket.addEventListener("message", async (event) => {
-			try {
-				if (
-					typeof event.data !== "string" ||
-					new TextEncoder().encode(event.data).byteLength >
-						maxEncodedMessageBytes
-				) {
-					throw new RangeError("message_too_large");
+		// Handle the messages one at a time, in the order they arrived.
+		let queue = Promise.resolve();
+		socket.addEventListener("message", (event) => {
+			queue = queue.then(async () => {
+				if (socket !== _socket) {
+					return;
 				}
-				await _processMessage(
-					decode(event.data, base64ToString, {
+				let parts;
+				try {
+					if (
+						typeof event.data !== "string" ||
+						new TextEncoder().encode(event.data).byteLength >
+							maxEncodedMessageBytes
+					) {
+						throw new RangeError("message_too_large");
+					}
+					parts = decode(event.data, base64ToString, {
 						allowedKeys: allowedProtocolKeys,
 						maxDecodedFieldBytes,
 						maxKeyBytes: maxProtocolKeyBytes,
 						maxSegments: maxProtocolSegments,
 						maxTotalDecodedBytes,
-					}),
-					event.data,
-				);
-			} catch (error) {
-				onError.dispatch({ error });
-				_socket.close(1008, "invalid_protocol_message");
-			}
+					});
+					await _processMessage(parts);
+				} catch (error) {
+					onError.dispatch({ error });
+					// Only close the connection when the message is too large or fails to decode, or when its sender doesn't match the one the server relayed it from. Drop the message on any other error. Clients can't use 1008, so use the matching code in the range for applications.
+					if (!parts || error.message === "authenticated_sender_mismatch") {
+						socket.close(4008, "invalid_protocol_message");
+					}
+				}
+			});
 		});
 	};
 
@@ -518,10 +532,8 @@ export const createClientConnector = (options = {}) => {
 	 * Processes an incoming message, decrypts it if necessary, and handles the message based on its type. Each type is only accepted on the channel it belongs to: lifecycle messages from the server, the first handshake messages unencrypted, the later handshake messages encrypted with the handshake key, and application messages encrypted with the shared key or the keys of the sender.
 	 *
 	 * @param {Object<string, any>} parts - The parsed message parts.
-	 * @param {string} raw - The raw message string.
-	 * @param {boolean} [isBuffered=false] - Whether this message was buffered.
 	 */
-	const _processMessage = async (parts, raw, isBuffered = false) => {
+	const _processMessage = async (parts) => {
 		const {
 			[AUTHENTICATED_SENDER]: authenticatedSender,
 			[SERVER_PAYLOAD]: serverPayload,
@@ -537,28 +549,18 @@ export const createClientConnector = (options = {}) => {
 			[USER_ENCRYPTION_SIGNATURE]: userEncryptionSignature,
 		} = parts;
 
-		let data, deserializedData, payload;
-
-		if (serverPayload) {
-			payload = serverPayload;
-		} else if (userDirectPayload) {
-			payload = userDirectPayload;
-		} else {
-			payload = raw;
-		}
-
+		let data;
 		if (!serverPayload && !authenticatedSender) {
 			throw new TypeError("missing_authenticated_sender");
 		}
 		// Messages encrypted with the handshake key carry no encrypted key.
 		const isHandshake = userEncryptionPayload && !userEncryptionKey;
 		if (sharedEncryptionPayload) {
-			if (!_sharedKey || (!isBuffered && _sharedMessagesBuffer.length > 0)) {
+			if (!_sharedKey) {
 				// Can't decrypt without the key, store the messages for later.
 				_sharedMessagesBuffer.push({
 					time: Date.now(),
 					parts,
-					raw,
 				});
 
 				// Remove oldest message if buffer is full.
@@ -567,11 +569,6 @@ export const createClientConnector = (options = {}) => {
 				}
 				return;
 			}
-			if (!sharedEncryptionIv) {
-				onError.dispatch(new Error("Missing IV to decrypt message"));
-				return;
-			}
-
 			data = await crypto.subtle.decrypt(
 				{
 					iv: base64ToBuffer(sharedEncryptionIv),
@@ -638,20 +635,17 @@ export const createClientConnector = (options = {}) => {
 				),
 			);
 		} else {
-			data = payload;
+			data = serverPayload || userDirectPayload;
 		}
 
-		if (!deserializedData) {
-			try {
-				deserializedData = deserializeMessage(data);
-			} catch (_error) {
-				onError.dispatch({
-					error: new Error(`Failed to parse message ${raw}`),
-				});
-				return;
-			}
+		try {
+			data = deserializeMessage(data);
+		} catch (_error) {
+			onError.dispatch({
+				error: new Error("Failed to parse message"),
+			});
+			return;
 		}
-		data = deserializedData;
 		if (!serverPayload && data?.sender !== authenticatedSender) {
 			throw new TypeError("authenticated_sender_mismatch");
 		}
@@ -916,16 +910,11 @@ export const createClientConnector = (options = {}) => {
 						userId: _myId,
 					});
 
-					// Replay stored messages to catch up.
-					if (_sharedMessagesBuffer.length > 0) {
-						const now = Date.now();
-						_sharedMessagesBuffer = _sharedMessagesBuffer.filter(
-							(item) => now - item.time < messageBufferMaxDuration,
-						);
-
-						while (_sharedMessagesBuffer.length > 0) {
-							const { parts, raw } = _sharedMessagesBuffer.shift();
-							await _processMessage(parts, raw, true);
+					// Replay the stored messages that aren't too old to catch up.
+					while (_sharedMessagesBuffer.length > 0) {
+						const { parts, time } = _sharedMessagesBuffer.shift();
+						if (Date.now() - time < messageBufferMaxDuration) {
+							await _processMessage(parts);
 						}
 					}
 
@@ -1070,7 +1059,9 @@ export const createClientConnector = (options = {}) => {
 				),
 			);
 		} else {
-			onError.dispatch(new Error("Trying to send without valid destination"));
+			onError.dispatch({
+				error: new Error("Trying to send without valid destination"),
+			});
 			return false;
 		}
 
