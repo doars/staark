@@ -112,7 +112,7 @@ describe('Manage state failures', () => {
     state.set({ value: 3 })
     state.undo()
 
-    assert.throws(() => state.set({ value: 4, constructor: 1 }), TypeError)
+    assert.throws(() => state.set({ value: 4, callback: () => {} }), TypeError)
     assert.deepStrictEqual(state.get(), { value: 2 })
     assert.deepStrictEqual(state.redo(), { value: 3 })
     assert.deepStrictEqual(state.undo(), { value: 2 })

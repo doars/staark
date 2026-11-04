@@ -12,39 +12,46 @@ import {
   revertDiff,
 } from '../../src/index.js'
 
-const forbiddenComponents = [
+const prototypeKeys = [
   '__proto__',
   'constructor',
   'prototype',
 ]
 
 describe('Diff security', () => {
-  it('rejects forbidden components at every path position', () => {
-    for (const forbiddenComponent of forbiddenComponents) {
+  it('stores prototype-related path components as own keys', () => {
+    for (const key of prototypeKeys) {
       for (const path of [
-        [forbiddenComponent],
-        ['safe', forbiddenComponent],
-        ['safe', 'nested', forbiddenComponent],
+        [key],
+        ['safe', key],
+        ['safe', 'nested', key],
       ]) {
-        assert.throws(
-          () => applyDiff({}, [{
-            type: 'set',
-            path,
-            new: true,
-          }]),
-          /Unsafe diff path component/,
-        )
-        assert.throws(
-          () => revertDiff({}, [{
-            type: 'delete',
-            path,
-            old: true,
-          }]),
-          /Unsafe diff path component/,
-        )
+        const state = applyDiff({}, [{
+          type: 'set',
+          path,
+          new: { polluted: 1 },
+        }])
+        let current = state
+        for (const component of path) {
+          assert.ok(Object.hasOwn(current, component))
+          assert.ok([Object.prototype, null].includes(Object.getPrototypeOf(current)))
+          current = current[component]
+        }
+        assert.deepStrictEqual(current, { polluted: 1 })
+        revertDiff(state, [{
+          type: 'set',
+          path,
+          new: { polluted: 1 },
+        }])
+        let parent = state
+        for (const component of path.slice(0, -1)) {
+          parent = parent[component]
+        }
+        assert.ok(!Object.hasOwn(parent, path.at(-1)))
       }
     }
     assert.strictEqual(Object.prototype.polluted, undefined)
+    assert.strictEqual({}.polluted, undefined)
   })
 
   it('rejects malformed paths and invalid array indices', () => {
@@ -89,22 +96,35 @@ describe('Diff security', () => {
     })
   })
 
-  it('rejects unsafe keys in managed state', () => {
-    for (const forbiddenComponent of forbiddenComponents) {
-      const unsafe = JSON.parse(`{"nested": {"${forbiddenComponent}": {"polluted": 1}}}`)
-      assert.throws(() => manageState(unsafe), /Unsafe diff path component/)
+  it('keeps prototype-related keys in managed state as own keys', () => {
+    for (const key of prototypeKeys) {
+      const value = JSON.parse(`{"nested": {"${key}": {"polluted": 1}}}`)
       const state = manageState({ nested: {} })
-      assert.throws(() => state.set(unsafe), /Unsafe diff path component/)
-      assert.deepStrictEqual(state.get(), { nested: {} })
+      const result = state.set(value)
+      assert.ok(Object.hasOwn(result.nested, key))
+      assert.strictEqual(Object.getPrototypeOf(result.nested), Object.prototype)
+      assert.deepStrictEqual(result.nested[key], { polluted: 1 })
+      assert.ok(!Object.hasOwn(state.undo().nested, key))
+      assert.ok(Object.hasOwn(state.redo().nested, key))
     }
+    assert.strictEqual(Object.prototype.polluted, undefined)
   })
 
-  it('rejects own __proto__ keys when cloning and diffing', () => {
-    const unsafe = JSON.parse('{"nested": {"__proto__": {"polluted": 1}}}')
-    assert.throws(() => cloneRecursive(unsafe), /Unsafe diff path component/)
-    assert.throws(() => determineDiff(unsafe, { nested: {} }), /Unsafe diff path component/)
-    assert.throws(() => determineDiff({ nested: {} }, unsafe), /Unsafe diff path component/)
-    assert.throws(() => determineDiff(unsafe, unsafe), /Unsafe diff path component/)
+  it('clones and diffs own __proto__ keys without changing the prototype', () => {
+    const value = JSON.parse('{"nested": {"__proto__": {"polluted": 1}}}')
+    const clone = cloneRecursive(value)
+    assert.ok(Object.hasOwn(clone.nested, '__proto__'))
+    assert.strictEqual(Object.getPrototypeOf(clone.nested), Object.prototype)
+    assert.strictEqual(clone.nested.polluted, undefined)
+
+    assert.deepStrictEqual(determineDiff(value, value), [])
+    const diff = determineDiff({ nested: {} }, value)
+    assert.deepStrictEqual(diff.map((change) => change.path), [['nested', '__proto__']])
+    const state = applyDiff({ nested: {} }, diff)
+    assert.ok(Object.hasOwn(state.nested, '__proto__'))
+    assert.strictEqual(state.nested.polluted, undefined)
+    revertDiff(state, diff)
+    assert.ok(!Object.hasOwn(state.nested, '__proto__'))
     assert.strictEqual(Object.prototype.polluted, undefined)
   })
 })
