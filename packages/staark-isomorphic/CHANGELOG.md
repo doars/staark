@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.7.0
 
 - Fix `node("p", 0)` and other zero or empty string contents rendering nothing. Only `null`, `undefined`, and `false` mean no contents.
 - Fix `false` attributes being rendered, for example `hidden="false"`, which hid the element and was kept after hydration.

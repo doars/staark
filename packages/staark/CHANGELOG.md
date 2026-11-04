@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.8.0
 
 - Clear the root element with `replaceChildren` when unmounting.
 - Only treat lowercase `svg` as the start of SVG content. Element types are lowercase, so `SVG` never created a valid SVG element.

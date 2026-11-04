@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0
 
 - Fix a queued request hanging forever when another request with the same abort signal was aborted.
 - Send the documented `priority` option to fetch.
