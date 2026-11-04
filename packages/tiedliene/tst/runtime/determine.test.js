@@ -411,4 +411,25 @@ describe('Determine diff', () => {
     const diff = determineDiff(create(1), create(2))
     assert.deepStrictEqual(diff.map((change) => change.path), [['set'], ['map']])
   })
+
+  it('values of different kinds are not equal', () => {
+    const values = [
+      new Map(),
+      new Set(),
+      new Map([[0, 1]]),
+      new Set([[0, 1]]),
+      new Date(0),
+      new Uint8Array([1]),
+      [1],
+      {},
+      { 0: 1 },
+      [[0, 1]],
+    ]
+    for (const before of values) {
+      for (const after of values) {
+        const length = determineDiff({ value: before }, { value: after }).length
+        assert.strictEqual(length, before === after ? 0 : 1)
+      }
+    }
+  })
 })

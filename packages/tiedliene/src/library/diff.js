@@ -94,16 +94,12 @@ const valuesEqual = (before, after, inProgress) => {
 	) {
 		return false;
 	}
-	if (before instanceof Date || after instanceof Date) {
-		return (
-			before instanceof Date &&
-			after instanceof Date &&
-			before.getTime() === after.getTime()
-		);
+	// When only "after" is one of these, the checks below return false.
+	if (before instanceof Date) {
+		return after instanceof Date && before.getTime() === after.getTime();
 	}
-	if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
+	if (ArrayBuffer.isView(before)) {
 		if (
-			!ArrayBuffer.isView(before) ||
 			!ArrayBuffer.isView(after) ||
 			before.constructor !== after.constructor ||
 			before.byteLength !== after.byteLength
@@ -143,45 +139,24 @@ const valuesEqual = (before, after, inProgress) => {
 	}
 	afters.add(after);
 	try {
-		if (before instanceof Map || after instanceof Map) {
+		// The entries of a Map are [key, value] arrays, which are compared as
+		// containers below.
+		if (before instanceof Map || before instanceof Set) {
 			if (
-				!(before instanceof Map) ||
-				!(after instanceof Map) ||
+				before.constructor !== after.constructor ||
 				before.size !== after.size
 			) {
 				return false;
 			}
-			const unmatchedEntries = [...after];
-			for (const [beforeKey, beforeValue] of before) {
-				const matchIndex = unmatchedEntries.findIndex(
-					([afterKey, afterValue]) =>
-						valuesEqual(beforeKey, afterKey, inProgress) &&
-						valuesEqual(beforeValue, afterValue, inProgress),
+			const unmatched = [...after];
+			for (const beforeEntry of before) {
+				const matchIndex = unmatched.findIndex((afterEntry) =>
+					valuesEqual(beforeEntry, afterEntry, inProgress),
 				);
 				if (matchIndex < 0) {
 					return false;
 				}
-				unmatchedEntries.splice(matchIndex, 1);
-			}
-			return true;
-		}
-		if (before instanceof Set || after instanceof Set) {
-			if (
-				!(before instanceof Set) ||
-				!(after instanceof Set) ||
-				before.size !== after.size
-			) {
-				return false;
-			}
-			const unmatchedValues = [...after];
-			for (const beforeValue of before) {
-				const matchIndex = unmatchedValues.findIndex((afterValue) =>
-					valuesEqual(beforeValue, afterValue, inProgress),
-				);
-				if (matchIndex < 0) {
-					return false;
-				}
-				unmatchedValues.splice(matchIndex, 1);
+				unmatched.splice(matchIndex, 1);
 			}
 			return true;
 		}
@@ -341,7 +316,7 @@ export const determineDiff = (
 	// should end up different, it gets its own copy instead.
 	const firstAfter = paired.get(before);
 	if (firstAfter) {
-		if (firstAfter !== after && !valuesEqual(firstAfter, after)) {
+		if (!valuesEqual(firstAfter, after)) {
 			changes.push({
 				type: "set",
 				path,
