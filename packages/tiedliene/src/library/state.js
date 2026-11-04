@@ -93,6 +93,9 @@ export const manageState = (state, options) => {
 	state = options.clone(state);
 	const snapshot = () =>
 		options.snapshot === "reference" ? state : options.clone(state);
+	// Diffs in the history applied cleanly before. With cloned snapshots
+	// nothing else can change the state, so they apply cleanly again.
+	const trusted = options.snapshot === "clone";
 
 	/** @type {Change[][]} */
 	const undoStack = [];
@@ -135,7 +138,7 @@ export const manageState = (state, options) => {
 		 */
 		undo: () => {
 			if (undoStack.length > 0) {
-				state = revertDiff(state, undoStack.at(-1));
+				state = revertDiff(state, undoStack.at(-1), trusted);
 				redoStack.push(undoStack.pop());
 			}
 			return snapshot();
@@ -148,7 +151,7 @@ export const manageState = (state, options) => {
 		 */
 		redo: () => {
 			if (redoStack.length > 0) {
-				state = applyDiff(state, redoStack.at(-1));
+				state = applyDiff(state, redoStack.at(-1), trusted);
 				undoStack.push(redoStack.pop());
 			}
 			return snapshot();

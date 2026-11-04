@@ -414,11 +414,16 @@ export const determineDiff = (
  *
  * @param {Record<string, any>} state The state object to update.
  * @param {Change[]} diff The diff to apply.
+ * @param {boolean} [trusted=false] Whether the diff is known to apply cleanly,
+ * which skips the trial run on a copy that keeps a failure from changing the
+ * state halfway.
  * @returns {Record<string, any>} The updated state object.
  */
-export const applyDiff = (state, diff) => {
+export const applyDiff = (state, diff, trusted) => {
 	validateDiff(diff);
-	applyValidatedDiff(cloneRecursive(state), diff, false);
+	if (!trusted) {
+		applyValidatedDiff(cloneRecursive(state), diff, false);
+	}
 	return applyValidatedDiff(state, diff, false);
 };
 
@@ -427,10 +432,15 @@ export const applyDiff = (state, diff) => {
  *
  * @param {Record<string, any>} state The state object to revert.
  * @param {Change[]} diff The diff to revert.
+ * @param {boolean} [trusted=false] Whether the diff is known to revert cleanly,
+ * which skips the trial run on a copy that keeps a failure from changing the
+ * state halfway.
  * @returns {Record<string, any>} The updated state object.
  */
-export const revertDiff = (state, diff) => {
+export const revertDiff = (state, diff, trusted) => {
 	validateDiff(diff);
-	applyValidatedDiff(cloneRecursive(state), diff, true);
+	if (!trusted) {
+		applyValidatedDiff(cloneRecursive(state), diff, true);
+	}
 	return applyValidatedDiff(state, diff, true);
 };

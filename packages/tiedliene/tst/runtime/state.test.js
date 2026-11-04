@@ -119,6 +119,21 @@ describe('Manage state failures', () => {
     assert.deepStrictEqual(state.undo(), { value: 1 })
     assert.deepStrictEqual(state.undo(), { value: 1 })
   })
+
+  it('keeps undo atomic when reference snapshots were changed', () => {
+    const state = manageState({
+      value: 1,
+      nested: { value: 1 },
+    }, { snapshot: 'reference' })
+    state.set({
+      value: 2,
+      nested: { value: 2 },
+    })
+    state.get().nested = 3
+
+    assert.throws(() => state.undo(), /Cannot traverse/)
+    assert.deepStrictEqual(state.get(), { value: 2, nested: 3 })
+  })
 })
 
 describe('Manage state policies', () => {
