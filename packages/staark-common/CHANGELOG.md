@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.6.0
 
 - Treat only `null`, `undefined`, and `false` as no contents in `node`, `arrayify`, and `arrayifyOrUndefined`, so zero and empty strings are kept.
 - Avoid creating a closure per call in `equalPlain`.

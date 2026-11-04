@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 - Emit the changes of `determineDiff` in apply order, with array indices as numbers, and revert them from last to first as documented. Hand-written diffs now revert correctly.
 - Fix large diffs throwing a `RangeError`, and make diffs with many changes much faster.

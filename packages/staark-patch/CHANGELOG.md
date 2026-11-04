@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.0
 
 - Only treat lowercase `svg` as the start of SVG content. Element types are lowercase, so `SVG` never created a valid SVG element.
 - Fix `node("p", 0)` and other zero or empty string contents rendering nothing. Only `null`, `undefined`, and `false` mean no contents.
