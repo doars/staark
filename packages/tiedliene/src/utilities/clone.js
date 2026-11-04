@@ -4,7 +4,6 @@
  * @param {any} value Data to clone.
  * @param {WeakMap<object, any>} [clones] Previously cloned values.
  * @returns {any} Clone of the data.
- * @throws {TypeError} When an object has an own "__proto__" key.
  */
 export const cloneRecursive = (value, clones = new WeakMap()) => {
 	if (!value || typeof value !== "object") {
@@ -61,11 +60,18 @@ export const cloneRecursive = (value, clones = new WeakMap()) => {
 		: Object.create(Object.getPrototypeOf(value));
 	clones.set(value, clone);
 	for (const key of Object.keys(value)) {
-		// Assigning an own "__proto__" key would change the prototype instead.
+		// Define an own "__proto__" key, since assigning it would change the
+		// prototype instead.
 		if (key === "__proto__") {
-			throw new TypeError("Unsafe diff path component: __proto__");
+			Object.defineProperty(clone, key, {
+				configurable: true,
+				enumerable: true,
+				value: cloneRecursive(value[key], clones),
+				writable: true,
+			});
+		} else {
+			clone[key] = cloneRecursive(value[key], clones);
 		}
-		clone[key] = cloneRecursive(value[key], clones);
 	}
 	return clone;
 };

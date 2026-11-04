@@ -1,5 +1,5 @@
 import { cloneRecursive } from "../utilities/clone.js";
-import { applyDiff, determineDiff, revertDiff } from "./diff.js";
+import { applyDiff, applyValidatedDiff, determineDiff } from "./diff.js";
 
 /**
  * @typedef {import('./diff.js').Change} Change
@@ -79,9 +79,6 @@ export const manageState = (state, options) => {
 			throw new TypeError("Unsupported custom state instance");
 		}
 		for (const key of Object.keys(value)) {
-			if (key === "__proto__" || key === "constructor" || key === "prototype") {
-				throw new TypeError(`Unsafe diff path component: ${key}`);
-			}
 			const descriptor = Object.getOwnPropertyDescriptor(value, key);
 			if (descriptor?.get || descriptor?.set) {
 				throw new TypeError("Unsupported enumerable state accessor");
@@ -94,7 +91,8 @@ export const manageState = (state, options) => {
 	const snapshot = () =>
 		options.snapshot === "reference" ? state : options.clone(state);
 	// Diffs in the history applied cleanly before. With cloned snapshots
-	// nothing else can change the state, so they apply cleanly again.
+	// nothing else can change the state, so they apply cleanly again and can
+	// skip the trial run on a copy.
 	const trusted = options.snapshot === "clone";
 
 	/** @type {Change[][]} */
@@ -138,7 +136,11 @@ export const manageState = (state, options) => {
 		 */
 		undo: () => {
 			if (undoStack.length > 0) {
-				state = revertDiff(state, undoStack.at(-1), trusted);
+				const diff = undoStack.at(-1);
+				if (!trusted) {
+					applyValidatedDiff(cloneRecursive(state), diff, true);
+				}
+				state = applyValidatedDiff(state, diff, true);
 				redoStack.push(undoStack.pop());
 			}
 			return snapshot();
@@ -151,7 +153,11 @@ export const manageState = (state, options) => {
 		 */
 		redo: () => {
 			if (redoStack.length > 0) {
-				state = applyDiff(state, redoStack.at(-1), trusted);
+				const diff = redoStack.at(-1);
+				if (!trusted) {
+					applyValidatedDiff(cloneRecursive(state), diff, false);
+				}
+				state = applyValidatedDiff(state, diff, false);
 				undoStack.push(redoStack.pop());
 			}
 			return snapshot();
