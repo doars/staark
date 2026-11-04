@@ -51,7 +51,8 @@ import {
  * @property {string} [createRoomEndpoint='/create-room'] - Endpoint for creating a room.
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
  *
- * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
+ * @property {string} [serverOrigin='http://localhost:3000'] - Origin of the server. The default origin check only allows upgrades from it. Required in production, unless `validateOrigin` is given.
+ * @property {number} [maxUsersPerRoom=16] - Absolute maximum users allowed per room.
  * @property {number} [maxRooms=1000] - Maximum number of active rooms.
  * @property {number} [creatorJoinTimeout=30000] - Time before an unclaimed room expires. Zero disables it.
  * @property {number} [roomIdleTimeout=1800000] - Time before an inactive room expires. Zero disables it.

@@ -26,13 +26,9 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
  *
- * @property {any} [publicData={}] - Public data to be shared with other clients in the room.
- * @property {Function} [verifyPublicData] - Callback for verifying the public data of other users.
- * @property {any} [privateData={}] - Private data to be shared with other clients in the room.
- * @property {Function} [verifyPrivateData] - Callback for verifying the private data of other users.
- *
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
+ * @property {boolean} [allowInsecureNonLoopback=false] - Allows insecure HTTP and WebSocket URLs outside loopback for development.
  *
  * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user. Used in case of rollbacks.
  * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for a full state synchronisation.
@@ -57,9 +53,7 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  * @property {Event} onUserVerificationCode - Event for verification code ready notifications.
  *
  * @property {Object} privateState - Internal state, including user and room information.
- * @property {Object} publicState - Shared state object synchronized across users.
- *
- * @property {Function} getConnectionState - Get the current connection state.
+ * @property {Object} publicState - Shared state object synchronized across users. Changes are only sent when `sendUpdate` is called.
  *
  * @property {Function} closeRoom - Closes the room for all. Only allowed by the creator.
  * @property {Function} createRoom - Creates a new room and joins it.
@@ -69,7 +63,7 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  *
  * @property {Function} kickUser - Remove's a player's connection. Only allowed by the creator.
  *
- * @property {Function} sendUpdate - Sends the current state delta to other users.
+ * @property {Function} sendUpdate - Sends the changes made to the public state since the last call to the other users. Call it after changing the public state.
  */
 
 /**

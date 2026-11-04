@@ -73,6 +73,11 @@ const USER_SIGNATURE_ALGORITHM = "RSASSA-PKCS1-v1_5";
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
  * @property {boolean} [allowInsecureNonLoopback=false] - Allows insecure HTTP and WebSocket URLs outside loopback for development.
+ * @property {number} [maxEncodedMessageBytes=262144] - Maximum size of a received message. A larger one closes the connection.
+ * @property {number} [maxProtocolSegments=16] - Maximum number of segments in a received message.
+ * @property {number} [maxProtocolKeyBytes=64] - Maximum size of a segment key.
+ * @property {number} [maxDecodedFieldBytes=196608] - Maximum decoded size of a segment.
+ * @property {number} [maxTotalDecodedBytes=262144] - Maximum decoded size of all segments together.
  */
 
 /**
