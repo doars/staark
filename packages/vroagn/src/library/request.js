@@ -183,6 +183,7 @@ export const create = (initialOptions) => {
 			headers: options.headers,
 			method: options.method,
 			mode: options.mode,
+			priority: options.priority,
 			redirect: options.redirect,
 			body: options.body ? JSON.stringify(options.body) : undefined,
 		};

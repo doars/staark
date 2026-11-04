@@ -54,6 +54,37 @@ describe('Request', () => {
     })
   })
 
+  it('sends every documented fetch option', async () => {
+    let receivedOptions
+    const abort = new AbortController()
+    const request = create({
+      fetch: async (_url, options) => {
+        receivedOptions = options
+        return new Response('ok')
+      },
+    })
+
+    await request({
+      abort,
+      cache: 'no-store',
+      credentials: 'include',
+      headers: { 'X-Test': '1' },
+      method: 'put',
+      mode: 'cors',
+      priority: 'high',
+      redirect: 'manual',
+    })
+
+    assert.strictEqual(receivedOptions.cache, 'no-store')
+    assert.strictEqual(receivedOptions.credentials, 'include')
+    assert.strictEqual(new Headers(receivedOptions.headers).get('x-test'), '1')
+    assert.strictEqual(receivedOptions.method, 'put')
+    assert.strictEqual(receivedOptions.mode, 'cors')
+    assert.strictEqual(receivedOptions.priority, 'high')
+    assert.strictEqual(receivedOptions.redirect, 'manual')
+    assert(receivedOptions.signal instanceof AbortSignal)
+  })
+
   it('uses a matching custom parser', async () => {
     const response = new Response('value', {
       headers: {
