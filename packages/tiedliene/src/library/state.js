@@ -79,6 +79,9 @@ export const manageState = (state, options) => {
 			throw new TypeError("Unsupported custom state instance");
 		}
 		for (const key of Object.keys(value)) {
+			if (key === "__proto__" || key === "constructor" || key === "prototype") {
+				throw new TypeError(`Unsafe diff path component: ${key}`);
+			}
 			const descriptor = Object.getOwnPropertyDescriptor(value, key);
 			if (descriptor?.get || descriptor?.set) {
 				throw new TypeError("Unsupported enumerable state accessor");

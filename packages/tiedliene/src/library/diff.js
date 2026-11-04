@@ -364,6 +364,10 @@ export const determineDiff = (
 	const keys = isArray ? [...before.keys()] : Object.keys(before);
 	for (let index = keys.length; index-- > 0; ) {
 		const key = keys[index];
+		// Like cloneRecursive, refuse an own "__proto__" key.
+		if (key === "__proto__") {
+			throw new TypeError("Unsafe diff path component: __proto__");
+		}
 		if (isArray ? key >= after.length : !Object.hasOwn(after, key)) {
 			changes.push({
 				type: "delete",
@@ -390,6 +394,9 @@ export const determineDiff = (
 
 	// Add the keys in the "after" object that were not in "before".
 	for (const key of isArray ? [...after.keys()] : Object.keys(after)) {
+		if (key === "__proto__") {
+			throw new TypeError("Unsafe diff path component: __proto__");
+		}
 		if (isArray ? key >= before.length : !Object.hasOwn(before, key)) {
 			changes.push({
 				type: "set",

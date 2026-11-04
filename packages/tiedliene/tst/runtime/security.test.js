@@ -6,6 +6,9 @@ import {
 
 import {
   applyDiff,
+  cloneRecursive,
+  determineDiff,
+  manageState,
   revertDiff,
 } from '../../src/index.js'
 
@@ -84,5 +87,24 @@ describe('Diff security', () => {
       safe: false,
       primitive: true,
     })
+  })
+
+  it('rejects unsafe keys in managed state', () => {
+    for (const forbiddenComponent of forbiddenComponents) {
+      const unsafe = JSON.parse(`{"nested": {"${forbiddenComponent}": {"polluted": 1}}}`)
+      assert.throws(() => manageState(unsafe), /Unsafe diff path component/)
+      const state = manageState({ nested: {} })
+      assert.throws(() => state.set(unsafe), /Unsafe diff path component/)
+      assert.deepStrictEqual(state.get(), { nested: {} })
+    }
+  })
+
+  it('rejects own __proto__ keys when cloning and diffing', () => {
+    const unsafe = JSON.parse('{"nested": {"__proto__": {"polluted": 1}}}')
+    assert.throws(() => cloneRecursive(unsafe), /Unsafe diff path component/)
+    assert.throws(() => determineDiff(unsafe, { nested: {} }), /Unsafe diff path component/)
+    assert.throws(() => determineDiff({ nested: {} }, unsafe), /Unsafe diff path component/)
+    assert.throws(() => determineDiff(unsafe, unsafe), /Unsafe diff path component/)
+    assert.strictEqual(Object.prototype.polluted, undefined)
   })
 })
