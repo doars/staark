@@ -81,7 +81,6 @@ export const create = (initialOptions) => {
 	let activeRequests = 0;
 	let totalRequests = 0;
 	let debounceTimeout = null;
-	let debounceOptions = null;
 	const debounceResolvers = [];
 	const concurrencyQueue = [];
 
@@ -469,7 +468,6 @@ export const create = (initialOptions) => {
 			return executeScheduled(options);
 		}
 
-		debounceOptions = options;
 		return new Promise((resolve) => {
 			const signal = options.abort?.signal || options.abort;
 			const pending = {
@@ -481,9 +479,6 @@ export const create = (initialOptions) => {
 				const index = debounceResolvers.indexOf(pending);
 				if (index >= 0) {
 					debounceResolvers.splice(index, 1);
-					if (debounceOptions === options) {
-						debounceOptions = debounceResolvers.at(-1)?.options || null;
-					}
 					resolve([
 						signal.reason || new DOMException("Request aborted", "AbortError"),
 						null,
@@ -503,13 +498,12 @@ export const create = (initialOptions) => {
 			}
 			debounceTimeout = setTimeout(async () => {
 				const pendingResolvers = debounceResolvers.splice(0);
-				const settledOptions = debounceOptions;
 				debounceTimeout = null;
-				debounceOptions = null;
 				if (pendingResolvers.length === 0) {
 					return;
 				}
-				const result = await executeScheduled(settledOptions);
+				// The last call that was not aborted decides the options.
+				const result = await executeScheduled(pendingResolvers.at(-1).options);
 				for (const pendingResolver of pendingResolvers) {
 					pendingResolver.signal?.removeEventListener(
 						"abort",

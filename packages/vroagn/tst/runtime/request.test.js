@@ -357,6 +357,34 @@ describe('Request scheduling', () => {
     }
   })
 
+  it('debounces with the options of the last call that was not aborted', async () => {
+    const urls = []
+    const request = create({
+      debounce: 5,
+      fetch: async (url) => {
+        urls.push(url)
+        return new Response('done')
+      },
+      type: 'text',
+    })
+    const abort = new AbortController()
+
+    const first = request({ path: '/first' })
+    const second = request({ path: '/second' })
+    const aborted = request({ abort, path: '/aborted' })
+    abort.abort()
+    const [[, , firstResult], [, , secondResult], [abortError]] = await Promise.all([
+      first,
+      second,
+      aborted,
+    ])
+
+    assert.deepStrictEqual(urls, ['/second'])
+    assert.strictEqual(firstResult, 'done')
+    assert.strictEqual(secondResult, 'done')
+    assert.strictEqual(abortError.name, 'AbortError')
+  })
+
   it('runs concurrency-limited requests in FIFO order without browser APIs', async () => {
     const started = []
     const releases = []
