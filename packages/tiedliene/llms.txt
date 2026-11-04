@@ -29,7 +29,7 @@ determineDiff(
 ): Change[]
 ```
 
-Returns the ordered changes needed to transform `before` into `after`. Plain objects and arrays are traversed recursively. Cycles and shared references are supported: an object reached again through another path is not traversed twice. If that path should end up with a different value than the first path, the diff contains one `set` that gives it its own copy, so the sharing ends there. Reverting such a diff restores a copy of the old value, so the values are restored but the ended sharing is not. `Date`, `Map`, `Set`, typed arrays, and other non-container values are treated as atomic values. Throws a `TypeError` when `before` and `after` are not both objects or both arrays, or when an object has an own `__proto__` key.
+Returns the changes needed to transform `before` into `after`, in the order they are applied in. For each object or array, the keys of `before` come first, from the last to the first, then the keys only in `after`, from the first to the last. Array items are therefore removed from the end and appended without holes. Array indices are emitted as numbers, and holes in sparse arrays are read as `undefined`. A `set` only has `old` when the key existed in `before`. Plain objects and arrays are traversed recursively. Cycles and shared references are supported: an object reached again through another path is not traversed twice. If that path should end up with a different value than the first path, the diff contains one `set` that gives it its own copy, so the sharing ends there. Reverting such a diff restores a copy of the old value, so the values are restored but the ended sharing is not. `Date`, `Map`, `Set`, typed arrays, and other non-container values are treated as atomic values. They are compared by value; a `Map` or `Set` compares its entries in any order, including plain objects and cycles inside it. Throws a `TypeError` when `before` and `after` are not both objects or both arrays, or when an object has an own `__proto__` key.
 
 ## `applyDiff`
 
@@ -45,7 +45,7 @@ Validates the complete diff before mutation, applies it to `state`, and returns 
 revertDiff(state: Record<string, any>, diff: Change[]): Record<string, any>
 ```
 
-Applies the inverse changes in reverse order and returns the restored state. The same validation and cloning rules as `applyDiff` apply.
+Applies the inverse changes in reverse order, from the last change to the first, and returns the restored state. A `set` with an own `old` key is reverted by setting `old`, one without it by deleting the value, and a `delete` by setting `old`, inserting it back at its index in an array. So `revertDiff(applyDiff(state, diff), diff)` restores `state` for any diff whose `old` values match the state, including hand-written diffs with repeated paths. The same validation and cloning rules as `applyDiff` apply.
 
 ## `cloneRecursive`
 

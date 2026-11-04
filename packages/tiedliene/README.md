@@ -3,7 +3,7 @@
 tiedliene is a teensy-tiny yet powerful state management utility designed to keep your application state consistent and manageable. With a focus on simplicity and efficiency, tiedliene enables you to track, apply, revert, and even manage undo/redo operations for state changes. It's perfect for applications that require precise control over state transitions without the overhead of more complex libraries.
 
 - Offers a simple set of functions, making it **easy to understand** and integrate into your application.
-- Comes in at **less than a kilobyte and a half** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Comes in at **a kilobyte and a half** in size when compressed, or two kilobytes for the full build. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Uses a **naive diffing algorithm** to ensure that state changes are applied in full.
 - Allows you to not only revert state changes but also provides built-in **undo and redo** capabilities.
 
@@ -32,7 +32,7 @@ const diffs = determineDiff(oldState, newState)
 console.log(diffs)
 ```
 
-In the example above, `determineDiff` compares `oldState` and `newState`, outputting a list of changes that reflect the transition from the old state to the new one.
+In the example above, `determineDiff` compares `oldState` and `newState`, outputting a list of changes that reflect the transition from the old state to the new one. The changes are in the order they are applied in. For each object or array, the keys that already existed come first, from the last key to the first, followed by the new keys from the first to the last. Array indices are numbers in the paths, so items are removed from the end of an array and appended without leaving holes.
 
 Once you've determined the diffs, use `applyDiff` to apply these changes to an existing state. This function updates the current state based on the provided diffs.
 
@@ -88,7 +88,7 @@ const originalState = revertDiff(currentState, diffs)
 console.log(originalState)
 ```
 
-In this example, `revertDiff` undoes the changes specified in the diffs, restoring the state to its previous condition.
+In this example, `revertDiff` undoes the changes specified in the diffs, restoring the state to its previous condition. It goes through the changes from the last to the first, so reverting a diff after applying it gives back the original state, also for hand-written diffs that change the same path more than once. A `set` change without an `old` value is reverted by deleting the value, and any other change by setting its `old` value again. Reverting a `delete` from an array inserts the item back at its index.
 
 All the functionality above is part of the base library. The full build adds a little non-essential functionality to make development simpler, including state management through `manageState`. This method tracks changes and provides undo and redo while keeping the state encapsulated behind `get`, `set`, `undo`, and `redo`.
 
@@ -135,7 +135,7 @@ console.log(stateManager.get())
 - `snapshot` is either `'clone'` (the defensive default) or `'reference'`. Reference snapshots expose managed state directly and require callers to treat it as immutable unless they intentionally want to mutate the manager state.
 - `clone` is an optional clone function used for snapshots and instrumentation.
 
-Plain objects and arrays may contain cycles and shared references. An object reached through several paths stays shared while every update changes it the same way through each path. When an update would make the paths differ, the diff sets the paths reached later to their own copy, so the sharing ends there. Undo restores a copy of the old value, so sharing that an update ended is not restored. `Date`, `Map`, `Set`, and typed-array values are compared by value and stored as whole atomic changes. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, enumerable accessors, and the keys `__proto__`, `constructor`, and `prototype` are rejected with `TypeError` before managed state changes.
+Plain objects and arrays may contain cycles and shared references. An object reached through several paths stays shared while every update changes it the same way through each path. When an update would make the paths differ, the diff sets the paths reached later to their own copy, so the sharing ends there. Undo restores a copy of the old value, so sharing that an update ended is not restored. `Date`, `Map`, `Set`, and typed-array values are compared by value, including objects and cycles inside a `Map` or `Set`, and stored as whole atomic changes. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, enumerable accessors, and the keys `__proto__`, `constructor`, and `prototype` are rejected with `TypeError` before managed state changes.
 
 tiedliene's diff functions work with nested plain objects and arrays, including cycles and shared references, as described above. `manageState` deliberately rejects functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors so managed transitions remain predictable.
 
