@@ -1152,6 +1152,7 @@ export const createClientConnector = (options = {}) => {
 				verifyPublicData: _publicDataVerify,
 			} = options);
 
+			let data;
 			try {
 				_sharedKey = await crypto.subtle.generateKey(
 					{
@@ -1161,31 +1162,34 @@ export const createClientConnector = (options = {}) => {
 					true,
 					["encrypt", "decrypt"],
 				);
+
+				const url = new URL(httpUrl + createRoomEndpoint);
+				if (options.limit) {
+					url.searchParams.append("limit", options.limit);
+				}
+				const response = await fetch(url.toString(), {
+					method: "POST",
+					headers: {
+						Accept: contentType,
+					},
+				});
+				if (!response.ok) {
+					// Include the status, so rate limiting can be told apart from other failures.
+					throw new Error(`room_creation_failed:${response.status}`);
+				}
+				data = deserializeMessage(await response.text());
 			} catch (error) {
+				_sharedKey = null;
 				_setConnectionState(CONNECTION_DISCONNECTED);
 				onError.dispatch({
 					error,
 				});
 				return;
 			}
-
-			const url = new URL(httpUrl + createRoomEndpoint);
-			if (options.limit) {
-				url.searchParams.append("limit", options.limit);
+			// Stop if the room was left while it was being created.
+			if (_connectionState !== CONNECTION_CONNECTING) {
+				return;
 			}
-
-			const response = await fetch(url.toString(), {
-				method: "POST",
-				headers: {
-					Accept: contentType,
-				},
-			});
-			if (!response.ok) {
-				throw new Error("Failed to create room");
-			}
-
-			let data = await response.text();
-			data = deserializeMessage(data);
 
 			_myId = data.userId;
 

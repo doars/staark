@@ -562,3 +562,33 @@ describe('Connection robustness', { timeout: 20000 }, () => {
     await disconnected
   })
 })
+
+describe('Room creation failures', { timeout: 20000 }, () => {
+  it('reports a refused room creation and can create or join a room afterwards', async () => {
+    let address = 'first'
+    const server = await startServer({
+      getRemoteAddress: () => address,
+      roomCreationsPerAddress: 1,
+    })
+    await fetch(`${server.httpUrl}/create-room`, { method: 'POST' })
+    const client = createClient(server)
+    const error = next(client.onError)
+
+    assert.strictEqual(await client.createRoom(), undefined)
+    assert.strictEqual((await error).error.message, 'room_creation_failed:429')
+
+    // The client can still join a room...
+    address = 'second'
+    const creator = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    await joinAndVerify(creator, client, roomCode)
+    const disconnected = next(client.onConnection, ({ state }) => state === CONNECTION_DISCONNECTED)
+    client.leaveRoom()
+    await disconnected
+
+    // ...and create one.
+    address = 'third'
+    assert.ok((await createRoom(client)).roomCode)
+    await server.close()
+  })
+})
