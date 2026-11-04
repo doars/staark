@@ -97,12 +97,13 @@ export const create = (initialOptions) => {
 
 	/**
 	 * @param {number} throttleValue
+	 * @param {AbortSignal} [signal]
 	 */
-	const throttle = async (throttleValue) => {
+	const throttle = async (throttleValue, signal) => {
 		const now = Date.now();
 		const waitTime = throttleValue - (now - lastExecutionTime);
 		lastExecutionTime = now + Math.max(waitTime, 0);
-		await delay(waitTime);
+		await delay(waitTime, signal);
 	};
 
 	/**
@@ -409,7 +410,8 @@ export const create = (initialOptions) => {
 					delayTime = Math.min(delayTime, options.maximumRetryDelay);
 				}
 
-				await delay(delayTime);
+				// The request's own signal, so a timeout also ends the wait.
+				await delay(delayTime, controller.signal);
 			}
 		} finally {
 			if (timeoutIdentifier !== null) {
@@ -420,13 +422,6 @@ export const create = (initialOptions) => {
 	};
 
 	const executeScheduled = async (options) => {
-		if (options.delay) {
-			await delay(options.delay);
-		}
-		if (options.throttle) {
-			await throttle(options.throttle);
-		}
-
 		const maximum = options.maxConcurrency ?? Infinity;
 		if (maximum !== Infinity && (!Number.isInteger(maximum) || maximum <= 0)) {
 			return [
@@ -439,6 +434,10 @@ export const create = (initialOptions) => {
 		const signal = options.abort?.signal || options.abort;
 		let acquired = false;
 		try {
+			await delay(options.delay, signal);
+			if (options.throttle) {
+				await throttle(options.throttle, signal);
+			}
 			await acquireConcurrency(maximum, signal);
 			acquired = true;
 			return await sendRequest(options);

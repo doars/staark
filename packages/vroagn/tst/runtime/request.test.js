@@ -474,6 +474,64 @@ describe('Request scheduling', () => {
     releases.shift()()
     await busy
   })
+
+  it('ends the retry delay when the request is aborted', async () => {
+    const abort = new AbortController()
+    const request = create({
+      fetch: async () => new Response('', { status: 503 }),
+      retryAttempts: 1,
+      retryDelay: 1000,
+    })
+
+    const start = Date.now()
+    setTimeout(() => abort.abort(), 20)
+    const [error] = await request({ abort })
+
+    assert.strictEqual(error.name, 'AbortError')
+    assert(Date.now() - start < 500)
+  })
+
+  it('ends the retry delay when the request times out', async () => {
+    const request = create({
+      fetch: async () => new Response('', { status: 503 }),
+      retryAttempts: 1,
+      retryDelay: 1000,
+      timeout: 20,
+    })
+
+    const start = Date.now()
+    const [error] = await request({})
+
+    assert.strictEqual(error.name, 'TimeoutError')
+    assert(Date.now() - start < 500)
+  })
+
+  it('resolves with the abort error when aborted during a delay or throttle', async () => {
+    let fetchCount = 0
+    const request = create({
+      fetch: async () => {
+        fetchCount++
+        return new Response('ok')
+      },
+    })
+    await request({ throttle: 1000 })
+
+    const start = Date.now()
+    const delayAbort = new AbortController()
+    const throttleAbort = new AbortController()
+    const delayed = request({ abort: delayAbort, delay: 1000 })
+    const throttled = request({ abort: throttleAbort, throttle: 1000 })
+    setTimeout(() => {
+      delayAbort.abort()
+      throttleAbort.abort()
+    }, 20)
+    const [[delayError], [throttleError]] = await Promise.all([delayed, throttled])
+
+    assert.strictEqual(delayError.name, 'AbortError')
+    assert.strictEqual(throttleError.name, 'AbortError')
+    assert.strictEqual(fetchCount, 1)
+    assert(Date.now() - start < 500)
+  })
 })
 
 describe('Trusted HTML parsing', () => {
