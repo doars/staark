@@ -8,17 +8,6 @@ const normalizeContentType = (contentType) =>
 	contentType.split(";")[0].trim().toLowerCase();
 
 /**
- * Extract the file extension from a URL.
- *
- * @param {string} url The URL to extract the file extension from.
- * @returns {string|null} The file extension or null if not found.
- */
-const getFileExtension = (url) => {
-	const match = url.match(/\.([^./?]+)(?:[?#]|$)/);
-	return match ? match[1].toLowerCase() : null;
-};
-
-/**
  * Get the type of the resource based on the URL, response headers, and request headers.
  *
  * @param {string} url The URL of the resource.
@@ -44,10 +33,6 @@ export const getType = (url, responseHeaders, requestHeaders) => {
 	}
 
 	// Check URL extension.
-	const extension = getFileExtension(url);
-	if (extension) {
-		return extension;
-	}
-
-	return "";
+	const match = url.match(/\.([^./?#]+)(?:[?#]|$)/);
+	return match ? match[1].toLowerCase() : "";
 };

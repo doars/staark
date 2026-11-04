@@ -141,6 +141,14 @@ describe('Request', () => {
     assert.deepStrictEqual(instanceResult, { a: 1 })
   })
 
+  it('ignores the URL fragment when reading the file extension', async () => {
+    const request = create({
+      fetch: async () => new Response(new TextEncoder().encode('{"a":1}')),
+    })
+    const [, , result] = await request({ path: '/x.json#f' })
+    assert.deepStrictEqual(result, { a: 1 })
+  })
+
   it('returns invalid headers in the result tuple', async () => {
     const request = create({ fetch: async () => new Response('ok') })
     const [error] = await request({ headers: { 'in valid': '1' } })
