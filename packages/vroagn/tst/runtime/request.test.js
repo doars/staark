@@ -620,6 +620,45 @@ describe('Trusted HTML parsing', () => {
     }
   })
 
+  it('uses a per-call policy before the initial callback and policy', async () => {
+    const calls = []
+    const originalDocument = globalThis.document
+    globalThis.document = {
+      createElement: () => ({
+        content: { childNodes: [] },
+        set innerHTML(_value) {},
+      }),
+    }
+    try {
+      const request = create({
+        createTrustedHTML: (html) => {
+          calls.push('initial callback')
+          return html
+        },
+        fetch: async () => new Response('<p>trusted</p>'),
+        trustedTypesPolicy: {
+          createHTML: (html) => {
+            calls.push('initial policy')
+            return html
+          },
+        },
+        type: 'html-partial',
+      })
+      await request({})
+      await request({
+        trustedTypesPolicy: {
+          createHTML: (html) => {
+            calls.push('per-call policy')
+            return html
+          },
+        },
+      })
+      assert.deepStrictEqual(calls, ['initial callback', 'per-call policy'])
+    } finally {
+      globalThis.document = originalDocument
+    }
+  })
+
   it('rejects invalid trusted HTML options', async () => {
     assert.throws(() => create({ createTrustedHTML: true }), TypeError)
     const request = create({ fetch: async () => new Response('ok') })

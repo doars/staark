@@ -72,8 +72,6 @@ export const create = (initialOptions) => {
 		}
 	};
 	validateTrustedHTMLOptions(initialOptions);
-	const initialCreateTrustedHTML = initialOptions.createTrustedHTML;
-	const initialTrustedTypesPolicy = initialOptions.trustedTypesPolicy;
 	initialOptions = {
 		...DEFAULT_VALUES,
 		...cloneRecursive(initialOptions),
@@ -274,19 +272,11 @@ export const create = (initialOptions) => {
 					}
 				}
 				if (!foundParser) {
-					const createTrustedHTML = Object.hasOwn(
-						options,
-						"perCallCreateTrustedHTML",
-					)
-						? options.perCallCreateTrustedHTML
-						: Object.hasOwn(options, "perCallTrustedTypesPolicy")
-							? options.perCallTrustedTypesPolicy.createHTML.bind(
-									options.perCallTrustedTypesPolicy,
-								)
-							: initialCreateTrustedHTML ||
-								initialTrustedTypesPolicy?.createHTML.bind(
-									initialTrustedTypesPolicy,
-								);
+					const createTrustedHTML =
+						options.createTrustedHTML ||
+						options.trustedTypesPolicy?.createHTML.bind(
+							options.trustedTypesPolicy,
+						);
 					switch (type.toLowerCase()) {
 						case "arraybuffer":
 							result = await response.arrayBuffer();
@@ -482,11 +472,12 @@ export const create = (initialOptions) => {
 		} catch (error) {
 			return Promise.resolve([error, null, null]);
 		}
-		if (Object.hasOwn(sendOptions, "createTrustedHTML")) {
-			options.perCallCreateTrustedHTML = sendOptions.createTrustedHTML;
-		}
-		if (Object.hasOwn(sendOptions, "trustedTypesPolicy")) {
-			options.perCallTrustedTypesPolicy = sendOptions.trustedTypesPolicy;
+		// A per-call policy takes precedence over the initial callback.
+		if (
+			Object.hasOwn(sendOptions, "trustedTypesPolicy") &&
+			!Object.hasOwn(sendOptions, "createTrustedHTML")
+		) {
+			options.createTrustedHTML = undefined;
 		}
 
 		if (!options.debounce) {
