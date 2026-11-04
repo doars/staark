@@ -5,6 +5,8 @@ import {
 } from 'node:test'
 
 import {
+    applyDiff,
+    determineDiff,
     revertDiff,
 } from '../../src/index.js'
 
@@ -333,5 +335,31 @@ describe('Revert diff', () => {
       general: 'kenobi',
     }
     assert.deepStrictEqual(actual, expected)
+  })
+
+  it('reverts from the last change to the first', () => {
+    const actual = revertDiff({ value: 2 }, [{
+      type: 'set',
+      path: ['value'],
+      new: 1,
+    }, {
+      type: 'set',
+      path: ['value'],
+      old: 1,
+      new: 2,
+    }])
+    assert.deepStrictEqual(actual, {})
+  })
+
+  it('restores values that were undefined', () => {
+    const record = { value: undefined }
+    const recordDiff = determineDiff(record, { value: 1 })
+    applyDiff(record, recordDiff)
+    assert.deepStrictEqual(revertDiff(record, recordDiff), { value: undefined })
+
+    const array = [undefined]
+    const arrayDiff = determineDiff(array, [1])
+    applyDiff(array, arrayDiff)
+    assert.deepStrictEqual(revertDiff(array, arrayDiff), [undefined])
   })
 })

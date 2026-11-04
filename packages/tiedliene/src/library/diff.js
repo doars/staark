@@ -278,19 +278,13 @@ const deleteValueAtPath = (record, path) => {
  * @returns {Record<string, any>} Updated state.
  */
 const applyValidatedDiff = (state, diff, reverting) => {
-	for (const change of diff) {
-		if (reverting) {
-			if (change.type === "set") {
-				if (change.old === undefined) {
-					deleteValueAtPath(state, change.path);
-				} else {
-					setValueAtPath(state, change.path, change.old);
-				}
-			} else {
-				setValueAtPath(state, change.path, change.old);
-			}
-		} else if (change.type === "set") {
-			setValueAtPath(state, change.path, change.new);
+	// Revert from the last change to the first, so each change sees the state
+	// it was applied to.
+	for (let index = 0; index < diff.length; index++) {
+		const change = diff[reverting ? diff.length - index - 1 : index];
+		// A set without an old value created the key, so reverting deletes it.
+		if (reverting ? Object.hasOwn(change, "old") : change.type === "set") {
+			setValueAtPath(state, change.path, reverting ? change.old : change.new);
 		} else {
 			deleteValueAtPath(state, change.path);
 		}
@@ -299,12 +293,17 @@ const applyValidatedDiff = (state, diff, reverting) => {
 };
 
 /**
- * Determine the differences between two objects.
+ * Determine the differences between two objects. The changes are in the order
+ * they are applied in: per container, the keys of the "before" object from the
+ * last to the first, then the keys only in the "after" object from the first
+ * to the last. Array items are therefore removed from the end and appended
+ * without leaving holes.
  *
  * @param {Record<string, any>} before The object before the change.
  * @param {Record<string, any>} after The object after the change.
- * @param {string[]} [path=[]] The path to the current object.
+ * @param {Array<string | number>} [path=[]] The path to the current object.
  * @param {WeakMap<object, WeakSet<object>>} [compared] Compared object pairs.
+ * @param {Change[]} [changes=[]] The list to add the changes to.
  * @returns {Change[]} The changes between the two objects.
  */
 export const determineDiff = (
@@ -312,8 +311,8 @@ export const determineDiff = (
 	after,
 	path = [],
 	compared = new WeakMap(),
+	changes = [],
 ) => {
-	const changes = [];
 	if (
 		before &&
 		after &&
@@ -331,36 +330,36 @@ export const determineDiff = (
 		comparedAfter.add(after);
 	}
 
-	// Check for keys in the "before" object that are not in "after".
-	for (const key of Object.keys(before)) {
-		const currentPath = [...path, key];
-
-		if (!Object.hasOwn(after, key)) {
-			changes.unshift({
+	// Arrays are walked by index, so holes are read as undefined and paths
+	// contain numbers.
+	const isArray = Array.isArray(before);
+	const keys = isArray ? [...before.keys()] : Object.keys(before);
+	for (let index = keys.length; index-- > 0; ) {
+		const key = keys[index];
+		if (isArray ? key >= after.length : !Object.hasOwn(after, key)) {
+			changes.push({
 				type: "delete",
-				path: currentPath,
+				path: [...path, key],
 				old: cloneRecursive(before[key]),
 			});
 		} else if (isContainer(before[key]) && isContainer(after[key])) {
 			// If both are objects, recurse deeper.
-			changes.unshift(
-				...determineDiff(before[key], after[key], currentPath, compared),
-			);
+			determineDiff(before[key], after[key], [...path, key], compared, changes);
 		} else if (!valuesEqual(before[key], after[key])) {
 			// If the value has changed, record the new and old value.
-			changes.unshift({
+			changes.push({
 				type: "set",
-				path: currentPath,
+				path: [...path, key],
 				old: cloneRecursive(before[key]),
 				new: cloneRecursive(after[key]),
 			});
 		}
 	}
 
-	// Check for keys in the "after" object that were not in "before".
-	for (const key of Object.keys(after)) {
-		if (!Object.hasOwn(before, key)) {
-			changes.unshift({
+	// Add the keys in the "after" object that were not in "before".
+	for (const key of isArray ? [...after.keys()] : Object.keys(after)) {
+		if (isArray ? key >= before.length : !Object.hasOwn(before, key)) {
+			changes.push({
 				type: "set",
 				path: [...path, key],
 				new: cloneRecursive(after[key]),

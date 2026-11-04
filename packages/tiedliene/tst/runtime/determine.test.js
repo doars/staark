@@ -5,7 +5,9 @@ import {
 } from 'node:test'
 
 import {
+    applyDiff,
     determineDiff,
+    revertDiff,
 } from '../../src/index.js'
 
 describe('Determine diff', () => {
@@ -102,11 +104,11 @@ describe('Determine diff', () => {
     ])
     const expected = [{
       type: 'delete',
-      path: ['3',],
+      path: [3],
       old: 'kenobi',
     }, {
       type: 'set',
-      path: ['2',],
+      path: [2],
       new: 'kenobi',
       old: 'general',
     }]
@@ -125,20 +127,20 @@ describe('Determine diff', () => {
     ])
     const expected = [{
       type: 'delete',
-      path: ['3',],
+      path: [3],
       old: 'kenobi',
     }, {
       type: 'delete',
-      path: ['2',],
+      path: [2],
       old: 'general',
     }, {
       type: 'set',
-      path: ['1',],
+      path: [1],
       new: 'kenobi',
       old: 'there',
     }, {
       type: 'set',
-      path: ['0',],
+      path: [0],
       old: 'hello',
       new: 'general',
     }]
@@ -158,13 +160,13 @@ describe('Determine diff', () => {
     ])
     const expected = [{
       type: 'set',
-      path: ['3',],
-      new: 'kenobi',
-    }, {
-      type: 'set',
-      path: ['2',],
+      path: [2],
       new: 'general',
       old: 'kenobi',
+    }, {
+      type: 'set',
+      path: [3],
+      new: 'kenobi',
     }]
     assert.deepStrictEqual(actual, expected)
   })
@@ -333,5 +335,36 @@ describe('Determine diff', () => {
       new: 'kenobi',
     }]
     assert.deepStrictEqual(actual, expected)
+  })
+
+  it('array growth is appended in order without holes', () => {
+    const state = [1]
+    const diff = determineDiff(state, [1, 2, 3])
+    assert.deepStrictEqual(diff.map((change) => change.path), [[1], [2]])
+    assert.deepStrictEqual(applyDiff(state, diff), [1, 2, 3])
+    assert.deepStrictEqual(revertDiff(state, diff), [1])
+  })
+
+  it('sparse array holes are set to undefined', () => {
+    const state = [1, 2, 3]
+    const diff = determineDiff(state, [1, , 3])
+    assert.deepStrictEqual(diff, [{
+      type: 'set',
+      path: [1],
+      old: 2,
+      new: undefined,
+    }])
+    assert.deepStrictEqual(applyDiff(state, diff), [1, undefined, 3])
+    assert.deepStrictEqual(revertDiff(state, diff), [1, 2, 3])
+  })
+
+  it('large nested diffs', () => {
+    const before = {}
+    const after = {}
+    for (let index = 0; index < 300000; index++) {
+      before[`key${index}`] = 0
+      after[`key${index}`] = 1
+    }
+    assert.strictEqual(determineDiff({ record: before }, { record: after }).length, 300000)
   })
 })
