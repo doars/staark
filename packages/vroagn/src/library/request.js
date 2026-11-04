@@ -10,7 +10,7 @@ import { getType } from "../utilities/type.js";
 
 /**
  * @typedef {Object} SendOptions Defines the options for sending a request.
- * @property {any} [body] The body of the request.
+ * @property {any} [body] The body of the request. Plain objects and arrays are encoded as JSON.
  * @property {RequestCredentials} [credentials] The credentials for the request.
  * @property {string} [domain] The domain for the request.
  * @property {HeadersInit} [headers] The headers for the request.
@@ -185,8 +185,20 @@ export const create = (initialOptions) => {
 			mode: options.mode,
 			priority: options.priority,
 			redirect: options.redirect,
-			body: options.body ? JSON.stringify(options.body) : undefined,
+			body: options.body || undefined,
 		};
+		// Encode plain objects and arrays as JSON, pass any other body as is.
+		const bodyPrototype = config.body && Object.getPrototypeOf(config.body);
+		if (
+			Array.isArray(config.body) ||
+			bodyPrototype === Object.prototype ||
+			bodyPrototype === null
+		) {
+			config.body = JSON.stringify(config.body);
+			if (!config.headers.has("Content-Type")) {
+				config.headers.set("Content-Type", "application/json");
+			}
+		}
 
 		let url = (options.domain || "") + (options.path || "");
 		const query = new URLSearchParams(options.queryParams).toString();
@@ -465,10 +477,15 @@ export const create = (initialOptions) => {
 	 * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
 	 */
 	return (sendOptions = {}) => {
+		// The body is encoded or passed as is, so it does not need a clone.
+		const { body, ...otherOptions } = sendOptions;
 		const options = {
 			...initialOptions,
-			...cloneRecursive(sendOptions),
+			...cloneRecursive(otherOptions),
 		};
+		if (Object.hasOwn(sendOptions, "body")) {
+			options.body = body;
+		}
 		try {
 			validateTrustedHTMLOptions(sendOptions);
 			// Merge the headers, letting the per-call headers take precedence.

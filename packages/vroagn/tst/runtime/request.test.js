@@ -51,6 +51,7 @@ describe('Request', () => {
     assert.deepStrictEqual(Object.fromEntries(receivedOptions.headers), {
       accept: 'application/json',
       authorization: 'updated',
+      'content-type': 'application/json',
     })
   })
 
@@ -153,6 +154,46 @@ describe('Request', () => {
     const request = create({ fetch: async () => new Response('ok') })
     const [error] = await request({ headers: { 'in valid': '1' } })
     assert(error instanceof TypeError)
+  })
+
+  it('only encodes plain object and array bodies as JSON', async () => {
+    const received = []
+    const request = create({
+      fetch: async (_url, options) => {
+        received.push([options.body, options.headers.get('content-type')])
+        return new Response('ok')
+      },
+      method: 'post',
+    })
+    const formData = new FormData()
+    formData.set('a', '1')
+    const blob = new Blob(['a'])
+    const searchParams = new URLSearchParams({ a: '1' })
+    const buffer = new ArrayBuffer(1)
+    const nullPrototype = Object.create(null)
+    nullPrototype.a = 1
+
+    await request({ body: { a: 1 } })
+    await request({ body: [1, 2] })
+    await request({ body: nullPrototype })
+    await request({ body: { a: 1 }, headers: { 'Content-Type': 'text/plain' } })
+    await request({ body: 'text' })
+    await request({ body: formData })
+    await request({ body: blob })
+    await request({ body: searchParams })
+    await request({ body: buffer })
+
+    assert.deepStrictEqual(received.slice(0, 4), [
+      ['{"a":1}', 'application/json'],
+      ['[1,2]', 'application/json'],
+      ['{"a":1}', 'application/json'],
+      ['{"a":1}', 'text/plain'],
+    ])
+    const passed = ['text', formData, blob, searchParams, buffer]
+    for (const [index, body] of passed.entries()) {
+      assert.strictEqual(received[4 + index][0], body)
+      assert.strictEqual(received[4 + index][1], null)
+    }
   })
 
   it('uses a matching custom parser', async () => {
