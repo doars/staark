@@ -52,9 +52,14 @@ export const createEvent = () => {
 		 */
 		dispatch: (data) => {
 			for (const [listener, options] of listeners.entries()) {
-				listener(data);
 				if (options?.once) {
 					listeners.delete(listener);
+				}
+				// Report an error of a listener without stopping the others, or the code that dispatched the event.
+				try {
+					listener(data);
+				} catch (error) {
+					console.error(error);
 				}
 			}
 		},

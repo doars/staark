@@ -51,7 +51,8 @@ import {
  * @property {string} [createRoomEndpoint='/create-room'] - Endpoint for creating a room.
  * @property {string} [joinRoomEndpoint='/join-room'] - Endpoint for joining a room.
  *
- * @property {number} [maxUsersPerRoom=50] - Absolute maximum users allowed per room.
+ * @property {string} [serverOrigin='http://localhost:3000'] - Origin of the server. The default origin check only allows upgrades from it. Required in production, unless `validateOrigin` is given.
+ * @property {number} [maxUsersPerRoom=16] - Absolute maximum users allowed per room.
  * @property {number} [maxRooms=1000] - Maximum number of active rooms.
  * @property {number} [creatorJoinTimeout=30000] - Time before an unclaimed room expires. Zero disables it.
  * @property {number} [roomIdleTimeout=1800000] - Time before an inactive room expires. Zero disables it.
@@ -172,6 +173,16 @@ export const createServerConnector = (options = {}) => {
 	}
 	if (typeof validateOrigin !== "function") {
 		throw new TypeError("validateOrigin must be a function");
+	}
+	// The default origin check only allows the default server origin, which is a local one, so it would reject every upgrade in production.
+	if (
+		!options.serverOrigin &&
+		!options.validateOrigin &&
+		process.env.NODE_ENV === "production"
+	) {
+		throw new TypeError(
+			"serverOrigin or validateOrigin is required in production",
+		);
 	}
 	if (
 		!Array.isArray(allowedWebSocketProtocols) ||
@@ -296,7 +307,7 @@ export const createServerConnector = (options = {}) => {
 		bucket.tokens--;
 		return true;
 	};
-	const consumeCreationTokens = (remoteAddress) => {
+	const consumeAddressCreationToken = (remoteAddress) => {
 		let addressBucket = _creationBuckets.get(remoteAddress);
 		if (!addressBucket) {
 			addressBucket = {
@@ -314,12 +325,7 @@ export const createServerConnector = (options = {}) => {
 			}
 		}, 60000);
 		addressBucket.cleanupTimer.unref?.();
-		const addressAllowed = consumeToken(addressBucket, roomCreationsPerAddress);
-		const globalAllowed = consumeToken(
-			_globalCreationBucket,
-			roomCreationsGlobal,
-		);
-		return addressAllowed && globalAllowed;
+		return consumeToken(addressBucket, roomCreationsPerAddress);
 	};
 	const clearRoomTimers = (room) => {
 		if (room.creatorJoinTimer) {
@@ -659,25 +665,46 @@ export const createServerConnector = (options = {}) => {
 						closeConnection(connection, "direct_message_rate_limited");
 						return;
 					}
-					const directKeys = [USER, USER_DIRECT_PAYLOAD];
-					const encryptedKeys = [
-						USER,
-						USER_ENCRYPTION_IV,
-						USER_ENCRYPTION_KEY,
-						USER_ENCRYPTION_PAYLOAD,
-						USER_ENCRYPTION_SIGNATURE,
-					];
+					// A direct message is unencrypted, encrypted with the handshake key, or encrypted with the keys of the receiver.
 					if (
 						typeof userPayload !== "string" ||
-						(!userDirectPayload &&
-							(!userEncryptionIv ||
-								!userEncryptionKey ||
-								!userEncryptionPayload ||
-								!userEncryptionSignature)) ||
-						(!hasExactKeys(parts, directKeys) &&
-							!hasExactKeys(parts, encryptedKeys))
+						(!(
+							userDirectPayload &&
+							hasExactKeys(parts, [USER, USER_DIRECT_PAYLOAD])
+						) &&
+							!(
+								userEncryptionIv &&
+								userEncryptionPayload &&
+								hasExactKeys(parts, [
+									USER,
+									USER_ENCRYPTION_IV,
+									USER_ENCRYPTION_PAYLOAD,
+								])
+							) &&
+							!(
+								userEncryptionIv &&
+								userEncryptionKey &&
+								userEncryptionPayload &&
+								userEncryptionSignature &&
+								hasExactKeys(parts, [
+									USER,
+									USER_ENCRYPTION_IV,
+									USER_ENCRYPTION_KEY,
+									USER_ENCRYPTION_PAYLOAD,
+									USER_ENCRYPTION_SIGNATURE,
+								])
+							))
 					) {
 						throw new TypeError("invalid_direct_message");
+					}
+					// Unverified users may only message the creator. The unencrypted channel is only for the handshake between the creator and an unverified user.
+					if (
+						(!userData.verified && userPayload !== room.creatorId) ||
+						(userDirectPayload &&
+							userData.verified &&
+							(!_isCreator || room.users.get(userPayload)?.verified))
+					) {
+						throw new TypeError("direct_message_not_allowed");
 					}
 					refreshRoomIdleTimer(roomCode);
 					messageUser(roomCode, userId, userPayload, encodedMessage);
@@ -884,10 +911,8 @@ export const createServerConnector = (options = {}) => {
 			];
 		}
 
-		const senderPart = sender
-			? `|${AUTHENTICATED_SENDER}:${stringToBase64(sender)}`
-			: "";
-		const message = `${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${payload}${senderPart}`;
+		const senderPart = sender ? `|${AUTHENTICATED_SENDER}:${sender}` : "";
+		const message = `${SERVER_TIME}:${Date.now()}|${payload}${senderPart}`;
 
 		for (const [userId, { connection, verified }] of _room.users) {
 			if (!verified || (sender && sender === userId)) {
@@ -961,8 +986,8 @@ export const createServerConnector = (options = {}) => {
 
 		sendConnection(
 			connection,
-			`${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${data}${
-				sender ? `|${AUTHENTICATED_SENDER}:${stringToBase64(sender)}` : ""
+			`${SERVER_TIME}:${Date.now()}|${data}${
+				sender ? `|${AUTHENTICATED_SENDER}:${sender}` : ""
 			}`,
 		);
 		return [true, {}];
@@ -999,6 +1024,11 @@ export const createServerConnector = (options = {}) => {
 			);
 
 			if (pathname === createRoomEndpoint) {
+				if (request.method !== "POST") {
+					response.writeHead(405, { Allow: "POST" });
+					response.end();
+					return true;
+				}
 				let remoteAddress;
 				try {
 					remoteAddress = String(getRemoteAddress(request));
@@ -1009,7 +1039,8 @@ export const createServerConnector = (options = {}) => {
 					);
 					return true;
 				}
-				if (!consumeCreationTokens(remoteAddress)) {
+				// Check the address before calling the authorization, and only take from the global budget for requests that would succeed otherwise, so one address can't use it up.
+				if (!consumeAddressCreationToken(remoteAddress)) {
 					response.writeHead(429, {
 						"Content-Type": contentType,
 						"Retry-After": "60",
@@ -1034,9 +1065,14 @@ export const createServerConnector = (options = {}) => {
 					);
 					return true;
 				}
-				if (request.method !== "POST") {
-					response.writeHead(405, { Allow: "POST" });
-					response.end();
+				if (!consumeToken(_globalCreationBucket, roomCreationsGlobal)) {
+					response.writeHead(429, {
+						"Content-Type": contentType,
+						"Retry-After": "60",
+					});
+					response.end(
+						serializeMessage({ error: "room_creation_rate_limited" }),
+					);
 					return true;
 				}
 				const limitValue = searchParams.get("limit");

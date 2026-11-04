@@ -2,11 +2,11 @@
 
 Real-time shared state over end-to-end encrypted WebSocket messages. A relay server creates rooms and forwards opaque messages; the room creator verifies joining users over a trusted side channel.
 
-Use the low-level client connector for application-defined messages. Use the synchronizer when mutations to one public state object should be distributed automatically.
+Use the low-level client connector for application-defined messages. Use the synchronizer to share one public state object; call `sendUpdate()` after changing it.
 
 ## Runtime and builds
 
-The client requires browser WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs. The server connector targets Node-style HTTP requests and a compatible WebSocket server.
+The client requires browser WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs. Keys are generated in a worker created from a Blob URL, so a Content Security Policy must allow `worker-src blob:`. The server connector targets Node-style HTTP requests and a compatible WebSocket server.
 
 The package entry `@doars/roupn` exports `createClientConnector`, `createClientSynchronizer`, and `createServerConnector`. Browser bundles intentionally contain only client APIs: the base build contains `createClientConnector`, and the full build adds `createClientSynchronizer`.
 
@@ -14,9 +14,11 @@ The package entry `@doars/roupn` exports `createClientConnector`, `createClientS
 
 Room messages are encrypted between clients. The relay cannot decrypt their content, but it can observe metadata such as timing, room membership, addresses, and message sizes. Treat the relay and its logs accordingly.
 
-The creator verifies a joining user's displayed code through a separate trusted channel. Public handshake data is visible before encryption; private data is exchanged only after end-to-end encryption is established.
+The creator verifies a joining user's displayed code through a separate trusted channel. The code is derived from the protocol version, the room code, both user IDs, every exchanged public key, and the ECDH secret, so a relay that replaces a key causes different codes. The joiner commits to its keys before it sees the creator's keys, so a relay gets a single guess at matching codes. The whole six-character code has to match; case and surrounding spaces are ignored. Only the creator compares it, so the creator should confirm the match to the joiner over the same channel.
 
-Production clients require `https:` and `wss:` URLs. Plain URLs are accepted only for loopback development unless `allowInsecureNonLoopback` is explicitly enabled. The default server upgrade policy requires an exact same-origin `Origin` and rejects a missing origin.
+Public handshake data is visible to the relay. Private data and the room key are sent only after the code is verified, encrypted with a key derived from the ECDH secret.
+
+Production clients require `https:` and `wss:` URLs. Plain URLs are accepted only for loopback development unless `allowInsecureNonLoopback` is explicitly enabled. The default server upgrade policy only allows an `Origin` equal to `serverOrigin`, which defaults to `http://localhost:3000`, and rejects a missing origin. When `NODE_ENV` is `production`, `createServerConnector` throws unless `serverOrigin` or `validateOrigin` is given.
 
 ## `createServerConnector`
 
@@ -44,7 +46,7 @@ type ServerConnector = {
 
 Important defaults include:
 
-- Endpoints: `createRoomEndpoint: '/create-room'`, `joinRoomEndpoint: '/join-room'`.
+- Endpoints: `createRoomEndpoint: '/create-room'`, `joinRoomEndpoint: '/join-room'`, and `serverOrigin: 'http://localhost:3000'`.
 - Capacity: `maxUsersPerRoom: 16`, `maxPendingUsersPerRoom: 8`, `maxRooms: 1000`.
 - Timeouts: `creatorJoinTimeout: 30000`, `handshakeTimeout: 30000`, `roomIdleTimeout: 1800000`. Set a timeout to `0` to disable it.
 - Message limits: `maxEncodedMessageBytes: 262144`, `maxProtocolSegments: 16`, `maxProtocolKeyBytes: 64`, `maxDecodedFieldBytes: 196608`, `maxTotalDecodedBytes: 262144`.
@@ -56,13 +58,27 @@ Other options configure serialization, connection and category rate budgets, rem
 Construct the WebSocket transport with `maxPayload` no larger than `maxEncodedMessageBytes`. Only read forwarding headers in `getRemoteAddress` when requests pass through a trusted proxy that replaces those headers. Add a reverse-proxy rate limit for the room-creation endpoint in production.
 
 ```JavaScript
+import { createServer } from 'node:http'
+import { WebSocketServer } from 'ws'
 import { createServerConnector } from '@doars/roupn'
 
-const connector = createServerConnector()
+const connector = createServerConnector({
+  serverOrigin: 'https://rooms.example.com',
+})
+const socketServer = new WebSocketServer({
+  maxPayload: 256 * 1024,
+  noServer: true,
+})
 
-httpServer.on('request', connector.handleHttpRequest)
+const httpServer = createServer((request, response) => {
+  if (!connector.handleHttpRequest(request, response)) {
+    response.writeHead(404).end()
+  }
+})
 httpServer.on('upgrade', (request, socket, head) => {
-  connector.handleSocketUpgrade(request, socket, head, socketServer)
+  if (!connector.handleSocketUpgrade(request, socket, head, socketServer)) {
+    socket.destroy()
+  }
 })
 ```
 
@@ -83,8 +99,9 @@ Important defaults include:
 - `contentType: 'application/json'`, `serializeMessage: JSON.stringify`, and `deserializeMessage: JSON.parse`.
 - `messageBufferMaxCount: 50` and `messageBufferMaxDuration: 60000`.
 - `allowInsecureNonLoopback: false`.
+- Limits on received messages: `maxEncodedMessageBytes: 262144`, `maxProtocolSegments: 16`, `maxProtocolKeyBytes: 64`, `maxDecodedFieldBytes: 196608`, `maxTotalDecodedBytes: 262144`. Breaking them closes the connection; other failing messages are reported and dropped.
 
-Room creation and joining accept `publicData` and `verifyPublicData`. Public handshake data is visible to the relay and must not contain secrets. Failures may be reported through `onError`; callers should subscribe before connecting. `verifyUser(userId, code)` returns whether creator-side verification succeeded.
+Room creation and joining accept `publicData`, `verifyPublicData`, `privateData`, and `verifyPrivateData`; the data may be a function that returns it, and a verify callback returning `false` kicks the joiner or leaves the room. Room creation also accepts `limit`. Public handshake data is visible to the relay and must not contain secrets. Failures are reported through `onError` as `{ error }`, for example `room_creation_failed:429`; callers should subscribe before connecting. `verifyUser(userId, code)` returns whether creator-side verification succeeded.
 
 ## `createClientSynchronizer`
 
@@ -98,7 +115,7 @@ createClientSynchronizer(
 
 Wraps the client connector and returns all connector members plus `privateState`, `publicState`, and `sendUpdate`.
 
-Treat `privateState` as read-only application status. `publicState` is recursively observed; its mutations are converted to diffs and sent to verified room members.
+Treat `privateState` as read-only application status. Changes to `publicState` are not sent by themselves: `sendUpdate()` diffs it against the last sent state and sends the changes to verified room members. Every user applies updates in the same order, by time and then identifier. Only the creator's full-state synchronisations are accepted.
 
 Synchronizer defaults include `windowPerUser: 16`, `synchronisationInterval: 60000`, `maxDiffChanges: 1000`, `maxDiffPathDepth: 32`, `maxDiffValueBytes: 196608`, and `maxSerializedStateBytes: 1048576`.
 
@@ -122,4 +139,5 @@ synchronizer.onError.addListener(({ error }) => {
 
 await synchronizer.createRoom()
 synchronizer.publicState.message = 'Hello'
+synchronizer.sendUpdate()
 ```

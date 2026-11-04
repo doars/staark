@@ -85,28 +85,64 @@ describe('Server room creation policy', () => {
     assert.strictEqual(connector.getRoomCount(), 0)
   })
 
-  it('rate limits every attempt before method validation', () => {
+  it('rejects other methods before taking a token', () => {
     const connector = createServerConnector({
+      roomCreationsGlobal: 1,
+      roomCreationsPerAddress: 1,
+    })
+    const request = (method) => ({
+      method,
+      socket: { remoteAddress: '192.0.2.2' },
+      url: '/create-room',
+    })
+    const statuses = []
+    for (const method of ['GET', 'GET', 'POST', 'POST']) {
+      const response = createResponse()
+      connector.handleHttpRequest(request(method), response)
+      statuses.push(response.result.status)
+      if (response.result.status === 429) {
+        assert.strictEqual(response.result.headers['Retry-After'], '60')
+        assert.deepStrictEqual(JSON.parse(response.result.body), {
+          error: 'room_creation_rate_limited',
+        })
+      }
+    }
+
+    assert.deepStrictEqual(statuses, [405, 405, 200, 429])
+    for (const roomCode of connector.getRoomCodes()) {
+      connector.removeRoom(roomCode)
+    }
+  })
+
+  it('keeps one address from using up the global budget', () => {
+    const connector = createServerConnector({
+      authorizeRoomCreation: ({ remoteAddress }) => remoteAddress !== '192.0.2.5',
       roomCreationsGlobal: 2,
       roomCreationsPerAddress: 1,
     })
-    const request = {
-      method: 'GET',
-      socket: { remoteAddress: '192.0.2.2' },
-      url: '/create-room',
+    const create = (remoteAddress) => {
+      const response = createResponse()
+      connector.handleHttpRequest({
+        method: 'POST',
+        socket: { remoteAddress },
+        url: '/create-room',
+      }, response)
+      return response.result.status
     }
-    const firstResponse = createResponse()
-    const secondResponse = createResponse()
+    const statuses = []
+    for (let index = 0; index < 10; index++) {
+      statuses.push(create('192.0.2.4'))
+    }
+    // Refused by the authorization.
+    statuses.push(create('192.0.2.5'))
 
-    connector.handleHttpRequest(request, firstResponse)
-    connector.handleHttpRequest(request, secondResponse)
-
-    assert.strictEqual(firstResponse.result.status, 405)
-    assert.strictEqual(secondResponse.result.status, 429)
-    assert.strictEqual(secondResponse.result.headers['Retry-After'], '60')
-    assert.deepStrictEqual(JSON.parse(secondResponse.result.body), {
-      error: 'room_creation_rate_limited',
-    })
+    assert.deepStrictEqual(statuses, [200, ...Array(9).fill(429), 403])
+    assert.strictEqual(create('192.0.2.6'), 200)
+    // Now the global budget is used up.
+    assert.strictEqual(create('192.0.2.7'), 429)
+    for (const roomCode of connector.getRoomCodes()) {
+      connector.removeRoom(roomCode)
+    }
   })
 
   it('returns a stable max-room error', () => {
@@ -134,7 +170,7 @@ describe('Server message limits', () => {
     const creatorConnection = createConnection()
     connector.joinRoom(room.roomCode, creatorConnection, true)
     creatorConnection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
     const peerConnection = createConnection()
     const [, peer] = connector.joinRoom(room.roomCode, peerConnection)
@@ -160,6 +196,48 @@ describe('Server message limits', () => {
       },
     )
     assert.strictEqual(parts[AUTHENTICATED_SENDER], peer.userId)
+    connector.removeRoom(room.roomCode)
+  })
+
+  it('only lets unverified users and the creator use the channels of the handshake', () => {
+    const connector = createServerConnector()
+    const room = connector.createRoom()
+    const creatorConnection = createConnection()
+    connector.joinRoom(room.roomCode, creatorConnection, true)
+    creatorConnection.dispatch('message', {
+      data: `A:${room.creatorConnectionToken}`,
+    })
+    const joinUser = () => {
+      const connection = createConnection()
+      const [, { userId }] = connector.joinRoom(room.roomCode, connection)
+      return { connection, userId }
+    }
+    const direct = (receiver, payload = '{}') => ({
+      data: `D:${stringToBase64(payload)}|U:${receiver}`,
+    })
+    const verified = joinUser()
+    connector.getRoom(room.roomCode).users.get(verified.userId).verified = true
+    const pending = joinUser()
+    const other = joinUser()
+
+    // An unverified user can message the creator, but nobody else.
+    pending.connection.dispatch('message', direct(room.userId))
+    assert.strictEqual(pending.connection.closeCount, 0)
+    assert.match(creatorConnection.sent.at(-1), /^T:\d+\|D:/)
+    pending.connection.dispatch('message', direct(verified.userId))
+    assert.strictEqual(pending.connection.closeReason, 'invalid_protocol_message')
+    assert.strictEqual(verified.connection.sent.some((message) => message.includes('|D:')), false)
+
+    // The creator can only send unencrypted messages to unverified users.
+    creatorConnection.dispatch('message', direct(other.userId))
+    assert.strictEqual(creatorConnection.closeCount, 0)
+    assert.match(other.connection.sent.at(-1), /\|D:/)
+    creatorConnection.dispatch('message', direct(verified.userId))
+    assert.strictEqual(creatorConnection.closeReason, 'invalid_protocol_message')
+
+    // Verified users have no use for the unencrypted channel.
+    verified.connection.dispatch('message', direct(other.userId))
+    assert.strictEqual(verified.connection.closeReason, 'invalid_protocol_message')
     connector.removeRoom(room.roomCode)
   })
 
@@ -199,7 +277,7 @@ describe('Server message limits', () => {
     const creatorConnection = createConnection()
     connector.joinRoom(room.roomCode, creatorConnection, true)
     creatorConnection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
     const message = `S:${stringToBase64(JSON.stringify({ type: 'unknown' }))}`
     creatorConnection.dispatch('message', { data: message })
@@ -235,7 +313,7 @@ describe('Creator authentication', () => {
     assert.strictEqual(authenticated, 0)
 
     connection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
 
     assert.strictEqual(authenticated, 1)
@@ -293,7 +371,7 @@ describe('Creator authentication', () => {
     )
     assert.strictEqual(success, true)
     creatorConnection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
     assert.strictEqual(storedRoom.users.get(room.userId).verified, true)
     connector.removeRoom(room.roomCode)
@@ -309,6 +387,23 @@ describe('Transport and origin policy', () => {
       }),
       /allowInsecureNonLoopback/,
     )
+  })
+
+  it('requires an origin policy in production', () => {
+    const environment = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    try {
+      assert.throws(() => createServerConnector(), /serverOrigin or validateOrigin/)
+      assert.doesNotThrow(() => createServerConnector({ serverOrigin: 'https://app.example' }))
+      assert.doesNotThrow(() => createServerConnector({ validateOrigin: () => true }))
+    } finally {
+      if (environment === undefined) {
+        delete process.env.NODE_ENV
+      } else {
+        process.env.NODE_ENV = environment
+      }
+    }
+    assert.doesNotThrow(() => createServerConnector())
   })
 
   it('rejects missing and cross-origin upgrades', () => {

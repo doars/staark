@@ -26,13 +26,9 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
  *
- * @property {any} [publicData={}] - Public data to be shared with other clients in the room.
- * @property {Function} [verifyPublicData] - Callback for verifying the public data of other users.
- * @property {any} [privateData={}] - Private data to be shared with other clients in the room.
- * @property {Function} [verifyPrivateData] - Callback for verifying the private data of other users.
- *
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
+ * @property {boolean} [allowInsecureNonLoopback=false] - Allows insecure HTTP and WebSocket URLs outside loopback for development.
  *
  * @property {number} [windowPerUser=16] - Number of state updates to keep per joined user. Used in case of rollbacks.
  * @property {number} [synchronisationInterval=60000] - Interval in milliseconds for a full state synchronisation.
@@ -57,9 +53,7 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  * @property {Event} onUserVerificationCode - Event for verification code ready notifications.
  *
  * @property {Object} privateState - Internal state, including user and room information.
- * @property {Object} publicState - Shared state object synchronized across users.
- *
- * @property {Function} getConnectionState - Get the current connection state.
+ * @property {Object} publicState - Shared state object synchronized across users. Changes are only sent when `sendUpdate` is called.
  *
  * @property {Function} closeRoom - Closes the room for all. Only allowed by the creator.
  * @property {Function} createRoom - Creates a new room and joins it.
@@ -69,7 +63,7 @@ import { STATE_SYNCH, STATE_UPDATE } from "./message-types.js";
  *
  * @property {Function} kickUser - Remove's a player's connection. Only allowed by the creator.
  *
- * @property {Function} sendUpdate - Sends the current state delta to other users.
+ * @property {Function} sendUpdate - Sends the changes made to the public state since the last call to the other users. Call it after changing the public state.
  */
 
 /**
@@ -106,8 +100,14 @@ export const createClientSynchronizer = (
 			throw new TypeError(`${name} must be a positive integer`);
 		}
 	}
+	// Measures the size of received data, and rejects keys that could change a prototype or replace a method, since tiedliene stores them as ordinary keys.
 	const serializedBytes = (value) => {
-		const serialized = JSON.stringify(value);
+		const serialized = JSON.stringify(value, (key, entry) => {
+			if (key === "__proto__" || key === "constructor" || key === "prototype") {
+				throw new TypeError("unsafe_state_key");
+			}
+			return entry;
+		});
 		if (serialized === undefined) {
 			throw new TypeError("invalid_serialized_value");
 		}
@@ -124,7 +124,13 @@ export const createClientSynchronizer = (
 				(change.type !== "set" && change.type !== "delete") ||
 				!Array.isArray(change.path) ||
 				change.path.length === 0 ||
-				change.path.length > maxDiffPathDepth
+				change.path.length > maxDiffPathDepth ||
+				change.path.some(
+					(component) =>
+						component === "__proto__" ||
+						component === "constructor" ||
+						component === "prototype",
+				)
 			) {
 				throw new TypeError("invalid_state_delta");
 			}
@@ -138,10 +144,15 @@ export const createClientSynchronizer = (
 			}
 		}
 	};
+	/**
+	 * The recent updates, newest first. They are ordered by their time, then by their identifier, so every user applies them in the same order.
+	 *
+	 * @type {Array<{ identifier: string, sender: string, stateDelta: Array, time: number }>}
+	 */
 	const _stateUpdates = [];
 	let _synchronisationIntervalId,
-		_messageDelay = 0,
-		_messageOffset = 0,
+		// The time of the newest update or synchronisation seen. A new update is always newer than it.
+		_lastTime = 0,
 		_stateUpdatesWindow = windowPerUser;
 
 	/**
@@ -151,25 +162,20 @@ export const createClientSynchronizer = (
 	 */
 	const _sendDelta = (stateDelta) => {
 		const identifier = generateCode();
-		const previous = stateDelta.length > 0 ? stateDelta[0].identifier : null;
+		_lastTime = Math.max(Date.now(), _lastTime + 1);
 
 		// Store the update for reference later.
 		_stateUpdates.unshift({
 			identifier,
-			previous,
 			sender: privateState.userId,
 			stateDelta,
-			time: {
-				adjusted: Date.now() + _messageDelay - _messageOffset,
-			},
+			time: _lastTime,
 		});
-		if (_stateUpdates.length > _stateUpdatesWindow) {
-			_stateUpdates.splice(_stateUpdatesWindow);
-		}
+		_stateUpdates.splice(_stateUpdatesWindow);
 		messageRoom({
 			identifier,
-			previous,
 			stateDelta,
+			time: _lastTime,
 			type: STATE_UPDATE,
 		});
 
@@ -188,13 +194,14 @@ export const createClientSynchronizer = (
 	};
 
 	/**
-	 * Synchronizes the full current state with other users in the room.
+	 * Synchronizes the full current state with other users in the room. The time tells which updates the state includes.
 	 */
 	const _synchroniseState = () => {
 		if (privateState.users.length > 1) {
 			messageRoom({
 				type: STATE_SYNCH,
 				state: cloneRecursive(publicState),
+				time: _lastTime,
 			});
 		}
 	};
@@ -206,106 +213,90 @@ export const createClientSynchronizer = (
 		privateState.previousState = cloneRecursive(publicState);
 	};
 
-	connector.onMessage.addListener(({ data, time }) => {
+	connector.onMessage.addListener(({ data }) => {
 		// Check if the message is not from yourself, or is not intended for the current user.
 		if (
 			data.sender === privateState.userId ||
-			(data.receiver && data.receiver !== privateState.userId)
+			(data.receiver && data.receiver !== privateState.userId) ||
+			(data.type !== STATE_UPDATE && data.type !== STATE_SYNCH)
 		) {
 			return;
 		}
+
 		try {
 			if (data.type === STATE_UPDATE) {
 				validateStateDelta(data.stateDelta);
-			} else if (
-				data.type === STATE_SYNCH &&
-				serializedBytes(data.state) > maxSerializedStateBytes
-			) {
-				throw new TypeError("synchronized_state_too_large");
+				if (
+					typeof data.identifier !== "string" ||
+					!Number.isFinite(data.time)
+				) {
+					throw new TypeError("invalid_state_delta");
+				}
+			} else {
+				// Only the creator may replace the state of everyone.
+				if (data.sender !== privateState.creatorId) {
+					throw new TypeError("synchronized_state_not_from_creator");
+				}
+				if (
+					!data.state ||
+					typeof data.state !== "object" ||
+					Array.isArray(data.state) ||
+					!Number.isFinite(data.time)
+				) {
+					throw new TypeError("invalid_synchronized_state");
+				}
+				if (serializedBytes(data.state) > maxSerializedStateBytes) {
+					throw new TypeError("synchronized_state_too_large");
+				}
 			}
+
+			// Send the local changes first, so they become an update instead of being mixed into the received state.
+			sendUpdate();
+
+			// Find where the message goes in the updates, which are newest first. Updates are ordered by their time and then their identifier, and a synchronised state includes every update up to its time.
+			let index = 0;
+			while (
+				index < _stateUpdates.length &&
+				(_stateUpdates[index].time > data.time ||
+					(data.type === STATE_UPDATE &&
+						_stateUpdates[index].time === data.time &&
+						_stateUpdates[index].identifier > data.identifier))
+			) {
+				index++;
+			}
+
+			// Work on a copy, so a diff that fails leaves the state as it was. Start from the synchronised state, or undo the newer updates and apply the new one. Then redo the newer updates from the oldest to the newest.
+			const state = cloneRecursive(
+				data.type === STATE_UPDATE ? publicState : data.state,
+			);
+			if (data.type === STATE_UPDATE) {
+				for (let undo = 0; undo < index; undo++) {
+					revertDiff(state, _stateUpdates[undo].stateDelta, true);
+				}
+				applyDiff(state, data.stateDelta, true);
+			}
+			for (let redo = index - 1; redo >= 0; redo--) {
+				applyDiff(state, _stateUpdates[redo].stateDelta, true);
+			}
+			// Only change the keys that differ, so the rest of the state keeps its objects.
+			applyDiff(publicState, determineDiff(publicState, state), true);
+			privateState.previousState = state;
+
+			if (data.type === STATE_UPDATE) {
+				_stateUpdates.splice(index, 0, {
+					identifier: data.identifier,
+					sender: data.sender,
+					stateDelta: data.stateDelta,
+					time: data.time,
+				});
+				_stateUpdates.splice(_stateUpdatesWindow);
+			} else {
+				// The synchronised state includes the older updates.
+				_stateUpdates.splice(index);
+			}
+			_lastTime = Math.max(_lastTime, data.time);
 		} catch (error) {
 			connector.onError.dispatch({ error });
-			return;
-		}
-
-		// Update the estimated message delay and offset.
-		_messageDelay = (_messageDelay + time.delay) / 2;
-		_messageOffset = (_messageOffset + time.offset) / 2;
-
-		if (data.type === STATE_SYNCH) {
-			// Remove any state updates older than the given synch data.
-			let index = 0;
-			for (; index < _stateUpdates.length; index++) {
-				const previousUpdate = _stateUpdates[index];
-				if (previousUpdate.time.adjusted >= time.adjusted) {
-					break;
-				}
-			}
-			_stateUpdates.splice(0, index);
-
-			// Replace the existing state with the given state.
-			for (const key in publicState) {
-				delete publicState[key];
-			}
-			for (const key in data.state) {
-				publicState[key] = data.state[key];
-			}
-
-			// Apply any newer state updates.
-			for (let index = 0; index < _stateUpdates.length; index++) {
-				applyDiff(publicState, _stateUpdates[index].stateDelta);
-			}
-
-			_updatePreviousState();
-		} else if (data.type === STATE_UPDATE) {
-			let failedToInsert = true;
-			for (let index = 0; index < _stateUpdates.length; index++) {
-				const previousUpdate = _stateUpdates[index];
-				if (
-					// If the update's identifier matches the data's previous, we can insert it here.
-					previousUpdate.identifier === data.previous ||
-					// If the previous updates are the same. If the time of this update is newer than the previous one, we can insert it before the previous one.
-					(previousUpdate.previous === data.previous &&
-						previousUpdate.time.adjusted < time.adjusted)
-				) {
-					_stateUpdates.splice(index, 0, {
-						...data,
-						time,
-					});
-					failedToInsert = false;
-					break;
-				}
-			}
-			if (failedToInsert) {
-				// If the update was not inserted just assume it will make sense later.
-				_stateUpdates.unshift({
-					...data,
-					time,
-				});
-			}
-
-			// Undo the state until the new given diff is reached the apply the diff's in order.
-			for (let index = 0; index < _stateUpdates.length; index++) {
-				const update = _stateUpdates[index];
-				if (update.identifier === data.identifier) {
-					// We found the update, we can stop searching.
-					break;
-				}
-				revertDiff(publicState, update.stateDelta);
-			}
-
-			// Redo the state including the new given diff.
-			for (let index = 0; index < _stateUpdates.length; index++) {
-				const update = _stateUpdates[index];
-				// Revert the previous state to the current state.
-				applyDiff(publicState, update.stateDelta);
-				if (update.identifier === data.identifier) {
-					// We found the update, we can stop searching.
-					break;
-				}
-			}
-
-			_updatePreviousState();
 		}
 	});
 
@@ -334,9 +325,8 @@ export const createClientSynchronizer = (
 		for (const key in privateState) {
 			delete privateState[key];
 		}
-		if (_synchronisationIntervalId) {
-			clearInterval(_synchronisationIntervalId);
-		}
+		clearInterval(_synchronisationIntervalId);
+		_stateUpdates.length = _lastTime = 0;
 	});
 
 	connector.onUserJoin.addListener(({ userId }) => {

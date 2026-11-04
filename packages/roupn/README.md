@@ -6,7 +6,7 @@ Synchronise application state between users in real-time via end-to-end encrypte
 - Communication is encrypted from one client to another, ensuring privacy.
 - The server only relays messages and cannot decrypt the content sent.
 - A built-in verification flow helps prevent man-in-the-middle attacks.
-- Automatically synchronizes a shared state object between clients using an efficient diffing mechanism.
+- Synchronizes a shared state object between clients using an efficient diffing mechanism.
 - Provides straightforward functions for setting up both the server and client.
 
 `roupn` operates with a central server that acts as a message relay. Clients connect to this server to create or join rooms. The room's creator is responsible for verifying new users to ensure they are who they claim to be, establishing a secure room for the group. All data exchanged between clients is end-to-end encrypted and is verified during the joining process.
@@ -15,7 +15,9 @@ Because messages are end-to-end encrypted, the server cannot inspect their conte
 
 ## From the user's perspective
 
-A user can be given the option to create or join a room. When creating a room, this user receives a room code from the server, for example `AB3D5F`, and provides it to the people they want to join. Each joining user then sees a different verification code, for example `U2W4YZ`. This code must be given back to the room's creator over a secure and trusted channel. The creator enters it to verify that the public keys received by both users have not been altered.
+A user can be given the option to create or join a room. When creating a room, this user receives a room code from the server, for example `AB3D5F`, and provides it to the people they want to join. Each joining user then sees a different verification code, for example `U2W4YZ`. This code must be given back to the room's creator over a secure and trusted channel. The creator enters it to verify that the public keys received by both users have not been altered. The whole code has to match, but case and surrounding spaces don't matter.
+
+Only the creator compares the code. The creator should therefore also tell the joining user over the same channel that the code matched. Otherwise a relay that pretends to be the creator could lead the joining user into a room of its own. It can never get into the creator's room that way.
 
 ## Usage
 
@@ -30,12 +32,13 @@ The server is responsible for creating rooms and relaying messages between users
 - `serializeMessage` (`Function`): Function to serialize messages. Default: `JSON.stringify`.
 - `createRoomEndpoint` (`string`): Endpoint for creating a room. Default: `'/create-room'`.
 - `joinRoomEndpoint` (`string`): Endpoint for joining a room. Default: `'/join-room'`.
+- `serverOrigin` (`string`): Origin of the server. Request URLs are resolved against it, and the default `validateOrigin` only allows upgrades from exactly this origin. Default: `'http://localhost:3000'`, so set it, or `validateOrigin`, for any other deployment. Creating a connector with neither throws when `NODE_ENV` is `production`.
 - `maxUsersPerRoom` (`number`): Absolute maximum users allowed per room. Default: `16`.
 - `maxRooms` (`number`): Maximum number of active rooms. Default: `1000`.
 - `creatorJoinTimeout` (`number`): Milliseconds before an unclaimed room is removed. Default: `30000`. Set to `0` to disable.
 - `roomIdleTimeout` (`number`): Milliseconds before an inactive room is removed. Default: `1800000`. Set to `0` to disable.
 - `roomCreationsPerAddress` (`number`): Per-address room creation attempts per minute. Default: `10`.
-- `roomCreationsGlobal` (`number`): Global room creation attempts per minute. Default: `100`.
+- `roomCreationsGlobal` (`number`): Global room creation attempts per minute. Default: `100`. Requests that are not a `POST` get a `405` first. An attempt takes a token for its address before `authorizeRoomCreation` is called, and a global token only after that, so one address can't use up the global budget.
 - `getRemoteAddress(request)` (`Function`): Returns the address used for rate limiting. The default reads only `request.socket.remoteAddress`; forwarding headers are never trusted automatically.
 - `authorizeRoomCreation({ request, remoteAddress })` (`Function`): Synchronously authorizes an attempt. Return `false` to respond with `403`; thrown errors produce `500`.
 - `maxEncodedMessageBytes` (`number`): Maximum encoded WebSocket message size. Default: `262144`.
@@ -51,7 +54,7 @@ The server is responsible for creating rooms and relaying messages between users
 - `handshakeMessages` (`number`): Pending-handshake messages allowed per minute. Default: `10`.
 - `maxPendingUsersPerRoom` (`number`): Maximum reserved and unverified users. Default: `8`.
 - `handshakeTimeout` (`number`): Milliseconds before an unverified peer is removed. Default: `30000`. Set to `0` to disable.
-- `validateOrigin({ origin, request })` (`Function`): Upgrade origin policy. It defaults to exact same-origin validation and rejects missing origins.
+- `validateOrigin({ origin, request })` (`Function`): Upgrade origin policy. By default only `serverOrigin` is allowed, and missing origins are rejected.
 - `allowedWebSocketProtocols` (`string[]`): Optional WebSocket subprotocol allowlist.
 
 Production deployments should terminate TLS at the application or reverse
@@ -101,7 +104,14 @@ access logs.
 
 On the client side, use `createClientConnector` to handle connections and encryption, or `createClientSynchronizer` to add shared-state management.
 
-The synchronizer works with two state objects. Its private state holds connection status, user IDs, and other internal data and should be treated as read-only. Its public state is synchronized across the room; changes made to it are automatically broadcast to verified users.
+The synchronizer works with two state objects. Its private state holds connection status, user IDs, and other internal data and should be treated as read-only. Its public state is synchronized across the room. Changes to it are not sent by themselves: call `sendUpdate()` after changing it, which sends the difference since the last call to the verified users. Changes from other users are applied to the same object.
+
+```JavaScript
+synchronizer.publicState.message = 'Hello'
+synchronizer.sendUpdate()
+```
+
+Every user applies the updates in the same order: by the time they were made, which is always later than every update the sender had seen, and then by a random identifier. The creator also sends the full state when a user is verified and every `synchronisationInterval`; other users only accept that from the creator.
 
 #### `createClientConnector(options)`
 
@@ -115,13 +125,25 @@ The synchronizer works with two state objects. Its private state holds connectio
 - `messageBufferMaxCount` (`number`): The maximum number of messages to store in the buffer. Default: `50`.
 - `messageBufferMaxDuration` (`number`): The maximum duration in milliseconds to store a message in the buffer. Default: `60000`.
 - `allowInsecureNonLoopback` (`boolean`): Development-only override for non-loopback `http:` or `ws:` URLs. Default: `false`.
+- `maxEncodedMessageBytes` (`number`): Maximum size of a received message. Default: `262144`.
+- `maxProtocolSegments` (`number`): Maximum protocol segments per message. Default: `16`.
+- `maxProtocolKeyBytes` (`number`): Maximum UTF-8 segment-key size. Default: `64`.
+- `maxDecodedFieldBytes` (`number`): Maximum decoded bytes per field. Default: `196608`.
+- `maxTotalDecodedBytes` (`number`): Maximum decoded bytes across fields. Default: `262144`.
+
+A message that breaks these limits or can't be decoded closes the connection. Any other message that fails, for example one that can't be decrypted, is reported to `onError` and dropped.
 
 When creating or joining a room, you can provide the following options:
 
-- `publicData` (`any`): Data shared before the encrypted connection is fully established. It can be used to verify application compatibility, but it is visible to the relay and must not contain secrets.
-- `verifyPublicData` (`Function`): A function that verifies the public data from other users.
+- `publicData` (`any`): Data shared before the encrypted connection is fully established, or a function that returns it. It can be used to verify application compatibility, but it is visible to the relay and must not contain secrets.
+- `verifyPublicData({ data, userId })` (`Function`): Verifies the public data from the other side. Returning `false` kicks the joining user, or leaves the room.
+- `privateData` (`any`): Data sent once the creator has verified the code, encrypted with a key that only the two sides of the handshake have, or a function that returns it.
+- `verifyPrivateData({ data, userId })` (`Function`): Verifies the private data from the other side. Returning `false` kicks the joining user, or leaves the room.
+- `limit` (`number`): The maximum number of users in the room. Only used when creating a room.
 
-Subscribe to `onError` before creating or joining a room. The connector also provides room, user-verification, direct-message, room-message, and server-message methods, alongside connection, room, user, message, and error events. Event objects expose `addListener`, `removeListener`, and `dispatch`.
+If creating a room fails, `createRoom` resolves with `undefined` and `onError` receives an error such as `room_creation_failed:429`.
+
+Subscribe to `onError` before creating or joining a room. Every `onError` payload has an `error`, and socket errors also have the `event`. An error thrown by a listener is logged with `console.error`, and doesn't affect the connection or the other listeners. The connector also provides room, user-verification, direct-message, room-message, and server-message methods, alongside connection, room, user, message, and error events. Event objects expose `addListener`, `removeListener`, and `dispatch`.
 
 #### `createClientSynchronizer(options)`
 
@@ -171,6 +193,6 @@ import { createClientConnector } from 'https://cdn.jsdelivr.net/npm/@doars/roupn
 import { createClientConnector, createClientSynchronizer } from 'https://cdn.jsdelivr.net/npm/@doars/roupn@1/dst/roupn.js'
 ```
 
-The browser bundles contain client APIs only. Server applications should import `createServerConnector` from the package entry. The client requires WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs.
+The browser bundles contain client APIs only. Server applications should import `createServerConnector` from the package entry. The client requires WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs. Keys are generated in a worker created from a Blob URL, so a Content Security Policy must allow `worker-src blob:`.
 
 For compact language-model documentation, see [`llms.txt`](./llms.txt).

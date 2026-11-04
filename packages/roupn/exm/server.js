@@ -23,7 +23,8 @@ const {
 
 	// Additional functions and events are also exported.
 } = createServerConnector({
-	// Configuration options.
+	// The default origin check only allows upgrades from this origin.
+	serverOrigin: `http://localhost:${PORT}`,
 });
 
 // Log events so we can see what is happening.
@@ -83,6 +84,8 @@ const httpServer = createHttpServer((request, response) => {
 
 // Set up the WebSocket server.
 const socketServer = new WebSocketServer({
+	// Not larger than the connector's maxEncodedMessageBytes.
+	maxPayload: 256 * 1024,
 	noServer: true,
 });
 httpServer.on("upgrade", (request, socket, head) => {
