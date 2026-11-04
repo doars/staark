@@ -272,6 +272,35 @@ describe('Request scheduling', () => {
     releases.shift()()
     await third
   })
+
+  it('rejects every queued request that shares an aborted signal', async () => {
+    const releases = []
+    const request = create({
+      fetch: async () => {
+        await new Promise((resolve) => releases.push(resolve))
+        return new Response('done')
+      },
+      type: 'text',
+    })
+    const abort = new AbortController()
+
+    const busy = request({ maxConcurrency: 1, path: '/busy' })
+    const first = request({ abort, maxConcurrency: 1, path: '/first' })
+    const second = request({ abort, maxConcurrency: 5, path: '/second' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    abort.abort()
+    const results = await Promise.race([
+      Promise.all([first, second]),
+      new Promise((resolve) => setTimeout(() => resolve('timeout'), 100)),
+    ])
+    assert.notStrictEqual(results, 'timeout')
+    assert.deepStrictEqual(
+      results.map(([error]) => error.name),
+      ['AbortError', 'AbortError'],
+    )
+    releases.shift()()
+    await busy
+  })
 })
 
 describe('Trusted HTML parsing', () => {

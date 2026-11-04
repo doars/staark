@@ -120,6 +120,7 @@ export const create = (initialOptions) => {
 			concurrencyQueue.shift();
 			queued.signal?.removeEventListener("abort", queued.abort);
 			if (queued.signal?.aborted) {
+				queued.reject(queued.signal.reason);
 				continue;
 			}
 			activeRequests++;
