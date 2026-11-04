@@ -23,7 +23,7 @@ const getFileExtension = (url) => {
  *
  * @param {string} url The URL of the resource.
  * @param {Headers} responseHeaders The response headers.
- * @param {Record<string, string>} [requestHeaders] The request headers.
+ * @param {Headers} requestHeaders The request headers.
  * @returns {string} The type of the resource.
  */
 export const getType = (url, responseHeaders, requestHeaders) => {
@@ -34,13 +34,11 @@ export const getType = (url, responseHeaders, requestHeaders) => {
 	}
 
 	// Check Accept in request headers.
-	if (requestHeaders) {
-		if (requestHeaders.Accept) {
-			const acceptTypes = requestHeaders.Accept.split(",");
-			for (const type of acceptTypes) {
-				if (type.trim() !== "*/*") {
-					return normalizeContentType(type);
-				}
+	const accept = requestHeaders.get("Accept");
+	if (accept) {
+		for (const type of accept.split(",")) {
+			if (type.trim() !== "*/*") {
+				return normalizeContentType(type);
 			}
 		}
 	}

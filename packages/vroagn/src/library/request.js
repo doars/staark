@@ -13,7 +13,7 @@ import { getType } from "../utilities/type.js";
  * @property {any} [body] The body of the request.
  * @property {RequestCredentials} [credentials] The credentials for the request.
  * @property {string} [domain] The domain for the request.
- * @property {Record<string, string>} [headers] The headers for the request.
+ * @property {HeadersInit} [headers] The headers for the request.
  * @property {'get' | 'post' | 'put' | 'delete' | 'patch' | 'head'} [method] The HTTP method for the request.
  * @property {RequestMode} [mode] The mode for the request.
  * @property {string} [path] The path for the request.
@@ -465,26 +465,25 @@ export const create = (initialOptions) => {
 	 * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
 	 */
 	return (sendOptions = {}) => {
-		try {
-			validateTrustedHTMLOptions(sendOptions);
-		} catch (error) {
-			return Promise.resolve([error, null, null]);
-		}
 		const options = {
 			...initialOptions,
 			...cloneRecursive(sendOptions),
 		};
+		try {
+			validateTrustedHTMLOptions(sendOptions);
+			// Merge the headers, letting the per-call headers take precedence.
+			options.headers = new Headers(initialOptions.headers);
+			for (const [key, value] of new Headers(sendOptions.headers)) {
+				options.headers.set(key, value);
+			}
+		} catch (error) {
+			return Promise.resolve([error, null, null]);
+		}
 		if (Object.hasOwn(sendOptions, "createTrustedHTML")) {
 			options.perCallCreateTrustedHTML = sendOptions.createTrustedHTML;
 		}
 		if (Object.hasOwn(sendOptions, "trustedTypesPolicy")) {
 			options.perCallTrustedTypesPolicy = sendOptions.trustedTypesPolicy;
-		}
-		if (initialOptions.headers) {
-			options.headers = {
-				...initialOptions.headers,
-				...options.headers,
-			};
 		}
 
 		if (!options.debounce) {

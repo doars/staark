@@ -48,9 +48,9 @@ describe('Request', () => {
     assert.strictEqual(receivedUrl, 'https://example.test/resource?page=2')
     assert.strictEqual(receivedOptions.method, 'post')
     assert.strictEqual(receivedOptions.body, '{"name":"Staark"}')
-    assert.deepStrictEqual(receivedOptions.headers, {
-      Accept: 'application/json',
-      Authorization: 'updated',
+    assert.deepStrictEqual(Object.fromEntries(receivedOptions.headers), {
+      accept: 'application/json',
+      authorization: 'updated',
     })
   })
 
@@ -105,6 +105,46 @@ describe('Request', () => {
       '/a?y=2#top',
       '/a?x=1&y=2#top',
     ])
+  })
+
+  it('merges Headers instances with initial headers', async () => {
+    const received = []
+    const fetch = async (_url, options) => {
+      received.push(Object.fromEntries(options.headers))
+      return new Response('ok')
+    }
+
+    await create({ fetch, headers: { A: '1' } })({
+      headers: new Headers({ B: '2' }),
+    })
+    await create({ fetch, headers: new Headers({ A: '1' }) })({
+      headers: { a: '3', B: '2' },
+    })
+
+    assert.deepStrictEqual(received, [
+      { a: '1', b: '2' },
+      { a: '3', b: '2' },
+    ])
+  })
+
+  it('reads the Accept header case-insensitively to choose the type', async () => {
+    // A byte body leaves the response without a content type.
+    const fetch = async () => new Response(new TextEncoder().encode('{"a":1}'))
+    const [, , lowercaseResult] = await create({ fetch })({
+      headers: { accept: 'application/json' },
+    })
+    const [, , instanceResult] = await create({ fetch })({
+      headers: new Headers({ Accept: 'application/json' }),
+    })
+
+    assert.deepStrictEqual(lowercaseResult, { a: 1 })
+    assert.deepStrictEqual(instanceResult, { a: 1 })
+  })
+
+  it('returns invalid headers in the result tuple', async () => {
+    const request = create({ fetch: async () => new Response('ok') })
+    const [error] = await request({ headers: { 'in valid': '1' } })
+    assert(error instanceof TypeError)
   })
 
   it('uses a matching custom parser', async () => {
