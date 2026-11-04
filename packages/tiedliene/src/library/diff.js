@@ -213,8 +213,10 @@ const getKey = (current, component) => {
  * @param {Record<string, any>} record The record to update.
  * @param {string[]} path The path to the value to update.
  * @param {*} value The new value.
+ * @param {boolean} [inserting] Whether to insert the value into an array,
+ * which undoes deleting it.
  */
-const setValueAtPath = (record, path, value) => {
+const setValueAtPath = (record, path, value, inserting) => {
 	// Every later level is checked as a child before it is entered.
 	if (!isContainer(record)) {
 		throw new TypeError("Cannot traverse a non-record diff path value");
@@ -232,7 +234,12 @@ const setValueAtPath = (record, path, value) => {
 		}
 		current = current[key];
 	}
-	current[getKey(current, path[path.length - 1])] = cloneRecursive(value);
+	const key = getKey(current, path[path.length - 1]);
+	if (inserting && Array.isArray(current)) {
+		current.splice(key, 0, cloneRecursive(value));
+	} else {
+		current[key] = cloneRecursive(value);
+	}
 };
 
 /**
@@ -280,8 +287,17 @@ const applyValidatedDiff = (state, diff, reverting) => {
 	for (let index = 0; index < diff.length; index++) {
 		const change = diff[reverting ? diff.length - index - 1 : index];
 		// A set without an old value created the key, so reverting deletes it.
-		if (reverting ? Object.hasOwn(change, "old") : change.type === "set") {
-			setValueAtPath(state, change.path, reverting ? change.old : change.new);
+		if (
+			reverting
+				? change.type === "delete" || Object.hasOwn(change, "old")
+				: change.type === "set"
+		) {
+			setValueAtPath(
+				state,
+				change.path,
+				reverting ? change.old : change.new,
+				change.type === "delete",
+			);
 		} else {
 			deleteValueAtPath(state, change.path);
 		}

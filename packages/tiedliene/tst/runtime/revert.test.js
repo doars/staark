@@ -362,4 +362,19 @@ describe('Revert diff', () => {
     applyDiff(array, arrayDiff)
     assert.deepStrictEqual(revertDiff(array, arrayDiff), [undefined])
   })
+
+  it('reverts an array delete by inserting the item again', () => {
+    const diff = [{
+      type: 'delete',
+      path: [0],
+      old: 'first',
+    }]
+    const state = applyDiff(['first', 'second'], diff)
+    assert.deepStrictEqual(state, ['second'])
+    assert.deepStrictEqual(revertDiff(state, diff), ['first', 'second'])
+    assert.deepStrictEqual(revertDiff([1], [{
+      type: 'delete',
+      path: [0],
+    }]), [undefined, 1])
+  })
 })

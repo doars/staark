@@ -104,7 +104,58 @@ const roundTrip = (before, after) => {
   assert.deepStrictEqual(applyDiff(state, diff), after)
 }
 
+// Build a diff by hand, one random change at a time, so paths repeat and array
+// items are deleted from anywhere.
+const createChanges = (random, state) => {
+  const changes = []
+  const count = 1 + Math.floor(random() * 8)
+  for (let step = 0; step < count; step++) {
+    const path = []
+    let current = state
+    while (true) {
+      const keys = Array.isArray(current) ? [...current.keys()] : Object.keys(current)
+      const key = keys[Math.floor(random() * keys.length)]
+      const next = current[key]
+      if (keys.length === 0 || !next || typeof next !== 'object' || random() < 0.4) {
+        break
+      }
+      path.push(key)
+      current = next
+    }
+    const isArray = Array.isArray(current)
+    const keys = isArray ? [...current.keys()] : Object.keys(current)
+    let change
+    if (keys.length > 0 && random() < 0.4) {
+      const key = keys[Math.floor(random() * keys.length)]
+      change = { type: 'delete', path: [...path, key], old: cloneRecursive(current[key]) }
+    } else {
+      const key = isArray
+        ? Math.floor(random() * (current.length + 1))
+        : KEYS[Math.floor(random() * KEYS.length)]
+      change = { type: 'set', path: [...path, key], new: createValue(random, 2) }
+      if (Object.hasOwn(current, key)) {
+        change.old = cloneRecursive(current[key])
+      }
+    }
+    applyDiff(state, [change])
+    changes.push(change)
+  }
+  return changes
+}
+
 describe('Random diffs', () => {
+  it('revert undoes random hand-written diffs', () => {
+    const random = mulberry32(3)
+    for (let round = 0; round < ROUNDS; round++) {
+      const before = createValue(random, 4)
+      if (before && typeof before === 'object') {
+        const state = cloneRecursive(before)
+        const diff = createChanges(random, state)
+        assert.deepStrictEqual(revertDiff(state, diff), before)
+      }
+    }
+  })
+
   it('apply and revert are inverses for random states', () => {
     const random = mulberry32(1)
     for (let round = 0; round < ROUNDS; round++) {
