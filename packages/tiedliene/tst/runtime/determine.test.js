@@ -367,4 +367,21 @@ describe('Determine diff', () => {
     }
     assert.strictEqual(determineDiff({ record: before }, { record: after }).length, 300000)
   })
+
+  it('object replaced by an array and back', () => {
+    assert.deepStrictEqual(determineDiff({ list: {} }, { list: [] }), [{
+      type: 'set',
+      path: ['list'],
+      old: {},
+      new: [],
+    }])
+    assert.deepStrictEqual(determineDiff({ nested: { list: [1] } }, { nested: { list: { 0: 1 } } }), [{
+      type: 'set',
+      path: ['nested', 'list'],
+      old: [1],
+      new: { 0: 1 },
+    }])
+    assert.throws(() => determineDiff({}, []), TypeError)
+    assert.throws(() => determineDiff([], {}), TypeError)
+  })
 })

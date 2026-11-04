@@ -333,6 +333,9 @@ export const determineDiff = (
 	// Arrays are walked by index, so holes are read as undefined and paths
 	// contain numbers.
 	const isArray = Array.isArray(before);
+	if (isArray !== Array.isArray(after)) {
+		throw new TypeError("Cannot diff an array against an object");
+	}
 	const keys = isArray ? [...before.keys()] : Object.keys(before);
 	for (let index = keys.length; index-- > 0; ) {
 		const key = keys[index];
@@ -342,8 +345,12 @@ export const determineDiff = (
 				path: [...path, key],
 				old: cloneRecursive(before[key]),
 			});
-		} else if (isContainer(before[key]) && isContainer(after[key])) {
-			// If both are objects, recurse deeper.
+		} else if (
+			isContainer(before[key]) &&
+			isContainer(after[key]) &&
+			Array.isArray(before[key]) === Array.isArray(after[key])
+		) {
+			// If both are objects or both are arrays, recurse deeper.
 			determineDiff(before[key], after[key], [...path, key], compared, changes);
 		} else if (!valuesEqual(before[key], after[key])) {
 			// If the value has changed, record the new and old value.
