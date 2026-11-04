@@ -9,8 +9,8 @@
 - Compare objects and arrays inside Maps and Sets, and fix Maps and Sets that contain themselves overflowing the stack.
 - Restore values that were really `undefined` on revert, insert array items back when reverting a delete, and keep the holes in sparse arrays in place.
 - Only update the undo and redo history once a change has been applied, so a failed `set`, `undo` or `redo` leaves it unchanged.
-- Reject `__proto__`, `constructor` and `prototype` keys in managed state, and own `__proto__` keys when cloning or diffing.
-- Skip the trial run on a copy when undoing or redoing with cloned snapshots.
+- Store `__proto__`, `constructor` and `prototype` as ordinary own keys instead of rejecting them, so an own `__proto__` key from `JSON.parse` no longer changes the prototype when cloned or applied. Validating untrusted diffs and state is left to the caller.
+- Skip the trial run on a copy when `manageState` undoes or redoes with cloned snapshots.
 - Time cold runs and large diffs in the benchmarks.
 - Update the documentation to match the code.
 

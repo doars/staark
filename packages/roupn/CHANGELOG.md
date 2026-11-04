@@ -13,6 +13,7 @@
 - Dispatch `onError` when `createRoom` fails, instead of throwing and leaving the connector stuck.
 - Stop one address from using up the global room creation budget, and answer non-POST requests before any rate limit.
 - Apply synchronized state updates in the same order on every client, accept full state syncs only from the creator, and clear the history when leaving.
+- Reject `__proto__`, `constructor` and `prototype` keys anywhere in received state updates and syncs.
 - Generate keys without a Worker, and keep private keys non-extractable.
 - Require `serverOrigin` or `validateOrigin` when `NODE_ENV` is `production`.
 - Document `sendUpdate`, `serverOrigin`, private data and the client limits.
