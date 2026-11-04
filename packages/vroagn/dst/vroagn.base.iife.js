@@ -30,39 +30,43 @@
   };
 
   // src/utilities/delay.js
-  var delay = async (time) => {
-    if (time > 0) {
-      return new Promise((resolve) => setTimeout(resolve, time));
+  var delay = (time, signal) => new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
     }
-    return null;
-  };
+    if (!(time > 0)) {
+      resolve(null);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timeoutIdentifier);
+      reject(signal.reason);
+    };
+    const timeoutIdentifier = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(null);
+    }, time);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 
   // src/utilities/type.js
   var normalizeContentType = (contentType) => contentType.split(";")[0].trim().toLowerCase();
-  var getFileExtension = (url) => {
-    const match = url.match(/\.([^./?]+)(?:[?#]|$)/);
-    return match ? match[1].toLowerCase() : null;
-  };
   var getType = (url, responseHeaders, requestHeaders) => {
     const contentType = responseHeaders.get("Content-Type");
     if (contentType) {
       return normalizeContentType(contentType);
     }
-    if (requestHeaders) {
-      if (requestHeaders.Accept) {
-        const acceptTypes = requestHeaders.Accept.split(",");
-        for (const type of acceptTypes) {
-          if (type.trim() !== "*/*") {
-            return normalizeContentType(type);
-          }
+    const accept = requestHeaders.get("Accept");
+    if (accept) {
+      for (const type of accept.split(",")) {
+        if (type.trim() !== "*/*") {
+          return normalizeContentType(type);
         }
       }
     }
-    const extension = getFileExtension(url);
-    if (extension) {
-      return extension;
-    }
-    return "";
+    const match = url.match(/\.([^./?#]+)(?:[?#]|$)/);
+    return match ? match[1].toLowerCase() : "";
   };
 
   // src/library/request.js
@@ -81,8 +85,6 @@
       }
     };
     validateTrustedHTMLOptions(initialOptions);
-    const initialCreateTrustedHTML = initialOptions.createTrustedHTML;
-    const initialTrustedTypesPolicy = initialOptions.trustedTypesPolicy;
     initialOptions = {
       ...DEFAULT_VALUES,
       ...cloneRecursive(initialOptions)
@@ -91,18 +93,11 @@
     let activeRequests = 0;
     let totalRequests = 0;
     let debounceTimeout = null;
-    let debounceOptions = null;
     const debounceResolvers = [];
     const concurrencyQueue = [];
     if (initialOptions.maxConcurrency !== void 0 && (!Number.isInteger(initialOptions.maxConcurrency) || initialOptions.maxConcurrency <= 0)) {
       throw new TypeError("maxConcurrency must be a positive integer");
     }
-    const throttle = async (throttleValue) => {
-      const now = Date.now();
-      const waitTime = throttleValue - (now - lastExecutionTime);
-      lastExecutionTime = now + Math.max(waitTime, 0);
-      await delay(waitTime);
-    };
     const drainConcurrencyQueue = () => {
       while (concurrencyQueue.length > 0) {
         const queued = concurrencyQueue[0];
@@ -112,6 +107,7 @@
         concurrencyQueue.shift();
         queued.signal?.removeEventListener("abort", queued.abort);
         if (queued.signal?.aborted) {
+          queued.reject(queued.signal.reason);
           continue;
         }
         activeRequests++;
@@ -144,10 +140,6 @@
       signal?.addEventListener("abort", abort, { once: true });
       drainConcurrencyQueue();
     });
-    const releaseConcurrency = () => {
-      activeRequests--;
-      drainConcurrencyQueue();
-    };
     const sendRequest = async (options) => {
       if (options.maxRequests !== void 0 && totalRequests >= options.maxRequests) {
         return [new Error("Maximum request limit reached"), null, null];
@@ -159,12 +151,24 @@
         headers: options.headers,
         method: options.method,
         mode: options.mode,
+        priority: options.priority,
         redirect: options.redirect,
-        body: options.body ? JSON.stringify(options.body) : void 0
+        body: options.body || void 0
       };
+      const bodyPrototype = config.body && Object.getPrototypeOf(config.body);
+      if (Array.isArray(config.body) || bodyPrototype === Object.prototype || bodyPrototype === null) {
+        config.body = JSON.stringify(config.body);
+        if (!config.headers.has("Content-Type")) {
+          config.headers.set("Content-Type", "application/json");
+        }
+      }
       let url = (options.domain || "") + (options.path || "");
-      if (options.queryParams) {
-        url += `?${new URLSearchParams(options.queryParams).toString()}`;
+      const query = new URLSearchParams(options.queryParams).toString();
+      if (query) {
+        url = url.replace(
+          /^[^#]*/,
+          (base) => base + (base.includes("?") ? "&" : "?") + query
+        );
       }
       const externalSignal = options.abort?.signal || options.abort;
       const controller = new AbortController();
@@ -195,7 +199,14 @@
           ];
         }
         if (!response.ok) {
-          return [new Error("Invalid response"), response, null];
+          const error = new Error(
+            response.statusText || `Request failed with status ${response.status}`
+          );
+          return [
+            Object.assign(error, { response, status: response.status }),
+            response,
+            null
+          ];
         }
         try {
           let result;
@@ -211,13 +222,8 @@
             }
           }
           if (!foundParser) {
-            const createTrustedHTML = Object.hasOwn(
-              options,
-              "perCallCreateTrustedHTML"
-            ) ? options.perCallCreateTrustedHTML : Object.hasOwn(options, "perCallTrustedTypesPolicy") ? options.perCallTrustedTypesPolicy.createHTML.bind(
-              options.perCallTrustedTypesPolicy
-            ) : initialCreateTrustedHTML || initialTrustedTypesPolicy?.createHTML.bind(
-              initialTrustedTypesPolicy
+            const createTrustedHTML = options.createTrustedHTML || options.trustedTypesPolicy?.createHTML.bind(
+              options.trustedTypesPolicy
             );
             switch (type.toLowerCase()) {
               case "arraybuffer":
@@ -236,42 +242,29 @@
                 break;
               case "text/html-partial":
               case "html-partial":
-                {
-                  const responseText = await response.text();
-                  result = createTrustedHTML ? createTrustedHTML(responseText) : responseText;
-                  const template = document.createElement("template");
-                  try {
-                    template.innerHTML = result;
-                  } catch (error) {
-                    if (!createTrustedHTML) {
-                      throw new Error(
-                        "HTML parsing requires createTrustedHTML or trustedTypesPolicy",
-                        { cause: error }
-                      );
-                    }
-                    throw error;
-                  }
-                  result = template.content.childNodes;
-                }
-                break;
               case "text/html":
-              case "html":
-                {
-                  const responseText = await response.text();
-                  result = createTrustedHTML ? createTrustedHTML(responseText) : responseText;
-                  try {
+              case "html": {
+                const responseText = await response.text();
+                result = createTrustedHTML ? createTrustedHTML(responseText) : responseText;
+                try {
+                  if (type.toLowerCase().endsWith("partial")) {
+                    const template = document.createElement("template");
+                    template.innerHTML = result;
+                    result = template.content.childNodes;
+                  } else {
                     result = new DOMParser().parseFromString(result, "text/html");
-                  } catch (error) {
-                    if (!createTrustedHTML) {
-                      throw new Error(
-                        "HTML parsing requires createTrustedHTML or trustedTypesPolicy",
-                        { cause: error }
-                      );
-                    }
-                    throw error;
                   }
+                } catch (error) {
+                  if (!createTrustedHTML) {
+                    throw new Error(
+                      "HTML parsing requires createTrustedHTML or trustedTypesPolicy",
+                      { cause: error }
+                    );
+                  }
+                  throw error;
                 }
                 break;
+              }
               case "application/json":
               case "text/json":
               case "json":
@@ -302,29 +295,13 @@
           ];
         }
       };
-      const retryRequest = async () => {
-        let attempt = 0;
-        const retryAttempts = options.retryAttempts || 0;
-        const retryDelay = options.retryDelay || 0;
-        while (attempt <= retryAttempts) {
+      try {
+        for (let attempt = 0; ; attempt++) {
           const [error, response, result] = await executeFetch();
-          if (!error) {
+          if (!error || controller.signal.aborted || response?.ok || response && !options.retryCodes?.includes(response.status) || attempt >= (options.retryAttempts || 0)) {
             return [error, response, result];
           }
-          if (controller.signal.aborted) {
-            return [error, response, result];
-          }
-          if (response?.ok) {
-            return [error, response, result];
-          }
-          if (response && !options.retryCodes?.includes(response.status)) {
-            return [new Error("Invalid status code"), response, result];
-          }
-          attempt++;
-          if (attempt > retryAttempts) {
-            return [error, response, result];
-          }
-          let delayTime = retryDelay * 2 ** (attempt - 1);
+          let delayTime = (options.retryDelay || 0) * 2 ** attempt;
           const retryAfter = response?.headers.get("Retry-After");
           if (retryAfter) {
             const retryAfterSeconds = parseInt(retryAfter, 10);
@@ -341,16 +318,9 @@
           if (options.maximumRetryDelay !== void 0) {
             delayTime = Math.min(delayTime, options.maximumRetryDelay);
           }
-          await delay(delayTime);
+          await response?.body?.cancel();
+          await delay(delayTime, controller.signal);
         }
-        return executeFetch();
-      };
-      try {
-        const [error, response, result] = await retryRequest();
-        if (response && !response.ok) {
-          return [new Error(response.statusText), response, result];
-        }
-        return [error, response, result];
       } finally {
         if (timeoutIdentifier !== null) {
           clearTimeout(timeoutIdentifier);
@@ -359,12 +329,6 @@
       }
     };
     const executeScheduled = async (options) => {
-      if (options.delay) {
-        await delay(options.delay);
-      }
-      if (options.throttle) {
-        await throttle(options.throttle);
-      }
       const maximum = options.maxConcurrency ?? Infinity;
       if (maximum !== Infinity && (!Number.isInteger(maximum) || maximum <= 0)) {
         return [
@@ -376,6 +340,13 @@
       const signal = options.abort?.signal || options.abort;
       let acquired = false;
       try {
+        await delay(options.delay, signal);
+        if (options.throttle) {
+          const now = Date.now();
+          const waitTime = options.throttle - (now - lastExecutionTime);
+          lastExecutionTime = now + Math.max(waitTime, 0);
+          await delay(waitTime, signal);
+        }
         await acquireConcurrency(maximum, signal);
         acquired = true;
         return await sendRequest(options);
@@ -387,36 +358,35 @@
         ];
       } finally {
         if (acquired) {
-          releaseConcurrency();
+          activeRequests--;
+          drainConcurrencyQueue();
         }
       }
     };
     return (sendOptions = {}) => {
+      const { body, ...otherOptions } = sendOptions;
+      const options = {
+        ...initialOptions,
+        ...cloneRecursive(otherOptions)
+      };
+      if (Object.hasOwn(sendOptions, "body")) {
+        options.body = body;
+      }
       try {
         validateTrustedHTMLOptions(sendOptions);
+        options.headers = new Headers(initialOptions.headers);
+        for (const [key, value] of new Headers(sendOptions.headers)) {
+          options.headers.set(key, value);
+        }
       } catch (error) {
         return Promise.resolve([error, null, null]);
       }
-      const options = {
-        ...initialOptions,
-        ...cloneRecursive(sendOptions)
-      };
-      if (Object.hasOwn(sendOptions, "createTrustedHTML")) {
-        options.perCallCreateTrustedHTML = sendOptions.createTrustedHTML;
-      }
-      if (Object.hasOwn(sendOptions, "trustedTypesPolicy")) {
-        options.perCallTrustedTypesPolicy = sendOptions.trustedTypesPolicy;
-      }
-      if (initialOptions.headers) {
-        options.headers = {
-          ...initialOptions.headers,
-          ...options.headers
-        };
+      if (Object.hasOwn(sendOptions, "trustedTypesPolicy") && !Object.hasOwn(sendOptions, "createTrustedHTML")) {
+        options.createTrustedHTML = void 0;
       }
       if (!options.debounce) {
         return executeScheduled(options);
       }
-      debounceOptions = options;
       return new Promise((resolve) => {
         const signal = options.abort?.signal || options.abort;
         const pending = {
@@ -428,9 +398,6 @@
           const index = debounceResolvers.indexOf(pending);
           if (index >= 0) {
             debounceResolvers.splice(index, 1);
-            if (debounceOptions === options) {
-              debounceOptions = debounceResolvers.at(-1)?.options || null;
-            }
             resolve([
               signal.reason || new DOMException("Request aborted", "AbortError"),
               null,
@@ -450,13 +417,11 @@
         }
         debounceTimeout = setTimeout(async () => {
           const pendingResolvers = debounceResolvers.splice(0);
-          const settledOptions = debounceOptions;
           debounceTimeout = null;
-          debounceOptions = null;
           if (pendingResolvers.length === 0) {
             return;
           }
-          const result = await executeScheduled(settledOptions);
+          const result = await executeScheduled(pendingResolvers.at(-1).options);
           for (const pendingResolver of pendingResolvers) {
             pendingResolver.signal?.removeEventListener(
               "abort",

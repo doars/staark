@@ -19,8 +19,12 @@ export const cacheFetch = (
     request,
     requestOptions = {},
   ) => {
-    // Bypass caching if no cache name is provided or if cache is explicitly disabled.
-    if (requestOptions.cache === 'no-store') {
+    // Bypass caching if it is explicitly disabled, or for any method other than GET. The cache is keyed by URL only, and the Cache API can not store other methods.
+    const method = requestOptions.method ?? request.method ?? 'GET'
+    if (
+      requestOptions.cache === 'no-store'
+      || method.toUpperCase() !== 'GET'
+    ) {
       return await fetch(request, requestOptions)
     }
 

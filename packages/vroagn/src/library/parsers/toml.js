@@ -98,8 +98,10 @@ const parseInlineTable = (tableString) => {
 		if (!inQuotes && (character === '"' || character === "'")) {
 			inQuotes = true;
 			quoteChar = character;
+			if (inValue) value += character;
 		} else if (inQuotes && character === quoteChar) {
 			inQuotes = false;
+			if (inValue) value += character;
 		} else if (!inQuotes && character === "=") {
 			inValue = true;
 		} else if (!inQuotes && character === ",") {
@@ -153,26 +155,34 @@ export const tomlParser = (options = {}) => {
 			let multilineArray = null;
 			let multilineArrayKey = null;
 			let multilineString = null;
+			let multilineStringKey = null;
 			let multilineStringDelimiter = null;
 
 			const lines = text.split(/\r?\n/);
 			for (let i = 0; i < lines.length; i++) {
-				const line = lines[i].trim();
+				if (multilineString !== null) {
+					const rawLine = lines[i].trimEnd();
+					if (rawLine.endsWith(multilineStringDelimiter)) {
+						multilineString += rawLine.slice(0, -3);
+						// A backslash at the end of a line joins it with the next line.
+						currentTable[multilineStringKey] =
+							multilineStringDelimiter === '"""'
+								? multilineString.replace(/\\\s*\n\s*/g, "")
+								: multilineString;
+						multilineString = null;
+					} else {
+						multilineString += `${rawLine}\n`;
+					}
+					continue;
+				}
+
+				// Remove a trailing comment that is outside of quotes.
+				const line = lines[i]
+					.trim()
+					.replace(/^((?:"[^"]*"|'[^']*'|[^"'])*?)\s+#.*$/, "$1");
 
 				if (line === "" || line.startsWith("#")) {
 					continue; // Skip empty lines and comments
-				}
-
-				if (multilineString !== null) {
-					if (line.endsWith(multilineStringDelimiter)) {
-						multilineString += line.slice(0, -multilineStringDelimiter.length);
-						currentTable[Object.keys(currentTable).pop()] = multilineString;
-						multilineString = null;
-						multilineStringDelimiter = null;
-					} else {
-						multilineString += `${line}\n`;
-					}
-					continue;
 				}
 				if (multilineArray !== null) {
 					multilineArray += ` ${line}`;
@@ -224,15 +234,23 @@ export const tomlParser = (options = {}) => {
 					const value = valueParts.join("=").trim();
 					const trimmedKey = key.trim();
 					validateKey(trimmedKey);
+					if (!value) {
+						throw new SyntaxError(`Unsupported TOML on line ${i + 1}`);
+					}
 
 					if (value.startsWith('"""') || value.startsWith("'''")) {
 						// Multi-line string
 						multilineStringDelimiter = value.slice(0, 3);
 						multilineString = value.slice(3);
-						if (value.endsWith(multilineStringDelimiter)) {
+						if (value.length >= 6 && value.endsWith(multilineStringDelimiter)) {
 							currentTable[trimmedKey] = multilineString.slice(0, -3);
 							multilineString = null;
-							multilineStringDelimiter = null;
+						} else {
+							multilineStringKey = trimmedKey;
+							// A newline directly after the opening delimiter is dropped.
+							if (multilineString) {
+								multilineString += "\n";
+							}
 						}
 					} else if (value.startsWith("{") && value.endsWith("}")) {
 						// Inline table

@@ -8,7 +8,6 @@ import { createRecord, validateKey } from "./record.js";
 /**
  * @typedef {Object} YamlOptions Options for the YAML parser.
  * @property {string[]} [types] Content types to parse as YAML.
- * @property {number} [indentSize] Number of spaces to use for indentation.
  */
 
 /**
@@ -42,14 +41,14 @@ const parseValue = (value, anchors) => {
 	if (value.startsWith("'") && value.endsWith("'")) {
 		return value.slice(1, -1);
 	}
-	if (!Number.isNaN(Number(value))) {
+	if (value && !Number.isNaN(Number(value))) {
 		return Number(value);
 	}
 	if (value.startsWith("[") && value.endsWith("]")) {
+		value = value.slice(1, -1).trim();
 		return value
-			.slice(1, -1)
-			.split(",")
-			.map((item) => parseValue(item.trim(), anchors));
+			? value.split(",").map((item) => parseValue(item.trim(), anchors))
+			: [];
 	}
 	if (value.startsWith("*")) {
 		const anchorName = value.slice(1).trim();
@@ -92,93 +91,125 @@ export const yamlParser = (options = {}) => {
 		 * @returns {Promise<YamlObject>} The parsed YAML object.
 		 */
 		parser: async (response, _requestOptions, _type) => {
-			const lines = (await response.text()).split("\n");
+			const lines = (await response.text()).replace(/\r?\n$/, "").split("\n");
+			// Closes a trailing block scalar.
+			lines.push("#");
 			const result = createRecord();
-			let currentObject = result;
-			const indentStack = [result];
-			let currentIndent = 0;
-			let multilineKey = null;
-			let multilineValue = [];
 			const anchors = createRecord();
+			const stack = [{ indent: -1, object: result }];
+			let block = null;
 
 			for (let i = 0; i < lines.length; i++) {
-				const line = lines[i].trimEnd();
-				if (line.trim() === "") {
-					if (multilineKey !== null) {
-						multilineValue.push("");
-					}
-					continue;
-				}
-				if (line.trim().startsWith("#")) {
-					continue;
-				}
+				let line = lines[i].trimEnd();
+				let indent = line.search(/\S/);
 
-				const indent = line.search(/\S/);
-
-				if (multilineKey !== null) {
-					if (indent > currentIndent) {
-						multilineValue.push(line.trim());
+				if (block) {
+					if (indent < 0 || indent > block.indent) {
+						block.lines.push(line);
 						continue;
-					} else {
-						currentObject[multilineKey] = multilineValue.join("\n");
-						multilineKey = null;
-						multilineValue = [];
 					}
+					// The first line with content sets the indent of the block.
+					const blockIndent = Math.max(
+						(block.lines.find((blockLine) => blockLine) || "").search(/\S/),
+						0,
+					);
+					let text = block.lines
+						.map((blockLine) => blockLine.slice(blockIndent))
+						.join("\n");
+					if (block.style[0] === ">") {
+						// Fold line breaks into spaces, except those of blank lines.
+						text = text.replace(/\n(\n*)(?=.)/g, (_, extra) => extra || " ");
+					}
+					// Keep every trailing line break with "+", none with "-", otherwise one.
+					block.object[block.key] =
+						block.style[1] === "+"
+							? `${text}\n`
+							: text.replace(/\n*$/, block.style[1] === "-" ? "" : "\n");
+					block = null;
 				}
 
-				if (indent > currentIndent) {
-					indentStack.push(currentObject);
-					currentObject = currentObject[Object.keys(currentObject).pop()];
-				} else if (indent < currentIndent) {
-					while (indent < currentIndent) {
-						indentStack.pop();
-						currentObject = indentStack[indentStack.length - 1];
-						currentIndent -= options.indentSize || 2;
-					}
-				}
-
-				currentIndent = indent;
-
-				if (line.trim() === "-") {
-					if (!Array.isArray(currentObject)) {
-						const lastKey = Object.keys(currentObject).pop();
-						currentObject[lastKey] = [];
-						currentObject = currentObject[lastKey];
-					}
-					currentObject.push(createRecord());
-					currentObject = currentObject[currentObject.length - 1];
+				// Remove a trailing comment that is outside of quotes.
+				line = line.replace(/^((?:"[^"]*"|'[^']*'|[^"'])*?)\s+#.*$/, "$1");
+				if (indent < 0 || line[indent] === "#" || line === "---") {
 					continue;
 				}
 
-				const colonIndex = line.indexOf(":");
-				if (colonIndex === -1) {
-					continue;
+				let text = line.slice(indent);
+				let top = stack[stack.length - 1];
+				if (text === "-" || text.startsWith("- ")) {
+					// A list item closes deeper entries and earlier items of its list.
+					while (top.indent > indent || (top.indent === indent && top.item)) {
+						stack.pop();
+						top = stack[stack.length - 1];
+					}
+					if (!Array.isArray(top.object)) {
+						if (!top.owner) {
+							throw new SyntaxError(`Unsupported YAML on line ${i + 1}`);
+						}
+						// The first item turns the empty value of the key into a list.
+						top.object = top.owner[top.key] = [];
+						if (top.anchor) {
+							anchors[top.anchor] = top.object;
+						}
+					}
+					const rest = text.slice(1).trim();
+					if (rest && !/^[^"'[{]*?:( |$)/.test(rest)) {
+						top.object.push(parseValue(rest, anchors));
+						continue;
+					}
+					const item = createRecord();
+					top.object.push(item);
+					stack.push({ indent, item: true, object: item });
+					if (!rest) {
+						continue;
+					}
+					// Read the rest as a key in the item, at the column where it starts.
+					indent = line.indexOf(rest, indent + 1);
+					text = rest;
 				}
 
-				const key = line.slice(0, colonIndex).trim();
-				validateKey(key);
-				let value = line.slice(colonIndex + 1).trim();
-
+				while (stack[stack.length - 1].indent >= indent) {
+					stack.pop();
+				}
+				const object = stack[stack.length - 1].object;
+				const colonIndex = text.indexOf(":");
+				if (colonIndex < 1 || Array.isArray(object)) {
+					throw new SyntaxError(`Unsupported YAML on line ${i + 1}`);
+				}
+				const key = validateKey(text.slice(0, colonIndex).trim());
+				let value = text.slice(colonIndex + 1).trim();
+				let anchorName;
 				if (value.startsWith("&")) {
-					const anchorName = value.slice(1).split(" ")[0];
+					anchorName = value.slice(1).split(" ")[0];
 					value = value.slice(anchorName.length + 2).trim();
-					const parsedValue = parseValue(value, anchors);
-					anchors[anchorName] = parsedValue;
-					currentObject[key] = parsedValue;
-				} else if (value.startsWith("*")) {
-					const anchorName = value.slice(1).trim();
-					currentObject[key] = anchors[anchorName];
-				} else if (value === "|" || value === ">") {
-					multilineKey = key;
-					currentIndent += options.indentSize || 2;
-				} else if (value) {
-					currentObject[key] = parseValue(value, anchors);
-				} else {
-					currentObject[key] = createRecord();
 				}
-			}
-			if (multilineKey !== null) {
-				currentObject[multilineKey] = multilineValue.join("\n");
+
+				if (/^[|>][+-]?$/.test(value)) {
+					block = { indent, key, lines: [], object, style: value };
+				} else if (key === "<<") {
+					// Merge the keys of the referenced records that are not set yet.
+					for (const record of [].concat(parseValue(value, anchors))) {
+						for (const recordKey in record) {
+							if (!(recordKey in object)) {
+								object[recordKey] = record[recordKey];
+							}
+						}
+					}
+				} else if (value) {
+					object[key] = parseValue(value, anchors);
+				} else {
+					object[key] = createRecord();
+					stack.push({
+						anchor: anchorName,
+						indent,
+						key,
+						object: object[key],
+						owner: object,
+					});
+				}
+				if (anchorName) {
+					anchors[anchorName] = object[key];
+				}
 			}
 
 			return result;

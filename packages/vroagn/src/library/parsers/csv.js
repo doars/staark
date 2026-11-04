@@ -49,6 +49,7 @@ export const csvParser = (options) => {
 			let currentRow = [];
 			let currentField = "";
 			let insideQuotes = false;
+			let rowStart = 0;
 
 			for (let i = 0; i < string.length; i++) {
 				const character = string[i];
@@ -63,6 +64,12 @@ export const csvParser = (options) => {
 						// Toggle insideQuotes.
 						insideQuotes = !insideQuotes;
 					}
+				} else if (
+					character === "\r" &&
+					nextCharacter === optionsTemp.rowDelimiter &&
+					!insideQuotes
+				) {
+					// Skip the carriage return of a CRLF row delimiter.
 				} else if (character === optionsTemp.columnDelimiter && !insideQuotes) {
 					currentRow.push(currentField);
 					currentField = "";
@@ -72,17 +79,15 @@ export const csvParser = (options) => {
 
 					rows.push(currentRow);
 					currentRow = [];
+					rowStart = i + 1;
 				} else {
 					currentField += character;
 				}
 			}
 
 			// Push the last field and row if there's any.
-			if (currentField) {
+			if (rowStart < string.length) {
 				currentRow.push(currentField);
-				currentField = "";
-			}
-			if (currentRow.length > 0) {
 				rows.push(currentRow);
 			}
 

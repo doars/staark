@@ -10,10 +10,10 @@ import { getType } from "../utilities/type.js";
 
 /**
  * @typedef {Object} SendOptions Defines the options for sending a request.
- * @property {any} [body] The body of the request.
+ * @property {any} [body] The body of the request. Plain objects and arrays are encoded as JSON.
  * @property {RequestCredentials} [credentials] The credentials for the request.
  * @property {string} [domain] The domain for the request.
- * @property {Record<string, string>} [headers] The headers for the request.
+ * @property {HeadersInit} [headers] The headers for the request.
  * @property {'get' | 'post' | 'put' | 'delete' | 'patch' | 'head'} [method] The HTTP method for the request.
  * @property {RequestMode} [mode] The mode for the request.
  * @property {string} [path] The path for the request.
@@ -72,8 +72,6 @@ export const create = (initialOptions) => {
 		}
 	};
 	validateTrustedHTMLOptions(initialOptions);
-	const initialCreateTrustedHTML = initialOptions.createTrustedHTML;
-	const initialTrustedTypesPolicy = initialOptions.trustedTypesPolicy;
 	initialOptions = {
 		...DEFAULT_VALUES,
 		...cloneRecursive(initialOptions),
@@ -83,7 +81,6 @@ export const create = (initialOptions) => {
 	let activeRequests = 0;
 	let totalRequests = 0;
 	let debounceTimeout = null;
-	let debounceOptions = null;
 	const debounceResolvers = [];
 	const concurrencyQueue = [];
 
@@ -96,20 +93,7 @@ export const create = (initialOptions) => {
 	}
 
 	/**
-	 * @param {number} throttleValue
-	 */
-	const throttle = async (throttleValue) => {
-		const now = Date.now();
-		const waitTime = throttleValue - (now - lastExecutionTime);
-		lastExecutionTime = now + Math.max(waitTime, 0);
-		await delay(waitTime);
-	};
-
-	/**
-	 * Debounces the request handler.
-	 *
-	 * @param {number} debounceValue The debounce time in milliseconds.
-	 * @returns {Promise<void>} A promise that resolves after the debounce time.
+	 * Starts queued requests while their concurrency limit allows it.
 	 */
 	const drainConcurrencyQueue = () => {
 		while (concurrencyQueue.length > 0) {
@@ -120,6 +104,7 @@ export const create = (initialOptions) => {
 			concurrencyQueue.shift();
 			queued.signal?.removeEventListener("abort", queued.abort);
 			if (queued.signal?.aborted) {
+				queued.reject(queued.signal.reason);
 				continue;
 			}
 			activeRequests++;
@@ -155,11 +140,6 @@ export const create = (initialOptions) => {
 			drainConcurrencyQueue();
 		});
 
-	const releaseConcurrency = () => {
-		activeRequests--;
-		drainConcurrencyQueue();
-	};
-
 	/**
 	 * Sends a request.
 	 *
@@ -182,13 +162,31 @@ export const create = (initialOptions) => {
 			headers: options.headers,
 			method: options.method,
 			mode: options.mode,
+			priority: options.priority,
 			redirect: options.redirect,
-			body: options.body ? JSON.stringify(options.body) : undefined,
+			body: options.body || undefined,
 		};
+		// Encode plain objects and arrays as JSON, pass any other body as is.
+		const bodyPrototype = config.body && Object.getPrototypeOf(config.body);
+		if (
+			Array.isArray(config.body) ||
+			bodyPrototype === Object.prototype ||
+			bodyPrototype === null
+		) {
+			config.body = JSON.stringify(config.body);
+			if (!config.headers.has("Content-Type")) {
+				config.headers.set("Content-Type", "application/json");
+			}
+		}
 
 		let url = (options.domain || "") + (options.path || "");
-		if (options.queryParams) {
-			url += `?${new URLSearchParams(options.queryParams).toString()}`;
+		const query = new URLSearchParams(options.queryParams).toString();
+		if (query) {
+			// Add the query before any fragment, after any existing query.
+			url = url.replace(
+				/^[^#]*/,
+				(base) => base + (base.includes("?") ? "&" : "?") + query,
+			);
 		}
 
 		const externalSignal = options.abort?.signal || options.abort;
@@ -227,7 +225,16 @@ export const create = (initialOptions) => {
 				];
 			}
 			if (!response.ok) {
-				return [new Error("Invalid response"), response, null];
+				// The status text is empty over HTTP/2, so fall back to the status.
+				const error = new Error(
+					response.statusText ||
+						`Request failed with status ${response.status}`,
+				);
+				return [
+					Object.assign(error, { response, status: response.status }),
+					response,
+					null,
+				];
 			}
 
 			try {
@@ -245,19 +252,11 @@ export const create = (initialOptions) => {
 					}
 				}
 				if (!foundParser) {
-					const createTrustedHTML = Object.hasOwn(
-						options,
-						"perCallCreateTrustedHTML",
-					)
-						? options.perCallCreateTrustedHTML
-						: Object.hasOwn(options, "perCallTrustedTypesPolicy")
-							? options.perCallTrustedTypesPolicy.createHTML.bind(
-									options.perCallTrustedTypesPolicy,
-								)
-							: initialCreateTrustedHTML ||
-								initialTrustedTypesPolicy?.createHTML.bind(
-									initialTrustedTypesPolicy,
-								);
+					const createTrustedHTML =
+						options.createTrustedHTML ||
+						options.trustedTypesPolicy?.createHTML.bind(
+							options.trustedTypesPolicy,
+						);
 					switch (type.toLowerCase()) {
 						case "arraybuffer":
 							result = await response.arrayBuffer();
@@ -275,46 +274,31 @@ export const create = (initialOptions) => {
 							break;
 						case "text/html-partial":
 						case "html-partial":
-							{
-								const responseText = await response.text();
-								result = createTrustedHTML
-									? createTrustedHTML(responseText)
-									: responseText;
-								const template = document.createElement("template");
-								try {
-									template.innerHTML = result;
-								} catch (error) {
-									if (!createTrustedHTML) {
-										throw new Error(
-											"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
-											{ cause: error },
-										);
-									}
-									throw error;
-								}
-								result = template.content.childNodes;
-							}
-							break;
 						case "text/html":
-						case "html":
-							{
-								const responseText = await response.text();
-								result = createTrustedHTML
-									? createTrustedHTML(responseText)
-									: responseText;
-								try {
+						case "html": {
+							const responseText = await response.text();
+							result = createTrustedHTML
+								? createTrustedHTML(responseText)
+								: responseText;
+							try {
+								if (type.toLowerCase().endsWith("partial")) {
+									const template = document.createElement("template");
+									template.innerHTML = result;
+									result = template.content.childNodes;
+								} else {
 									result = new DOMParser().parseFromString(result, "text/html");
-								} catch (error) {
-									if (!createTrustedHTML) {
-										throw new Error(
-											"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
-											{ cause: error },
-										);
-									}
-									throw error;
 								}
+							} catch (error) {
+								if (!createTrustedHTML) {
+									throw new Error(
+										"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
+										{ cause: error },
+									);
+								}
+								throw error;
 							}
 							break;
+						}
 						case "application/json":
 						case "text/json":
 						case "json":
@@ -347,37 +331,22 @@ export const create = (initialOptions) => {
 			}
 		};
 
-		/**
-		 * Retries the request.
-		 *
-		 * @returns {Promise<[Error | null, Response, any]>} The error, response and result of the request.
-		 */
-		const retryRequest = async () => {
-			let attempt = 0;
-			const retryAttempts = options.retryAttempts || 0;
-			const retryDelay = options.retryDelay || 0;
-
-			while (attempt <= retryAttempts) {
+		try {
+			for (let attempt = 0; ; attempt++) {
 				const [error, response, result] = await executeFetch();
-				if (!error) {
-					return [error, response, result];
-				}
-				if (controller.signal.aborted) {
-					return [error, response, result];
-				}
-				if (response?.ok) {
-					return [error, response, result];
-				}
-				if (response && !options.retryCodes?.includes(response.status)) {
-					return [new Error("Invalid status code"), response, result];
-				}
-
-				attempt++;
-				if (attempt > retryAttempts) {
+				// Stop on success, on abort, on errors a retry can not fix, and once
+				// the attempts run out.
+				if (
+					!error ||
+					controller.signal.aborted ||
+					response?.ok ||
+					(response && !options.retryCodes?.includes(response.status)) ||
+					attempt >= (options.retryAttempts || 0)
+				) {
 					return [error, response, result];
 				}
 
-				let delayTime = retryDelay * 2 ** (attempt - 1);
+				let delayTime = (options.retryDelay || 0) * 2 ** attempt;
 
 				const retryAfter = response?.headers.get("Retry-After");
 				if (retryAfter) {
@@ -396,17 +365,11 @@ export const create = (initialOptions) => {
 					delayTime = Math.min(delayTime, options.maximumRetryDelay);
 				}
 
-				await delay(delayTime);
+				// Release the connection held by the unread body before waiting.
+				await response?.body?.cancel();
+				// The request's own signal, so a timeout also ends the wait.
+				await delay(delayTime, controller.signal);
 			}
-			return executeFetch();
-		};
-
-		try {
-			const [error, response, result] = await retryRequest();
-			if (response && !response.ok) {
-				return [new Error(response.statusText), response, result];
-			}
-			return [error, response, result];
 		} finally {
 			if (timeoutIdentifier !== null) {
 				clearTimeout(timeoutIdentifier);
@@ -416,13 +379,6 @@ export const create = (initialOptions) => {
 	};
 
 	const executeScheduled = async (options) => {
-		if (options.delay) {
-			await delay(options.delay);
-		}
-		if (options.throttle) {
-			await throttle(options.throttle);
-		}
-
 		const maximum = options.maxConcurrency ?? Infinity;
 		if (maximum !== Infinity && (!Number.isInteger(maximum) || maximum <= 0)) {
 			return [
@@ -435,6 +391,13 @@ export const create = (initialOptions) => {
 		const signal = options.abort?.signal || options.abort;
 		let acquired = false;
 		try {
+			await delay(options.delay, signal);
+			if (options.throttle) {
+				const now = Date.now();
+				const waitTime = options.throttle - (now - lastExecutionTime);
+				lastExecutionTime = now + Math.max(waitTime, 0);
+				await delay(waitTime, signal);
+			}
 			await acquireConcurrency(maximum, signal);
 			acquired = true;
 			return await sendRequest(options);
@@ -446,7 +409,8 @@ export const create = (initialOptions) => {
 			];
 		} finally {
 			if (acquired) {
-				releaseConcurrency();
+				activeRequests--;
+				drainConcurrencyQueue();
 			}
 		}
 	};
@@ -458,33 +422,37 @@ export const create = (initialOptions) => {
 	 * @returns {Promise<[Error | null, Response | null, any]>} The error, response and result of the request.
 	 */
 	return (sendOptions = {}) => {
+		// The body is encoded or passed as is, so it does not need a clone.
+		const { body, ...otherOptions } = sendOptions;
+		const options = {
+			...initialOptions,
+			...cloneRecursive(otherOptions),
+		};
+		if (Object.hasOwn(sendOptions, "body")) {
+			options.body = body;
+		}
 		try {
 			validateTrustedHTMLOptions(sendOptions);
+			// Merge the headers, letting the per-call headers take precedence.
+			options.headers = new Headers(initialOptions.headers);
+			for (const [key, value] of new Headers(sendOptions.headers)) {
+				options.headers.set(key, value);
+			}
 		} catch (error) {
 			return Promise.resolve([error, null, null]);
 		}
-		const options = {
-			...initialOptions,
-			...cloneRecursive(sendOptions),
-		};
-		if (Object.hasOwn(sendOptions, "createTrustedHTML")) {
-			options.perCallCreateTrustedHTML = sendOptions.createTrustedHTML;
-		}
-		if (Object.hasOwn(sendOptions, "trustedTypesPolicy")) {
-			options.perCallTrustedTypesPolicy = sendOptions.trustedTypesPolicy;
-		}
-		if (initialOptions.headers) {
-			options.headers = {
-				...initialOptions.headers,
-				...options.headers,
-			};
+		// A per-call policy takes precedence over the initial callback.
+		if (
+			Object.hasOwn(sendOptions, "trustedTypesPolicy") &&
+			!Object.hasOwn(sendOptions, "createTrustedHTML")
+		) {
+			options.createTrustedHTML = undefined;
 		}
 
 		if (!options.debounce) {
 			return executeScheduled(options);
 		}
 
-		debounceOptions = options;
 		return new Promise((resolve) => {
 			const signal = options.abort?.signal || options.abort;
 			const pending = {
@@ -496,9 +464,6 @@ export const create = (initialOptions) => {
 				const index = debounceResolvers.indexOf(pending);
 				if (index >= 0) {
 					debounceResolvers.splice(index, 1);
-					if (debounceOptions === options) {
-						debounceOptions = debounceResolvers.at(-1)?.options || null;
-					}
 					resolve([
 						signal.reason || new DOMException("Request aborted", "AbortError"),
 						null,
@@ -518,13 +483,12 @@ export const create = (initialOptions) => {
 			}
 			debounceTimeout = setTimeout(async () => {
 				const pendingResolvers = debounceResolvers.splice(0);
-				const settledOptions = debounceOptions;
 				debounceTimeout = null;
-				debounceOptions = null;
 				if (pendingResolvers.length === 0) {
 					return;
 				}
-				const result = await executeScheduled(settledOptions);
+				// The last call that was not aborted decides the options.
+				const result = await executeScheduled(pendingResolvers.at(-1).options);
 				for (const pendingResolver of pendingResolvers) {
 					pendingResolver.signal?.removeEventListener(
 						"abort",
