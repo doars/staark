@@ -20,7 +20,7 @@ create(
 ]>
 ```
 
-Creates a reusable request function. Per-call options override initial options, except headers are merged. Network, parsing, status, timeout, cancellation, and request-limit failures normally resolve as `[error, response, result]` instead of rejecting.
+Creates a reusable request function. Per-call options override initial options, except headers are merged case-insensitively; both may be a plain object or a `Headers` instance. Network, parsing, status, timeout, cancellation, and request-limit failures normally resolve as `[error, response, result]` instead of rejecting.
 
 Invalid creation options such as a non-positive `maxConcurrency` or malformed Trusted Types policy can throw synchronously. Invalid per-call Trusted Types options are returned in the tuple.
 
@@ -28,18 +28,22 @@ Invalid creation options such as a non-positive `maxConcurrency` or malformed Tr
 
 URL and request options include `domain`, `path`, `method`, `headers`, `queryParams`, `body`, `credentials`, `mode`, `redirect`, `cache`, and `priority`.
 
+- `queryParams` are appended after any query already in the path, and before any `#fragment`.
+- `body`: plain objects and arrays are JSON-encoded and get `Content-Type: application/json` when no content type is set; other bodies (strings, `FormData`, `Blob`, `URLSearchParams`, buffers, streams) are passed to fetch unchanged.
+- `credentials`: when omitted, fetch's default (`same-origin`) applies.
+
 Execution options include:
 
-- `abort`: an `AbortController` or compatible signal used to cancel queued or active work.
+- `abort`: an `AbortController` or compatible signal used to cancel queued or active work, including `delay`, `throttle` and retry waits.
 - `fetch`: a custom Fetch-compatible function.
 - `debounce`: delay until calls stop arriving; superseded callers settle with the eventual debounced request result unless cancelled.
 - `delay`: delay before starting a request.
 - `throttle`: minimum interval between starts.
-- `timeout`: maximum active request duration.
+- `timeout`: maximum active request duration, including retries.
 - `maxConcurrency`: positive maximum active requests; omitted means unlimited.
-- `maxRequests`: maximum fetches started by the reusable instance.
+- `maxRequests`: maximum requests sent by the reusable instance; retries do not count.
 
-Limited and unlimited calls share one FIFO scheduler. Debounced and queued calls consume `maxRequests` only when their fetch starts.
+Limited and unlimited calls share one FIFO scheduler. Debounced and queued calls consume `maxRequests` only when their request starts, and a debounced batch counts once.
 
 Retry options include:
 
@@ -48,7 +52,9 @@ Retry options include:
 - `retryDelay`: initial delay in milliseconds; default `500`.
 - `maximumRetryDelay`: optional upper bound for retry delays.
 
-Retry delay grows exponentially and honors a later valid `Retry-After` response value.
+Requests are retried when the response status is in `retryCodes` or when fetch itself rejects, such as on a network error. Retry delay grows exponentially and honors a later valid `Retry-After` response value.
+
+For an unsuccessful status, the error message is the status text or `Request failed with status <status>`, and the error has `status` and `response` properties.
 
 ## Parsing
 
@@ -78,7 +84,7 @@ tomlParser(options?: TomlOptions): ResponseParser
 yamlParser(options?: YamlOptions): ResponseParser
 ```
 
-The TOML and YAML parsers intentionally implement small subsets of their specifications. Wrap a maintained dedicated parser when complete syntax, complex values, or detailed error handling is required.
+The TOML and YAML parsers intentionally implement small subsets of their specifications. Wrap a maintained dedicated parser when complete syntax, complex values, or detailed error handling is required. Escape sequences are not processed. TOML lacks nested arrays, inline tables inside arrays or inline tables, dotted keys, and quoted keys. YAML lacks inline mappings (returned as strings), nested inline lists, multiple documents, quoted or complex keys, anchors on list items, and explicit block indentation indicators. Unsupported YAML lines and TOML keys without a value throw a `SyntaxError`.
 
 ## Example
 

@@ -2,7 +2,7 @@
 
 A teensy-tiny library for managing network requests.
 
-- Comes in at **two kilobytes** in size when compressed. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
+- Comes in at **under two and a half kilobytes** in size when compressed, or under four and a half with every parser included. Due to the minimal philosophy of the library and the simple concepts within the total size is tiny as well.
 - Has features like **throttling, debouncing, delays, retries, and more**, making it easier to manage and control network traffic.
 - Designed to be used with front-end frameworks such as [`@doars/staark`](https://github.com/doars/staark/tree/main/packages/staark#readme).
 
@@ -29,7 +29,7 @@ const [error, response, result] = await request()
 console.log(error, response, result)
 ```
 
-This sends the request and returns the response and parsed result, depending on the response type. It will automatically retry the request if it fails with specific HTTP status codes like `429 Too Many Requests` or `503 Service Unavailable`.
+This sends the request and returns the response and parsed result, depending on the response type. It will automatically retry the request if it fails with specific HTTP status codes like `429 Too Many Requests` or `503 Service Unavailable`, or if the fetch itself fails, for example due to a network error.
 
 The library tries to be smart: it knows that different content types need different handling. If you're fetching `JSON`, `XML`, `HTML`, or even `SVG`, the data will automatically be parsed correctly.
 
@@ -55,7 +55,15 @@ const request = create({
 })
 ```
 
-Two of the aforementioned parsers, `TOML` and `YAML`, are rather simple implementations as they are optimized for size not features. Therefore they will not support everything for example parsing complex data types and proper error handling. If you do need to support the full specification I recommend creating a function that wraps an existing parser.
+Two of the aforementioned parsers, `TOML` and `YAML`, are rather simple implementations as they are optimized for size not features. Therefore they do not support everything. If you do need to support the full specification I recommend creating a function that wraps an existing parser. The following is not supported:
+
+- Escape sequences in strings are not processed, so `"a\nb"` keeps the backslash.
+- A trailing `# comment` is removed, unless it comes after an unclosed quote, such as the apostrophe in the YAML value `it's # comment`. In TOML, a `#` on the opening line of a multi-line string can be mistaken for a comment.
+- TOML nested arrays, inline tables inside arrays or other inline tables, dotted keys such as `a.b = 1`, and quoted keys.
+- YAML inline mappings such as `{a: 1}`, which are returned as a string, nested inline lists, multiple documents, tags other than `!!int`, `!!float`, `!!str` and `!!bool`, quoted keys, complex keys, anchors on list items, and explicit indentation indicators such as `|2`.
+- In YAML a key without a value becomes an empty object instead of `null`, and folded block scalars (`>`) also fold the line breaks around more-indented lines.
+
+Lines the YAML parser does not understand throw a `SyntaxError`, as do TOML lines without a value.
 
 The example below is a wrapper function for the [`smol-toml`](https://github.com/squirrelchat/smol-toml#readme) library.
 
@@ -157,37 +165,37 @@ When creating a request instance, you can pass an options object to configure it
 The full list of create options:
 
 - `{number} maxConcurrency` The maximum number of concurrent requests allowed. It must be a positive integer. Omit it for unlimited concurrency. Initial and per-call limits share one strict FIFO queue.
-- `{number} maxRequests` The maximum number of fetches started by this request instance. Debounced and queued calls consume the limit when their fetch starts.
+- `{number} maxRequests` The maximum number of requests sent by this request instance. A request counts once, however often it is retried. Debounced calls count once per debounced request, and queued calls consume the limit when they start.
 - `{function} createTrustedHTML` Converts the complete response string before an `html` or `html-partial` parsing sink. The callback may return `TrustedHTML` from an application policy.
 - `{object} trustedTypesPolicy` A Trusted Types policy with a callable `createHTML` method. A per-call callback takes precedence over a per-call policy, then the initial callback and policy.
 
 The full list of send options:
 
-- `{object} body = null` The payload to be sent with the request, typically used with `post` or `put` methods.
-- `{string} credentials = 'omit'` The credentials mode to use for the request. Options include `omit`, `same-origin`, or `include`.
+- `{any} body = null` The payload to be sent with the request, typically used with `post` or `put` methods. Plain objects and arrays are encoded as JSON, and get a `Content-Type: application/json` header when no content type is set. Any other body, such as a string, `FormData`, `Blob`, `URLSearchParams` or buffer, is passed to fetch unchanged.
+- `{string} credentials` The credentials mode to use for the request. Options include `omit`, `same-origin`, or `include`. When omitted, fetch's default of `same-origin` applies.
 - `{string} domain = ''` The base URL for the API. This URL is prefixed to all request paths.
-- `{object} headers = {}` Custom headers to include with each request. These headers are merged with any headers specified at the time of the request.
+- `{object|Headers} headers = {}` Custom headers to include with each request, as an object or a `Headers` instance. These headers are merged with any headers specified at the time of the request, ignoring the case of their names.
 - `{string} method = 'get'` The HTTP method to use for the request. Common options include `get`, `post`, `put`, and `delete`.
 - `{string} mode = null` The mode of the request. Options include `cors`, `no-cors`, or `same-origin`.
 - `{string} path = ''` The endpoint path to be appended to the base URL.
 - `{string} priority = null` The Fetch priority hint. Options include `high`, `normal`, or `low`. This does not reorder vroagn's FIFO scheduler.
-- `{object} queryParams = {}` Query parameters to append to the request URL.
+- `{object} queryParams = {}` Query parameters to append to the request URL. They are added after any query already in the path, and before any `#fragment`.
 - `{string} redirect = null` The way to handle redirect responses. Options include `error`, `follow`, or `manual`.
 - `{Parser[]} parsers = null` A list of additional custom parsers for when the built-in parsers aren't sufficient.
 - `{string} type = null` Specifies the expected response type for the request. This overrides the automatic type determination.
-- `{AbortController} abort = null` A custom `AbortController` instance for cancelling the request.
+- `{AbortController} abort = null` A custom `AbortController` instance for cancelling the request. Aborting also ends any `delay`, `throttle` or retry wait.
 - `{string} cache = 'default'` The cache mode for the request. Options include `default`, `no-store`, `reload`, `no-cache`, `force-cache`, or `only-if-cached`.
 - `{function} fetch = fetch` Allows the setting of a custom fetch function to use.
 - `{number} debounce = 0` Time in milliseconds to delay the request after it has been triggered. If a new request is triggered within this time, the timer resets.
 - `{number} delay = 0` Time in milliseconds to delay the start of the request.
-- `{number} retryAttempts = 0` The number of retry attempts allowed before giving up on the request.
+- `{number} retryAttempts = 0` The number of retry attempts allowed before giving up on the request. A request is retried when the response has one of the `retryCodes`, or when the fetch itself fails, for example due to a network error.
 - `{number[]} retryCodes = [429, 503, 504,]` An array of HTTP status codes that will trigger a retry if encountered. If a  `Retry-After` header is given by the response it will be used if the retry after moment is later that the retry delay.
 - `{number} retryDelay = 500` Time in milliseconds to wait between retry attempts if retries are enabled. The delay between retries will increase exponentially, doubling after each failed attempt. This can help to reduce the load on the server during periods of high failure rates.
 - `{number} maximumRetryDelay` Optional upper bound for retry delays.
 - `{number} throttle = 0` Time in milliseconds to throttle requests. Limits the number of requests that can be made within a specified time frame.
-- `{number} timeout = 0` Time in milliseconds before the request times out. If the request exceeds this duration, it will be aborted.
+- `{number} timeout = 0` Time in milliseconds before the request times out. If the request, including its retries, exceeds this duration, it will be aborted.
 
-The returned method resolves to `[error, response, result]`, containing an error when one occurred, the raw response when available, and the parsed body. Expected request failures are returned in this tuple. Invalid creation options, such as a non-positive `maxConcurrency`, can throw synchronously.
+The returned method resolves to `[error, response, result]`, containing an error when one occurred, the raw response when available, and the parsed body. Expected request failures are returned in this tuple. When the response has an unsuccessful status the error's message is the status text, or `Request failed with status <status>` when the status text is empty, and the error has `status` and `response` properties. Invalid creation options, such as a non-positive `maxConcurrency`, can throw synchronously.
 
 ## Parsing
 
