@@ -1,10 +1,5 @@
 import { cloneRecursive } from "../utilities/clone.js";
 
-const FORBIDDEN_PATH_COMPONENTS = new Set([
-	"__proto__",
-	"constructor",
-	"prototype",
-]);
 const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
 
 /**
@@ -12,7 +7,7 @@ const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
  *
  * @param {unknown} path Path to validate.
  * @returns {Array<string | number>} Validated path.
- * @throws {TypeError} When the path is malformed or unsafe.
+ * @throws {TypeError} When the path is malformed.
  */
 const validatePath = (path) => {
 	if (!Array.isArray(path) || path.length === 0) {
@@ -27,9 +22,6 @@ const validatePath = (path) => {
 			throw new TypeError(
 				"Diff path components must be strings or array indices",
 			);
-		}
-		if (FORBIDDEN_PATH_COMPONENTS.has(String(component))) {
-			throw new TypeError(`Unsafe diff path component: ${String(component)}`);
 		}
 	}
 
@@ -225,9 +217,13 @@ const setValueAtPath = (record, path, value, inserting) => {
 	for (let index = 0; index < path.length - 1; index++) {
 		const key = getKey(current, path[index]);
 		if (!Object.hasOwn(current, key)) {
-			const nextComponent = path[index + 1];
-			current[key] =
-				typeof nextComponent === "number" ? [] : Object.create(null);
+			// Define the key, since assigning "__proto__" would change the prototype.
+			Object.defineProperty(current, key, {
+				configurable: true,
+				enumerable: true,
+				value: typeof path[index + 1] === "number" ? [] : Object.create(null),
+				writable: true,
+			});
 		}
 		if (!isContainer(current[key])) {
 			throw new TypeError("Cannot traverse a non-record diff path value");
@@ -238,7 +234,12 @@ const setValueAtPath = (record, path, value, inserting) => {
 	if (inserting && Array.isArray(current)) {
 		current.splice(key, 0, cloneRecursive(value));
 	} else {
-		current[key] = cloneRecursive(value);
+		Object.defineProperty(current, key, {
+			configurable: true,
+			enumerable: true,
+			value: cloneRecursive(value),
+			writable: true,
+		});
 	}
 };
 
@@ -281,7 +282,7 @@ const deleteValueAtPath = (record, path) => {
  * @param {boolean} reverting Whether changes are being reverted.
  * @returns {Record<string, any>} Updated state.
  */
-const applyValidatedDiff = (state, diff, reverting) => {
+export const applyValidatedDiff = (state, diff, reverting) => {
 	// Revert from the last change to the first, so each change sees the state
 	// it was applied to.
 	for (let index = 0; index < diff.length; index++) {
@@ -353,10 +354,6 @@ export const determineDiff = (
 	const keys = isArray ? [...before.keys()] : Object.keys(before);
 	for (let index = keys.length; index-- > 0; ) {
 		const key = keys[index];
-		// Like cloneRecursive, refuse an own "__proto__" key.
-		if (key === "__proto__") {
-			throw new TypeError("Unsafe diff path component: __proto__");
-		}
 		if (isArray ? key >= after.length : !Object.hasOwn(after, key)) {
 			changes.push({
 				type: "delete",
@@ -383,9 +380,6 @@ export const determineDiff = (
 
 	// Add the keys in the "after" object that were not in "before".
 	for (const key of isArray ? [...after.keys()] : Object.keys(after)) {
-		if (key === "__proto__") {
-			throw new TypeError("Unsafe diff path component: __proto__");
-		}
 		if (isArray ? key >= before.length : !Object.hasOwn(before, key)) {
 			changes.push({
 				type: "set",
@@ -403,16 +397,11 @@ export const determineDiff = (
  *
  * @param {Record<string, any>} state The state object to update.
  * @param {Change[]} diff The diff to apply.
- * @param {boolean} [trusted=false] Whether the diff is known to apply cleanly,
- * which skips the trial run on a copy that keeps a failure from changing the
- * state halfway.
  * @returns {Record<string, any>} The updated state object.
  */
-export const applyDiff = (state, diff, trusted) => {
+export const applyDiff = (state, diff) => {
 	validateDiff(diff);
-	if (!trusted) {
-		applyValidatedDiff(cloneRecursive(state), diff, false);
-	}
+	applyValidatedDiff(cloneRecursive(state), diff, false);
 	return applyValidatedDiff(state, diff, false);
 };
 
@@ -421,15 +410,10 @@ export const applyDiff = (state, diff, trusted) => {
  *
  * @param {Record<string, any>} state The state object to revert.
  * @param {Change[]} diff The diff to revert.
- * @param {boolean} [trusted=false] Whether the diff is known to revert cleanly,
- * which skips the trial run on a copy that keeps a failure from changing the
- * state halfway.
  * @returns {Record<string, any>} The updated state object.
  */
-export const revertDiff = (state, diff, trusted) => {
+export const revertDiff = (state, diff) => {
 	validateDiff(diff);
-	if (!trusted) {
-		applyValidatedDiff(cloneRecursive(state), diff, true);
-	}
+	applyValidatedDiff(cloneRecursive(state), diff, true);
 	return applyValidatedDiff(state, diff, true);
 };

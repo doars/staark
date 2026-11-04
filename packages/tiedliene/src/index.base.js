@@ -2,4 +2,4 @@
  * @module tiedliene-base
  */
 
-export * from "./library/diff.js";
+export { applyDiff, determineDiff, revertDiff } from "./library/diff.js";
