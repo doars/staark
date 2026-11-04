@@ -5,6 +5,7 @@ import {
 } from 'node:test'
 
 import {
+  csvParser,
   tomlParser,
   yamlParser,
 } from '../../src/index.js'
@@ -36,5 +37,23 @@ describe('Parser correctness', () => {
 
     assert.deepStrictEqual([...result.single], [1, 'two'])
     assert.deepStrictEqual([...result.values], ['one', 'two'])
+  })
+
+  it('parses CSV with CRLF line endings', async () => {
+    const result = await parse(csvParser(), 'a,b\r\n1,2\r\n', 'csv')
+
+    assert.deepStrictEqual(result, [['a', 'b'], ['1', '2']])
+  })
+
+  it('keeps an empty last CSV field', async () => {
+    const result = await parse(csvParser(), 'a,b,\n1,2,', 'csv')
+
+    assert.deepStrictEqual(result, [['a', 'b', ''], ['1', '2', '']])
+  })
+
+  it('keeps CRLF inside a quoted CSV field', async () => {
+    const result = await parse(csvParser(), '"a\r\nb",c\r\n', 'csv')
+
+    assert.deepStrictEqual(result, [['a\r\nb', 'c']])
   })
 })
