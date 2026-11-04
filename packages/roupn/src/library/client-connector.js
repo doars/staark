@@ -70,14 +70,19 @@ const USER_SIGNATURE_ALGORITHM = "RSASSA-PKCS1-v1_5";
  * @property {string} [httpUrl='http://localhost:3000'] - Base HTTP URL for API requests.
  * @property {string} [wsUrl='http://localhost:3000'] - Base WebSocket URL for room connections.
  *
- * @property {any} [publicData={}] - Public data to be shared with other clients in the room.
- * @property {Function} [verifyPublicData] - Callback for verifying the public data of other users.
- * @property {any} [privateData={}] - Private data to be shared with other clients in the room.
- * @property {Function} [verifyPrivateData] - Callback for verifying the private data of other users.
- *
  * @property {number} [messageBufferMaxCount=50] - The maximum number of messages to store in the buffer.
  * @property {number} [messageBufferMaxDuration=60000] - The maximum duration in milliseconds to store a message in the buffer.
  * @property {boolean} [allowInsecureNonLoopback=false] - Allows insecure HTTP and WebSocket URLs outside loopback for development.
+ */
+
+/**
+ * @typedef {Object} RoomOptions
+ *
+ * @property {any|Function} [publicData] - Data sent to the other side of the handshake before it is encrypted, or a function that returns it. The relay can read it, so it must not contain secrets.
+ * @property {Function} [verifyPublicData] - Called with `{ data, userId }` for the public data of the other side. Returning false kicks the joiner, or leaves the room.
+ * @property {any|Function} [privateData] - Data sent to the other side once the code is verified, encrypted with the handshake key, or a function that returns it.
+ * @property {Function} [verifyPrivateData] - Called with `{ data, userId }` for the private data of the other side. Returning false kicks the joiner, or leaves the room.
+ * @property {number} [limit] - The maximum number of users in the room. Only used when creating a room.
  */
 
 /**
@@ -446,13 +451,6 @@ export const createClientConnector = (options = {}) => {
 	 * @param {string|null} [creatorConnectionToken=null] - Optional single-use token for authenticating the creator connection.
 	 */
 	const _joinRoom = (roomCode, creatorConnectionToken = null) => {
-		if (
-			!creatorConnectionToken &&
-			_connectionState &&
-			_connectionState !== CONNECTION_DISCONNECTED
-		) {
-			return;
-		}
 		_setConnectionState(CONNECTION_CONNECTING);
 
 		_roomCode = roomCode;
@@ -845,7 +843,10 @@ export const createClientConnector = (options = {}) => {
 					await _message(
 						{
 							type: EXCHANGE_3,
-							privateData: _privateData,
+							privateData:
+								typeof _privateData === "function"
+									? _privateData()
+									: _privateData,
 						},
 						{
 							handshake: true,
@@ -1144,21 +1145,21 @@ export const createClientConnector = (options = {}) => {
 		/**
 		 * Creates a new room and joins it.
 		 *
-		 * @param {Object<string, any>} [options={}] - Options for creating the room.
+		 * @param {RoomOptions} [options={}] - Options for creating the room.
 		 * @returns {Object<string, any>|undefined} Room creation data or undefined if failed.
 		 */
 		createRoom: async (options = {}) => {
-			if (_connectionState && _connectionState !== CONNECTION_DISCONNECTED) {
+			if (_connectionState !== CONNECTION_DISCONNECTED) {
 				return;
 			}
 			_setConnectionState(CONNECTION_CONNECTING);
 
-			if (options.publicData) {
-				_publicData = options.publicData;
-			}
-			if (options.verifyPublicData) {
-				_publicDataVerify = options.verifyPublicData;
-			}
+			({
+				privateData: _privateData,
+				publicData: _publicData,
+				verifyPrivateData: _privateDataVerify,
+				verifyPublicData: _publicDataVerify,
+			} = options);
 
 			try {
 				_sharedKey = await crypto.subtle.generateKey(
@@ -1205,15 +1206,18 @@ export const createClientConnector = (options = {}) => {
 		 * Joins an existing room.
 		 *
 		 * @param {string} roomCode - The code of the room to join.
-		 * @param {Object<string, any>} [options={}] - Options for joining the room.
+		 * @param {RoomOptions} [options={}] - Options for joining the room.
 		 */
 		joinRoom: (roomCode, options = {}) => {
-			if (options.publicData) {
-				_publicData = options.publicData;
+			if (_connectionState !== CONNECTION_DISCONNECTED) {
+				return;
 			}
-			if (options.verifyPublicData) {
-				_publicDataVerify = options.verifyPublicData;
-			}
+			({
+				privateData: _privateData,
+				publicData: _publicData,
+				verifyPrivateData: _privateDataVerify,
+				verifyPublicData: _publicDataVerify,
+			} = options);
 			_joinRoom(roomCode);
 		},
 		leaveRoom,
@@ -1241,7 +1245,8 @@ export const createClientConnector = (options = {}) => {
 			await _message(
 				{
 					type: EXCHANGE_2,
-					privateData: _privateData,
+					privateData:
+						typeof _privateData === "function" ? _privateData() : _privateData,
 				},
 				{
 					handshake: true,

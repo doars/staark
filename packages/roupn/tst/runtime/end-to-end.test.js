@@ -413,3 +413,50 @@ describe('Handshake security', { timeout: 20000 }, () => {
     await server.close()
   })
 })
+
+describe('Private data', { timeout: 20000 }, () => {
+  it('exchanges private data after verification and checks it on both sides', async () => {
+    const server = await startServer()
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const calls = []
+    const { roomCode, userId: creatorId } = await createRoom(creator, {
+      privateData: { role: 'creator' },
+      verifyPrivateData: ({ data, userId }) => {
+        calls.push(['creator', data, userId])
+        return data.role === 'joiner'
+      },
+    })
+    const joinerId = await joinAndVerify(creator, joiner, roomCode, {
+      privateData: () => ({ role: 'joiner' }),
+      verifyPrivateData: ({ data, userId }) => {
+        calls.push(['joiner', data, userId])
+        return data.role === 'creator'
+      },
+    })
+
+    assert.deepStrictEqual(calls, [
+      ['joiner', { role: 'creator' }, creatorId],
+      ['creator', { role: 'joiner' }, joinerId],
+    ])
+    await server.close()
+  })
+
+  for (const side of ['creator', 'joiner']) {
+    it(`removes the joiner when the ${side} rejects the private data`, async () => {
+      const server = await startServer()
+      const creator = createClient(server)
+      const joiner = createClient(server)
+      const reject = { verifyPrivateData: () => false }
+      const { roomCode } = await createRoom(creator, side === 'creator' ? reject : {})
+      const { code, userId } = await joinRoom(creator, joiner, roomCode, side === 'joiner' ? reject : {})
+      const left = next(creator.onUserLeave)
+      const disconnected = next(joiner.onConnection, ({ state }) => state === CONNECTION_DISCONNECTED)
+      await creator.verifyUser(userId, code)
+
+      assert.strictEqual((await left).userId, userId)
+      await disconnected
+      await server.close()
+    })
+  }
+})
