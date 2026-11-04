@@ -9,6 +9,7 @@ import {
 import { WebSocketServer } from 'ws'
 
 import { createClientConnector } from '../../src/library/client-connector.js'
+import { createClientSynchronizer } from '../../src/library/client-synchronizer.js'
 import {
   CONNECTION_CONNECTED,
   CONNECTION_DISCONNECTED,
@@ -608,6 +609,91 @@ describe('Room creation failures', { timeout: 20000 }, () => {
     address = 'fresh'
     const creator = createClient(server)
     assert.ok((await createRoom(creator)).roomCode)
+    await server.close()
+  })
+})
+
+describe('Synchronized state', { timeout: 30000 }, () => {
+  const createSynchronizer = (server, publicState) =>
+    createClient(server, {}, (options) => createClientSynchronizer(options, {}, publicState))
+
+  /**
+   * Creates a room with a synchronizer as the creator, and lets each given client join and be verified. Resolves once the joining synchronizers received the first synchronised state.
+   */
+  const setUpRoom = async (creator, joiners) => {
+    const { roomCode } = await createRoom(creator)
+    for (const joiner of joiners) {
+      const synchronised = joiner.publicState &&
+        next(joiner.onMessage, ({ data }) => data.type === '_SS')
+      await joinAndVerify(creator, joiner, roomCode)
+      await synchronised
+    }
+  }
+
+  it('ends with the same state when two users change the same key at once', async () => {
+    const server = await startServer()
+    const creator = createSynchronizer(server, { value: 'start' })
+    const joiner = createSynchronizer(server, {})
+    await setUpRoom(creator, [joiner])
+    assert.deepStrictEqual({ ...joiner.publicState }, { value: 'start' })
+
+    for (let round = 0; round < 5; round++) {
+      const received = [creator, joiner].map((client) =>
+        next(client.onMessage, ({ data }) => data.type === '_SU'))
+      creator.publicState.value = `creator ${round}`
+      joiner.publicState.value = `joiner ${round}`
+      creator.sendUpdate()
+      joiner.sendUpdate()
+      await Promise.all(received)
+
+      assert.deepStrictEqual({ ...creator.publicState }, { ...joiner.publicState })
+    }
+    await server.close()
+  })
+
+  it('disconnects nobody when a peer sends a poisoned update or a state of its own', async () => {
+    const server = await startServer()
+    const creator = createSynchronizer(server, { value: 1 })
+    const victim = createSynchronizer(server, {})
+    const attacker = createClient(server)
+    await setUpRoom(creator, [victim, attacker])
+
+    const errors = [creator, victim].map((client) => {
+      const messages = []
+      client.onError.addListener(({ error }) => messages.push(error.message))
+      return messages
+    })
+    const rejected = [creator, victim].map((client) =>
+      next(client.onError, ({ error }) => error.message === 'synchronized_state_not_from_creator'))
+    await attacker.messageRoom({
+      type: '_SU',
+      identifier: 'poison',
+      stateDelta: [{ type: 'set', path: ['__proto__', 'polluted'], new: true }],
+      time: Date.now(),
+    })
+    await attacker.messageRoom({
+      type: '_SS',
+      state: { hacked: true },
+      time: Date.now(),
+    })
+    await Promise.all(rejected)
+
+    assert.deepStrictEqual(errors, [
+      ['invalid_state_delta', 'synchronized_state_not_from_creator'],
+      ['invalid_state_delta', 'synchronized_state_not_from_creator'],
+    ])
+    for (const client of [creator, victim]) {
+      assert.deepStrictEqual({ ...client.publicState }, { value: 1 })
+      assert.strictEqual(client.privateState.connectionState, CONNECTION_CONNECTED)
+    }
+    assert.strictEqual({}.polluted, undefined)
+
+    // Both still receive the next update.
+    const received = next(victim.onMessage, ({ data }) => data.type === '_SU')
+    creator.publicState.value = 2
+    creator.sendUpdate()
+    await received
+    assert.deepStrictEqual({ ...victim.publicState }, { value: 2 })
     await server.close()
   })
 })
