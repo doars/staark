@@ -8,6 +8,8 @@ import {
 
 import { WebSocketServer } from 'ws'
 
+import './worker.js'
+
 import { createClientConnector } from '../../src/library/client-connector.js'
 import { createClientSynchronizer } from '../../src/library/client-synchronizer.js'
 import {
