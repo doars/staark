@@ -294,46 +294,31 @@ export const create = (initialOptions) => {
 							break;
 						case "text/html-partial":
 						case "html-partial":
-							{
-								const responseText = await response.text();
-								result = createTrustedHTML
-									? createTrustedHTML(responseText)
-									: responseText;
-								const template = document.createElement("template");
-								try {
-									template.innerHTML = result;
-								} catch (error) {
-									if (!createTrustedHTML) {
-										throw new Error(
-											"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
-											{ cause: error },
-										);
-									}
-									throw error;
-								}
-								result = template.content.childNodes;
-							}
-							break;
 						case "text/html":
-						case "html":
-							{
-								const responseText = await response.text();
-								result = createTrustedHTML
-									? createTrustedHTML(responseText)
-									: responseText;
-								try {
+						case "html": {
+							const responseText = await response.text();
+							result = createTrustedHTML
+								? createTrustedHTML(responseText)
+								: responseText;
+							try {
+								if (type.toLowerCase().endsWith("partial")) {
+									const template = document.createElement("template");
+									template.innerHTML = result;
+									result = template.content.childNodes;
+								} else {
 									result = new DOMParser().parseFromString(result, "text/html");
-								} catch (error) {
-									if (!createTrustedHTML) {
-										throw new Error(
-											"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
-											{ cause: error },
-										);
-									}
-									throw error;
 								}
+							} catch (error) {
+								if (!createTrustedHTML) {
+									throw new Error(
+										"HTML parsing requires createTrustedHTML or trustedTypesPolicy",
+										{ cause: error },
+									);
+								}
+								throw error;
 							}
 							break;
+						}
 						case "application/json":
 						case "text/json":
 						case "json":
