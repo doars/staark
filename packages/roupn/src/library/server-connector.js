@@ -659,23 +659,35 @@ export const createServerConnector = (options = {}) => {
 						closeConnection(connection, "direct_message_rate_limited");
 						return;
 					}
-					const directKeys = [USER, USER_DIRECT_PAYLOAD];
-					const encryptedKeys = [
-						USER,
-						USER_ENCRYPTION_IV,
-						USER_ENCRYPTION_KEY,
-						USER_ENCRYPTION_PAYLOAD,
-						USER_ENCRYPTION_SIGNATURE,
-					];
+					// A direct message is unencrypted, encrypted with the handshake key, or encrypted with the keys of the receiver.
 					if (
 						typeof userPayload !== "string" ||
-						(!userDirectPayload &&
-							(!userEncryptionIv ||
-								!userEncryptionKey ||
-								!userEncryptionPayload ||
-								!userEncryptionSignature)) ||
-						(!hasExactKeys(parts, directKeys) &&
-							!hasExactKeys(parts, encryptedKeys))
+						(!(
+							userDirectPayload &&
+							hasExactKeys(parts, [USER, USER_DIRECT_PAYLOAD])
+						) &&
+							!(
+								userEncryptionIv &&
+								userEncryptionPayload &&
+								hasExactKeys(parts, [
+									USER,
+									USER_ENCRYPTION_IV,
+									USER_ENCRYPTION_PAYLOAD,
+								])
+							) &&
+							!(
+								userEncryptionIv &&
+								userEncryptionKey &&
+								userEncryptionPayload &&
+								userEncryptionSignature &&
+								hasExactKeys(parts, [
+									USER,
+									USER_ENCRYPTION_IV,
+									USER_ENCRYPTION_KEY,
+									USER_ENCRYPTION_PAYLOAD,
+									USER_ENCRYPTION_SIGNATURE,
+								])
+							))
 					) {
 						throw new TypeError("invalid_direct_message");
 					}

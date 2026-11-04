@@ -14,6 +14,14 @@ import {
   CONNECTION_DISCONNECTED,
 } from '../../src/library/message-types.js'
 import { createServerConnector } from '../../src/library/server-connector.js'
+import {
+  base64ToString,
+  stringToBase64,
+} from '../../src/utilities/encoding-server.js'
+import {
+  decode,
+  encode,
+} from '../../src/utilities/protocol.js'
 
 const servers = new Set()
 const clients = new Set()
@@ -145,6 +153,68 @@ const joinAndVerify = async (creator, joiner, roomCode, options) => {
   return userId
 }
 
+/**
+ * Opens a raw WebSocket to a room, for sending messages a connector never would. Resolves once the server says the room was joined.
+ */
+const openRawClient = async (server, roomCode) => {
+  const socket = new WebSocket(`${server.wsUrl}/join-room?code=${roomCode}`)
+  clients.add(socket)
+  const received = []
+  const waiting = new Set()
+  const closed = new Promise((resolve) => socket.addEventListener('close', resolve))
+  socket.addEventListener('message', (event) => {
+    const parts = decode(event.data, base64ToString)
+    const message = {
+      data: JSON.parse(parts.S ?? parts.D ?? 'null'),
+      parts,
+    }
+    received.push(message)
+    for (const waiter of waiting) {
+      waiter(message)
+    }
+  })
+  const client = {
+    closed,
+    received,
+    socket,
+    next: (predicate) => new Promise((resolve) => {
+      const waiter = (message) => {
+        if (predicate(message)) {
+          waiting.delete(waiter)
+          resolve(message)
+        }
+      }
+      waiting.add(waiter)
+      received.forEach(waiter)
+    }),
+    send: (parts) => socket.send(encode(parts, stringToBase64)),
+  }
+  client.joined = (await client.next(({ data }) => data?.type === '_RJ')).data
+  return client
+}
+
+/**
+ * Rewrites the direct messages the server sends over a connection, after decoding their parts and payload.
+ */
+const rewriteDirectMessages = (connection, rewrite) => {
+  const send = connection.send.bind(connection)
+  connection.send = (message, ...rest) => {
+    const parts = decode(message, base64ToString)
+    if (parts.D) {
+      const data = JSON.parse(parts.D)
+      rewrite(data)
+      parts.D = JSON.stringify(data)
+      message = encode(parts, stringToBase64)
+    }
+    send(message, ...rest)
+  }
+}
+
+const exportPublicKey = async (algorithm, format, usages) => {
+  const keys = await crypto.subtle.generateKey(algorithm, true, usages)
+  return Buffer.from(await crypto.subtle.exportKey(format, keys.publicKey)).toString('base64')
+}
+
 describe('End-to-end rooms', { timeout: 20000 }, () => {
   it('verifies a joiner and exchanges room messages', async () => {
     const server = await startServer()
@@ -160,6 +230,162 @@ describe('End-to-end rooms', { timeout: 20000 }, () => {
     const left = next(creator.onConnection, ({ state }) => state === CONNECTION_DISCONNECTED)
     creator.leaveRoom()
     await left
+    await server.close()
+  })
+})
+
+describe('Handshake security', { timeout: 20000 }, () => {
+  for (const [name, field, key] of [
+    [
+      'encrypt',
+      'publicEncryptKey',
+      () => exportPublicKey(
+        { hash: 'SHA-256', modulusLength: 2048, name: 'RSA-OAEP', publicExponent: new Uint8Array([1, 0, 1]) },
+        'spki',
+        ['encrypt', 'decrypt'],
+      ),
+    ],
+    [
+      'sign',
+      'publicSignKey',
+      () => exportPublicKey(
+        { hash: 'SHA-256', modulusLength: 2048, name: 'RSASSA-PKCS1-v1_5', publicExponent: new Uint8Array([1, 0, 1]) },
+        'spki',
+        ['sign', 'verify'],
+      ),
+    ],
+    [
+      'exchange',
+      'publicExchangeKey',
+      () => exportPublicKey({ name: 'ECDH', namedCurve: 'P-256' }, 'raw', ['deriveBits']),
+    ],
+  ]) {
+    it(`gives different codes when the relay swaps the creator's ${name} key`, async () => {
+      const server = await startServer()
+      const replacement = await key()
+      server.hooks.connection = (connection, request) => {
+        if (!request.url.includes('creator=1')) {
+          rewriteDirectMessages(connection, (data) => {
+            if (data.type === '_X1') {
+              data[field] = replacement
+            }
+          })
+        }
+      }
+      const creator = createClient(server)
+      const joiner = createClient(server)
+      const { roomCode } = await createRoom(creator)
+      const { code, creatorCode, userId } = await joinRoom(creator, joiner, roomCode)
+
+      assert.notStrictEqual(code, creatorCode)
+      assert.strictEqual(await creator.verifyUser(userId, code), false)
+      await server.close()
+    })
+  }
+
+  it('never sends the room key in a form the relay can open', async () => {
+    const server = await startServer()
+    const relayed = []
+    server.hooks.connection = (connection, request) => {
+      if (!request.url.includes('creator=1')) {
+        const send = connection.send.bind(connection)
+        connection.send = (message, ...rest) => {
+          relayed.push(decode(message, base64ToString))
+          send(message, ...rest)
+        }
+      }
+    }
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    await joinAndVerify(creator, joiner, roomCode)
+
+    const direct = relayed.filter((parts) => parts.U)
+    assert.deepStrictEqual(
+      direct.filter((parts) => parts.D).map((parts) => JSON.parse(parts.D).type),
+      ['_X1'],
+    )
+    // _X2 and _X4 are encrypted with the handshake key, without an RSA-encrypted key.
+    assert.strictEqual(direct.filter((parts) => parts.P && !parts.K).length, 2)
+    await server.close()
+  })
+
+  it('kicks a joiner whose keys do not match its commitment', async () => {
+    const server = await startServer()
+    const replacement = await exportPublicKey({ name: 'ECDH', namedCurve: 'P-256' }, 'raw', ['deriveBits'])
+    server.hooks.connection = (connection, request) => {
+      if (request.url.includes('creator=1')) {
+        rewriteDirectMessages(connection, (data) => {
+          if (data.type === '_XR') {
+            data.publicExchangeKey = replacement
+          }
+        })
+      }
+    }
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    const error = next(creator.onError)
+    const left = next(joiner.onRoomLeave)
+    joiner.joinRoom(roomCode)
+
+    assert.match((await error).error.message, /commitment/)
+    await left
+    await server.close()
+  })
+
+  it('only verifies the whole code', async () => {
+    const server = await startServer()
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    const { code, userId } = await joinRoom(creator, joiner, roomCode)
+
+    assert.strictEqual(code.length, 6)
+    for (const attempt of [code[0], code.slice(0, 5), `${code}A`, '', undefined]) {
+      assert.strictEqual(await creator.verifyUser(userId, attempt), false)
+    }
+    const connected = next(joiner.onConnection, isConnected)
+    assert.strictEqual(await creator.verifyUser(userId, ` ${code.toLowerCase()} `), true)
+    await connected
+    await server.close()
+  })
+
+  it('ignores lifecycle messages that a peer forges', async () => {
+    const server = await startServer()
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode, userId: creatorId } = await createRoom(creator)
+    const joinerId = await joinAndVerify(creator, joiner, roomCode)
+    const attacker = await openRawClient(server, roomCode)
+    const attackerId = attacker.joined.userId
+
+    const effects = []
+    for (const event of ['onRoomJoin', 'onUserLeave', 'onUserVerified']) {
+      creator[event].addListener(() => effects.push(event))
+    }
+    let errors = 0
+    const rejected = new Promise((resolve) => creator.onError.addListener(() => {
+      if (++errors === 3) {
+        resolve()
+      }
+    }))
+    for (const data of [
+      { type: '_RJ', protocolVersion: 3, creatorId: attackerId, userId: creatorId, users: [] },
+      { type: '_UL', userId: joinerId },
+      { type: '_UV', userId: attackerId },
+    ]) {
+      attacker.send({
+        U: creatorId,
+        D: JSON.stringify({ ...data, sender: attackerId, senderTime: Date.now() }),
+      })
+    }
+    await rejected
+
+    assert.deepStrictEqual(effects, [])
+    const received = next(joiner.onMessage)
+    assert.strictEqual(await creator.messageUser({ text: 'still here' }, joinerId), true)
+    assert.strictEqual((await received).data.text, 'still here')
     await server.close()
   })
 })

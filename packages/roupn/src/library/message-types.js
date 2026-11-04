@@ -4,7 +4,7 @@ export const CONNECTION_DISCONNECTED = "DISCONNECTED";
 export const CONNECTION_DISCONNECTING = "DISCONNECTING";
 export const CONNECTION_PENDING_VERIFICATION = "PENDING_VERIFICATION";
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export const ERROR = "_ER";
 export const MESSAGE = "_MS";
@@ -14,6 +14,7 @@ export const EXCHANGE_1 = "_X1";
 export const EXCHANGE_2 = "_X2";
 export const EXCHANGE_3 = "_X3";
 export const EXCHANGE_4 = "_X4";
+export const EXCHANGE_REVEAL = "_XR";
 
 export const ROOM_CLOSED = "_RC";
 export const ROOM_JOINED = "_RJ";

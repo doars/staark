@@ -19,6 +19,7 @@ import {
 	EXCHANGE_2,
 	EXCHANGE_3,
 	EXCHANGE_4,
+	EXCHANGE_REVEAL,
 	PROTOCOL_VERSION,
 	ROOM_CLOSED,
 	ROOM_JOINED,
@@ -175,8 +176,8 @@ export const createClientConnector = (options = {}) => {
 		_myEncryptKeys,
 		_myExchangeKeys,
 		_myId,
-		_myPublicEncryptKey,
-		_myPublicSignKey,
+		_myNonce,
+		_myPublicKeys,
 		_mySignKeys,
 		_privateData,
 		_privateDataVerify,
@@ -185,12 +186,13 @@ export const createClientConnector = (options = {}) => {
 		_roomCode,
 		_sharedKey,
 		_sharedMessagesBuffer = [],
-		_socket,
-		_userDerivedKeys = new Map(),
-		_userEncryptKeys = new Map(),
-		_userSignKeys = new Map(),
-		_userVerification = new Map(),
-		_userVerified = new Map();
+		_socket;
+	/**
+	 * The handshake with, and the keys of, each user this user exchanged keys with: its commitment, its imported public keys, the handshake key, the hash the verification code is made from, and whether it was verified.
+	 *
+	 * @type {Map<string, Object<string, any>>}
+	 */
+	const _users = new Map();
 	/**
 	 * Generates the cryptographic keys of the user if they are not generated or being generated already. The private keys can not be extracted.
 	 *
@@ -225,25 +227,33 @@ export const createClientConnector = (options = {}) => {
 						namedCurve: DIFFIE_HELLMAN_CURVE,
 					},
 					false,
-					["deriveKey"],
+					["deriveBits"],
 				),
 			]).then(
 				async ([encryptKeys, signKeys, exchangeKeys]) => {
-					const [publicEncryptKey, publicSignKey] = await Promise.all([
-						crypto.subtle.exportKey(
-							PUBLIC_KEY_EXPORT_FORMAT,
-							encryptKeys.publicKey,
-						),
-						crypto.subtle.exportKey(
-							PUBLIC_KEY_EXPORT_FORMAT,
-							signKeys.publicKey,
-						),
-					]);
+					const [publicEncryptKey, publicSignKey, publicExchangeKey] =
+						await Promise.all([
+							crypto.subtle.exportKey(
+								PUBLIC_KEY_EXPORT_FORMAT,
+								encryptKeys.publicKey,
+							),
+							crypto.subtle.exportKey(
+								PUBLIC_KEY_EXPORT_FORMAT,
+								signKeys.publicKey,
+							),
+							crypto.subtle.exportKey(
+								DIFFIE_HELLMAN_EXPORT_FORMAT,
+								exchangeKeys.publicKey,
+							),
+						]);
 					_myEncryptKeys = encryptKeys;
 					_mySignKeys = signKeys;
 					_myExchangeKeys = exchangeKeys;
-					_myPublicEncryptKey = publicEncryptKey;
-					_myPublicSignKey = publicSignKey;
+					_myPublicKeys = {
+						publicEncryptKey: bufferToBase64(publicEncryptKey),
+						publicExchangeKey: bufferToBase64(publicExchangeKey),
+						publicSignKey: bufferToBase64(publicSignKey),
+					};
 				},
 				(error) => {
 					// Allow the next call to try again.
@@ -284,31 +294,91 @@ export const createClientConnector = (options = {}) => {
 	};
 
 	/**
-	 * Generates a verification code for the specified user ID using the room code and derived key.
+	 * Imports the public keys of the other user, and derives the handshake key and the verification code from the ECDH secret and the transcript: the protocol version, the room code, both user IDs, and every public key either side received. If the relay replaced any of the keys, the two sides get different codes, and can not decrypt each other's handshake messages.
 	 *
-	 * @param {string} userId - The ID of the user to generate the code for.
+	 * @param {string} userId - The ID of the other user.
+	 * @param {Object<string, string>} creatorKeys - The public keys of the creator, in base64.
+	 * @param {Object<string, string>} joinerKeys - The public keys of the joiner, in base64.
 	 */
-	const _generateVerificationCode = async (userId) => {
-		const derivedKey = _userDerivedKeys.get(userId);
-		if (!derivedKey) {
-			return;
-		}
-
-		_userVerification.set(
-			userId,
-			Array.from(
-				new Uint8Array(
-					await crypto.subtle.digest(
-						HASH_ALGORITHM,
-						new TextEncoder().encode(
-							_roomCode +
-								bufferToBase64(
-									await crypto.subtle.exportKey("raw", derivedKey),
-								),
-						),
-					),
+	const _deriveHandshake = async (userId, creatorKeys, joinerKeys) => {
+		const user = _users.get(userId);
+		const keys = _myId === _creatorId ? joinerKeys : creatorKeys;
+		user.encryptKey = await crypto.subtle.importKey(
+			PUBLIC_KEY_EXPORT_FORMAT,
+			base64ToBuffer(keys.publicEncryptKey),
+			{
+				hash: HASH_ALGORITHM,
+				name: USER_ENCRYPTION_ALGORITHM,
+			},
+			false,
+			["encrypt"],
+		);
+		user.signKey = await crypto.subtle.importKey(
+			PUBLIC_KEY_EXPORT_FORMAT,
+			base64ToBuffer(keys.publicSignKey),
+			{
+				hash: HASH_ALGORITHM,
+				name: USER_SIGNATURE_ALGORITHM,
+			},
+			false,
+			["verify"],
+		);
+		const secret = await crypto.subtle.deriveBits(
+			{
+				name: DIFFIE_HELLMAN_ALGORITHM,
+				public: await crypto.subtle.importKey(
+					DIFFIE_HELLMAN_EXPORT_FORMAT,
+					base64ToBuffer(keys.publicExchangeKey),
+					{
+						name: DIFFIE_HELLMAN_ALGORITHM,
+						namedCurve: DIFFIE_HELLMAN_CURVE,
+					},
+					false,
+					[],
 				),
+			},
+			_myExchangeKeys.privateKey,
+			SHARED_KEY_LENGTH,
+		);
+
+		// Base64 never contains the separator, so the transcript is unambiguous.
+		const transcript = [
+			PROTOCOL_VERSION,
+			_roomCode,
+			_creatorId,
+			_myId === _creatorId ? userId : _myId,
+			creatorKeys.publicEncryptKey,
+			creatorKeys.publicSignKey,
+			creatorKeys.publicExchangeKey,
+			joinerKeys.publicEncryptKey,
+			joinerKeys.publicSignKey,
+			joinerKeys.publicExchangeKey,
+		].join("|");
+		user.code = new Uint8Array(
+			await crypto.subtle.digest(
+				HASH_ALGORITHM,
+				new TextEncoder().encode(`${transcript}|${bufferToBase64(secret)}`),
 			),
+		);
+		user.handshakeKey = await crypto.subtle.deriveKey(
+			{
+				hash: HASH_ALGORITHM,
+				info: await crypto.subtle.digest(
+					HASH_ALGORITHM,
+					new TextEncoder().encode(transcript),
+				),
+				name: "HKDF",
+				salt: new Uint8Array(),
+			},
+			await crypto.subtle.importKey("raw", secret, "HKDF", false, [
+				"deriveKey",
+			]),
+			{
+				length: SHARED_KEY_LENGTH,
+				name: SHARED_ENCRYPTION_ALGORITHM,
+			},
+			false,
+			["encrypt", "decrypt"],
 		);
 
 		onUserVerificationCode.dispatch({
@@ -338,8 +408,8 @@ export const createClientConnector = (options = {}) => {
 			_myId =
 			_myEncryptKeys =
 			_myExchangeKeys =
-			_myPublicEncryptKey =
-			_myPublicSignKey =
+			_myNonce =
+			_myPublicKeys =
 			_mySignKeys =
 			_privateData =
 			_privateDataVerify =
@@ -349,11 +419,7 @@ export const createClientConnector = (options = {}) => {
 			_sharedMessagesBuffer =
 			_socket =
 				null;
-		_userDerivedKeys.clear();
-		_userEncryptKeys.clear();
-		_userSignKeys.clear();
-		_userVerification.clear();
-		_userVerified.clear();
+		_users.clear();
 
 		// Setup new keys right away.
 		_generateMyKeys();
@@ -451,7 +517,7 @@ export const createClientConnector = (options = {}) => {
 	};
 
 	/**
-	 * Processes an incoming message, decrypts it if necessary, and handles the message based on its type.
+	 * Processes an incoming message, decrypts it if necessary, and handles the message based on its type. Each type is only accepted on the channel it belongs to: lifecycle messages from the server, the first handshake messages unencrypted, the later handshake messages encrypted with the handshake key, and application messages encrypted with the shared key or the keys of the sender.
 	 *
 	 * @param {Object<string, any>} parts - The parsed message parts.
 	 * @param {string} raw - The raw message string.
@@ -471,10 +537,9 @@ export const createClientConnector = (options = {}) => {
 			[USER_ENCRYPTION_KEY]: userEncryptionKey,
 			[USER_ENCRYPTION_PAYLOAD]: userEncryptionPayload,
 			[USER_ENCRYPTION_SIGNATURE]: userEncryptionSignature,
-			[USER]: userReceiver,
 		} = parts;
 
-		let data, deserializedData, payload, wasEncrypted;
+		let data, deserializedData, payload;
 
 		if (serverPayload) {
 			payload = serverPayload;
@@ -484,10 +549,12 @@ export const createClientConnector = (options = {}) => {
 			payload = raw;
 		}
 
+		if (!serverPayload && !authenticatedSender) {
+			throw new TypeError("missing_authenticated_sender");
+		}
+		// Messages encrypted with the handshake key carry no encrypted key.
+		const isHandshake = userEncryptionPayload && !userEncryptionKey;
 		if (sharedEncryptionPayload) {
-			if (!authenticatedSender) {
-				throw new TypeError("missing_authenticated_sender");
-			}
 			if (!_sharedKey || (!isBuffered && _sharedMessagesBuffer.length > 0)) {
 				// Can't decrypt without the key, store the messages for later.
 				_sharedMessagesBuffer.push({
@@ -516,88 +583,62 @@ export const createClientConnector = (options = {}) => {
 				base64ToBuffer(sharedEncryptionPayload),
 			);
 			data = new TextDecoder().decode(data);
-			wasEncrypted = true;
 		} else if (userEncryptionPayload) {
-			if (!userEncryptionKey || !userEncryptionIv) {
-				// Assume the message is not encrypted just send as a user specific message.
+			const user = _users.get(authenticatedSender);
+			if (
+				!userEncryptionIv ||
+				!(isHandshake ? user?.handshakeKey : user?.signKey)
+			) {
 				onError.dispatch({
-					error: new Error("Missing signature or IV to decrypt message."),
+					error: new Error(
+						`No keys to decrypt message from ${authenticatedSender}`,
+					),
 				});
 				return;
 			}
-			await _generateMyKeys();
 
 			const encryptedPayload = base64ToBuffer(userEncryptionPayload);
-			const payloadData = deserializeMessage(
-				new TextDecoder().decode(
-					await crypto.subtle.decrypt(
-						{
-							iv: base64ToBuffer(userEncryptionIv),
-							name: SHARED_ENCRYPTION_ALGORITHM,
-						},
-						await crypto.subtle.importKey(
-							"raw",
-							await crypto.subtle.decrypt(
-								{
-									name: USER_ENCRYPTION_ALGORITHM,
-								},
-								_myEncryptKeys.privateKey,
-								base64ToBuffer(userEncryptionKey),
-							),
-							{
-								name: SHARED_ENCRYPTION_ALGORITHM,
-							},
-							true,
-							["encrypt", "decrypt"],
-						),
-						encryptedPayload,
-					),
-				),
-			);
-			wasEncrypted = true;
-
-			if (payloadData.type === EXCHANGE_1) {
-				// We can't check the signature because we don't have the sender's public key yet.
-				deserializedData = payloadData;
-			} else if (userEncryptionSignature) {
-				const senderId = payloadData.sender;
-
-				if (!senderId) {
-					onError.dispatch({
-						error: new Error("Message from unknown sender"),
-					});
-					return;
-				}
-
-				const senderPublicKey = _userSignKeys.get(senderId);
-				if (!senderPublicKey) {
-					onError.dispatch({
-						error: new Error(`No public key for ${senderId}`),
-					});
-					return;
-				}
-
-				if (
-					!(await crypto.subtle.verify(
-						USER_SIGNATURE_ALGORITHM,
-						senderPublicKey,
-						base64ToBuffer(userEncryptionSignature),
-						encryptedPayload,
-					))
-				) {
-					onError.dispatch({
-						error: new Error(`Invalid signature from ${senderId}`),
-					});
-					return;
-				}
-
-				deserializedData = payloadData;
-			} else {
+			if (
+				!isHandshake &&
+				!(await crypto.subtle.verify(
+					USER_SIGNATURE_ALGORITHM,
+					user.signKey,
+					base64ToBuffer(userEncryptionSignature),
+					encryptedPayload,
+				))
+			) {
 				onError.dispatch({
-					error: new Error("Missing encryption signature"),
+					error: new Error(`Invalid signature from ${authenticatedSender}`),
 				});
 				return;
 			}
+
+			data = new TextDecoder().decode(
+				await crypto.subtle.decrypt(
+					{
+						iv: base64ToBuffer(userEncryptionIv),
+						name: SHARED_ENCRYPTION_ALGORITHM,
+					},
+					isHandshake
+						? user.handshakeKey
+						: await crypto.subtle.importKey(
+								"raw",
+								await crypto.subtle.decrypt(
+									{
+										name: USER_ENCRYPTION_ALGORITHM,
+									},
+									_myEncryptKeys.privateKey,
+									base64ToBuffer(userEncryptionKey),
+								),
+								{
+									name: SHARED_ENCRYPTION_ALGORITHM,
+								},
+								false,
+								["decrypt"],
+							),
+					encryptedPayload,
+				),
+			);
 		} else {
 			data = payload;
 		}
@@ -613,14 +654,26 @@ export const createClientConnector = (options = {}) => {
 			}
 		}
 		data = deserializedData;
-		if (
-			(sharedEncryptionPayload || userDirectPayload || userEncryptionPayload) &&
-			data?.sender !== authenticatedSender
-		) {
+		if (!serverPayload && data?.sender !== authenticatedSender) {
 			throw new TypeError("authenticated_sender_mismatch");
 		}
+		const sender = data?.sender;
 
-		switch (data.type) {
+		// Only the server sends lifecycle messages, and it only sends those.
+		if (
+			!serverPayload !==
+			(data?.type !== ROOM_JOINED &&
+				data?.type !== USER_JOINED &&
+				data?.type !== USER_LEFT &&
+				data?.type !== USER_VERIFIED)
+		) {
+			onError.dispatch({
+				error: new Error("Message on the wrong channel"),
+			});
+			return;
+		}
+
+		switch (data?.type) {
 			case ROOM_JOINED:
 				if (data.protocolVersion !== PROTOCOL_VERSION) {
 					onError.dispatch({
@@ -646,147 +699,76 @@ export const createClientConnector = (options = {}) => {
 
 					await _generateMyKeys();
 
-					const myPublicExchangeKey = await crypto.subtle.exportKey(
-						DIFFIE_HELLMAN_EXPORT_FORMAT,
-						_myExchangeKeys.publicKey,
-					);
-
-					_message(
+					// Commit to the keys before seeing the keys of the creator, so a relay can not try key pairs until both codes match.
+					_myNonce = bufferToBase64(crypto.getRandomValues(new Uint8Array(32)));
+					await _message(
 						{
 							type: EXCHANGE_0,
-							publicData:
-								typeof _publicData === "function" ? _publicData() : _publicData,
-							publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
-							publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-							publicSignKey: bufferToBase64(_myPublicSignKey),
-							// Explicitly add signature manually.
-							signature: bufferToBase64(
-								await crypto.subtle.sign(
-									USER_SIGNATURE_ALGORITHM,
-									_mySignKeys.privateKey,
-									myPublicExchangeKey,
+							commitment: bufferToBase64(
+								await crypto.subtle.digest(
+									HASH_ALGORITHM,
+									new TextEncoder().encode(
+										[
+											_myPublicKeys.publicEncryptKey,
+											_myPublicKeys.publicSignKey,
+											_myPublicKeys.publicExchangeKey,
+											_myNonce,
+										].join("|"),
+									),
 								),
 							),
+							publicData:
+								typeof _publicData === "function" ? _publicData() : _publicData,
 						},
 						{
-							allowUnencrypted: true,
 							receiver: _creatorId,
+							unencrypted: true,
 						},
 					);
 				}
 				break;
 
 			case EXCHANGE_0:
-				if (userReceiver === _creatorId && _myId === _creatorId) {
-					const newUserId = data.sender;
-
+				// The creator accepts one commitment from each joiner.
+				if (userDirectPayload && _myId === _creatorId && !_users.has(sender)) {
 					if (
 						_publicDataVerify &&
 						!_publicDataVerify({
 							data: data.publicData,
-							userId: newUserId,
+							userId: sender,
 						})
 					) {
-						kickUser(newUserId);
+						kickUser(sender);
 						return;
 					}
-
-					_userEncryptKeys.set(
-						newUserId,
-						await crypto.subtle.importKey(
-							PUBLIC_KEY_EXPORT_FORMAT,
-							base64ToBuffer(data.publicEncryptKey),
-							{
-								hash: HASH_ALGORITHM,
-								name: USER_ENCRYPTION_ALGORITHM,
-							},
-							true,
-							["encrypt"],
-						),
-					);
-
-					const publicSignKey = await crypto.subtle.importKey(
-						PUBLIC_KEY_EXPORT_FORMAT,
-						base64ToBuffer(data.publicSignKey),
-						{
-							hash: HASH_ALGORITHM,
-							name: USER_SIGNATURE_ALGORITHM,
-						},
-						true,
-						["verify"],
-					);
-
-					const publicExchangeKeyData = base64ToBuffer(data.publicExchangeKey);
-					if (
-						!(await crypto.subtle.verify(
-							USER_SIGNATURE_ALGORITHM,
-							publicSignKey,
-							base64ToBuffer(data.signature),
-							publicExchangeKeyData,
-						))
-					) {
-						onError.dispatch({
-							error: new Error(
-								`Invalid signature for exchange from ${newUserId}`,
-							),
-						});
-						return;
-					}
-
-					_userSignKeys.set(newUserId, publicSignKey);
+					_users.set(sender, {
+						commitment: data.commitment,
+					});
 
 					await _generateMyKeys();
-
-					_userDerivedKeys.set(
-						newUserId,
-						await crypto.subtle.deriveKey(
-							{
-								name: DIFFIE_HELLMAN_ALGORITHM,
-								public: await crypto.subtle.importKey(
-									DIFFIE_HELLMAN_EXPORT_FORMAT,
-									publicExchangeKeyData,
-									{
-										name: DIFFIE_HELLMAN_ALGORITHM,
-										namedCurve: DIFFIE_HELLMAN_CURVE,
-									},
-									true,
-									[],
-								),
-							},
-							_myExchangeKeys.privateKey,
-							{
-								length: SHARED_KEY_LENGTH,
-								name: SHARED_ENCRYPTION_ALGORITHM,
-							},
-							true,
-							["encrypt", "decrypt"],
-						),
-					);
-
-					const myPublicExchangeKey = await crypto.subtle.exportKey(
-						DIFFIE_HELLMAN_EXPORT_FORMAT,
-						_myExchangeKeys.publicKey,
-					);
-					_message(
+					await _message(
 						{
 							type: EXCHANGE_1,
+							..._myPublicKeys,
 							publicData:
 								typeof _publicData === "function" ? _publicData() : _publicData,
-							publicEncryptKey: bufferToBase64(_myPublicEncryptKey),
-							publicExchangeKey: bufferToBase64(myPublicExchangeKey),
-							publicSignKey: bufferToBase64(_myPublicSignKey),
 						},
 						{
-							receiver: newUserId,
+							receiver: sender,
+							unencrypted: true,
 						},
 					);
-
-					_generateVerificationCode(newUserId);
 				}
 				break;
 
 			case EXCHANGE_1:
-				if (userReceiver === _myId && data.sender === _creatorId) {
+				// The joiner accepts the keys of the creator once.
+				if (
+					userDirectPayload &&
+					sender === _creatorId &&
+					_myId !== _creatorId &&
+					!_users.has(sender)
+				) {
 					if (
 						_publicDataVerify &&
 						!_publicDataVerify({
@@ -797,93 +779,58 @@ export const createClientConnector = (options = {}) => {
 						leaveRoom();
 						return;
 					}
+					_users.set(sender, {});
 
-					const hostPublicSignKey = await crypto.subtle.importKey(
-						PUBLIC_KEY_EXPORT_FORMAT,
-						base64ToBuffer(data.publicSignKey),
+					await _deriveHandshake(sender, data, _myPublicKeys);
+					await _message(
 						{
-							hash: HASH_ALGORITHM,
-							name: USER_SIGNATURE_ALGORITHM,
+							type: EXCHANGE_REVEAL,
+							..._myPublicKeys,
+							nonce: _myNonce,
 						},
-						true,
-						["verify"],
+						{
+							receiver: sender,
+							unencrypted: true,
+						},
 					);
-
-					if (data.publicExchangeKey && data.signature) {
-						if (
-							!(await crypto.subtle.verify(
-								USER_SIGNATURE_ALGORITHM,
-								hostPublicSignKey,
-								base64ToBuffer(data.signature),
-								base64ToBuffer(data.publicExchangeKey),
-							))
-						) {
-							onError.dispatch({
-								error: new Error(
-									`Invalid signature for exchange from ${_creatorId}`,
-								),
-							});
-							leaveRoom();
-							return;
-						}
-					}
-					_userSignKeys.set(_creatorId, hostPublicSignKey);
-
-					_userEncryptKeys.set(
-						_creatorId,
-						await crypto.subtle.importKey(
-							PUBLIC_KEY_EXPORT_FORMAT,
-							base64ToBuffer(data.publicEncryptKey),
-							{
-								hash: HASH_ALGORITHM,
-								name: USER_ENCRYPTION_ALGORITHM,
-							},
-							true,
-							["encrypt"],
-						),
-					);
-
-					await _generateMyKeys();
-
-					_userDerivedKeys.set(
-						_creatorId,
-						await crypto.subtle.deriveKey(
-							{
-								name: DIFFIE_HELLMAN_ALGORITHM,
-								public: await crypto.subtle.importKey(
-									DIFFIE_HELLMAN_EXPORT_FORMAT,
-									base64ToBuffer(data.publicExchangeKey),
-									{
-										name: DIFFIE_HELLMAN_ALGORITHM,
-										namedCurve: DIFFIE_HELLMAN_CURVE,
-									},
-									true,
-									[],
-								),
-							},
-							_myExchangeKeys.privateKey,
-							{
-								length: SHARED_KEY_LENGTH,
-								name: SHARED_ENCRYPTION_ALGORITHM,
-							},
-							true,
-							["encrypt", "decrypt"],
-						),
-					);
-
-					_generateVerificationCode(_creatorId);
 				}
 				break;
 
-			case EXCHANGE_2:
-				if (userReceiver === _myId && data.sender === _creatorId) {
-					if (!wasEncrypted) {
+			case EXCHANGE_REVEAL: {
+				// The creator accepts the keys of a joiner once, if they match its commitment.
+				const user = _users.get(sender);
+				if (userDirectPayload && _myId === _creatorId && user?.commitment) {
+					const { commitment } = user;
+					user.commitment = null;
+					if (
+						bufferToBase64(
+							await crypto.subtle.digest(
+								HASH_ALGORITHM,
+								new TextEncoder().encode(
+									[
+										data.publicEncryptKey,
+										data.publicSignKey,
+										data.publicExchangeKey,
+										data.nonce,
+									].join("|"),
+								),
+							),
+						) !== commitment
+					) {
 						onError.dispatch({
-							error: new Error("Message was not encrypted"),
+							error: new Error(`Keys do not match the commitment of ${sender}`),
 						});
+						kickUser(sender);
 						return;
 					}
 
+					await _deriveHandshake(sender, _myPublicKeys, data);
+				}
+				break;
+			}
+
+			case EXCHANGE_2:
+				if (isHandshake && sender === _creatorId && !_sharedKey) {
 					if (
 						_privateDataVerify &&
 						!_privateDataVerify({
@@ -895,12 +842,13 @@ export const createClientConnector = (options = {}) => {
 						return;
 					}
 
-					_message(
+					await _message(
 						{
 							type: EXCHANGE_3,
 							privateData: _privateData,
 						},
 						{
+							handshake: true,
 							receiver: _creatorId,
 						},
 					);
@@ -908,20 +856,12 @@ export const createClientConnector = (options = {}) => {
 				break;
 
 			case EXCHANGE_3:
-				if (userReceiver === _creatorId && _myId === _creatorId) {
-					if (!wasEncrypted) {
-						onError.dispatch({
-							error: new Error("Message was not encrypted"),
-						});
-						return;
-					}
-					const userId = data.sender;
-
-					if (!_userVerified.get(userId)) {
+				if (isHandshake && _myId === _creatorId) {
+					if (!_users.get(sender)?.verified) {
 						onError.dispatch({
 							error: new Error("User not verified"),
 						});
-						kickUser(userId);
+						kickUser(sender);
 						return;
 					}
 
@@ -929,14 +869,15 @@ export const createClientConnector = (options = {}) => {
 						_privateDataVerify &&
 						!_privateDataVerify({
 							data: data.privateData,
-							userId,
+							userId: sender,
 						})
 					) {
-						kickUser(userId);
+						kickUser(sender);
 						return;
 					}
 
-					_message(
+					// Hand over the room key before the server lets the user receive room messages, and let the listeners know once it does.
+					await _message(
 						{
 							type: EXCHANGE_4,
 							sharedKey: bufferToBase64(
@@ -944,36 +885,29 @@ export const createClientConnector = (options = {}) => {
 							),
 						},
 						{
-							receiver: userId,
+							handshake: true,
+							receiver: sender,
 						},
 					);
-
-					onUserVerified.dispatch({
-						userId,
-					});
-					messageServer({
+					await messageServer({
 						type: USER_VERIFIED,
-						userId,
+						userId: sender,
+					});
+					onUserVerified.dispatch({
+						userId: sender,
 					});
 				}
 				break;
 
 			case EXCHANGE_4:
-				if (userReceiver === _myId && data.sender === _creatorId) {
-					if (!wasEncrypted) {
-						onError.dispatch({
-							error: new Error("Message was not encrypted"),
-						});
-						return;
-					}
-
+				if (isHandshake && sender === _creatorId && !_sharedKey) {
 					_sharedKey = await crypto.subtle.importKey(
 						"raw",
 						base64ToBuffer(data.sharedKey),
 						{
 							name: SHARED_ENCRYPTION_ALGORITHM,
 						},
-						true,
+						false,
 						["encrypt", "decrypt"],
 					);
 
@@ -1002,9 +936,7 @@ export const createClientConnector = (options = {}) => {
 				onUserLeave.dispatch({
 					userId: data.userId,
 				});
-				_userDerivedKeys.delete(data.userId);
-				_userEncryptKeys.delete(data.userId);
-				_userSignKeys.delete(data.userId);
+				_users.delete(data.userId);
 				break;
 
 			case USER_JOINED:
@@ -1020,7 +952,14 @@ export const createClientConnector = (options = {}) => {
 				break;
 
 			default:
-				if (!wasEncrypted) {
+				// Application messages are encrypted with the shared key, or with the keys of a verified sender.
+				if (
+					!sharedEncryptionPayload &&
+					!(
+						userEncryptionKey &&
+						(_myId !== _creatorId || _users.get(sender)?.verified)
+					)
+				) {
 					onError.dispatch({
 						error: new Error("Message was not encrypted"),
 					});
@@ -1036,11 +975,11 @@ export const createClientConnector = (options = {}) => {
 	};
 
 	/**
-	 * Sends a message to the server or a specific user, encrypting the message if necessary.
+	 * Sends a message to the server, a specific user, or the room, encrypting the message if necessary.
 	 *
 	 * @param {Object<string, any>} data - The message data to send.
-	 * @param {Object<string, any>} [options={}] - Options for the message, such as receiver or server flag.
-	 * @returns {boolean} True if the message was sent successfully, false otherwise.
+	 * @param {Object<string, any>} [options={}] - Options for the message: the receiver, and whether to send it to the server, unencrypted, or encrypted with the handshake key.
+	 * @returns {Promise<boolean>} True if the message was sent successfully, false otherwise.
 	 */
 	const _message = async (data, options = {}) => {
 		if (!_socket || _socket.readyState !== WebSocket.OPEN) {
@@ -1059,54 +998,57 @@ export const createClientConnector = (options = {}) => {
 
 		const receiver = options.receiver;
 		if (receiver) {
-			const receiverPublicKey = _userEncryptKeys.get(receiver);
-			if (receiverPublicKey) {
-				// Create a temporary symmetric encryption key that is only used once since asymmetric encryption is slower.
-				const tempKey = await crypto.subtle.generateKey(
-					{
-						name: SHARED_ENCRYPTION_ALGORITHM,
-						length: 256,
-					},
-					true,
-					["encrypt", "decrypt"],
-				);
+			const user = _users.get(receiver);
+			if (options.unencrypted) {
+				parts[USER_DIRECT_PAYLOAD] = message;
+			} else if (options.handshake ? user?.handshakeKey : user?.encryptKey) {
 				const iv = crypto.getRandomValues(new Uint8Array(12));
+				let key = user.handshakeKey;
+				if (!options.handshake) {
+					// Create a temporary symmetric encryption key that is only used once since asymmetric encryption is slower.
+					key = await crypto.subtle.generateKey(
+						{
+							length: SHARED_KEY_LENGTH,
+							name: SHARED_ENCRYPTION_ALGORITHM,
+						},
+						true,
+						["encrypt"],
+					);
+					parts[USER_ENCRYPTION_KEY] = bufferToBase64(
+						await crypto.subtle.encrypt(
+							{
+								name: USER_ENCRYPTION_ALGORITHM,
+							},
+							user.encryptKey,
+							await crypto.subtle.exportKey("raw", key),
+						),
+					);
+				}
 				const encryptedPayload = await crypto.subtle.encrypt(
 					{
 						iv,
 						name: SHARED_ENCRYPTION_ALGORITHM,
 					},
-					tempKey,
+					key,
 					new TextEncoder().encode(message),
 				);
 
-				await _generateMyKeys();
-
 				parts[USER_ENCRYPTION_IV] = bufferToBase64(iv);
-				parts[USER_ENCRYPTION_KEY] = bufferToBase64(
-					await crypto.subtle.encrypt(
-						{
-							name: USER_ENCRYPTION_ALGORITHM,
-						},
-						receiverPublicKey,
-						await crypto.subtle.exportKey("raw", tempKey),
-					),
-				);
 				parts[USER_ENCRYPTION_PAYLOAD] = bufferToBase64(encryptedPayload);
-				parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(
-					await crypto.subtle.sign(
-						USER_SIGNATURE_ALGORITHM,
-						_mySignKeys.privateKey,
-						encryptedPayload,
-					),
-				);
-			} else if (!options.allowUnencrypted) {
+				if (!options.handshake) {
+					parts[USER_ENCRYPTION_SIGNATURE] = bufferToBase64(
+						await crypto.subtle.sign(
+							USER_SIGNATURE_ALGORITHM,
+							_mySignKeys.privateKey,
+							encryptedPayload,
+						),
+					);
+				}
+			} else {
 				onError.dispatch({
 					error: new Error(`No public key for ${receiver}`),
 				});
 				return false;
-			} else {
-				parts[USER_DIRECT_PAYLOAD] = message;
 			}
 
 			parts[USER] = receiver;
@@ -1161,21 +1103,19 @@ export const createClientConnector = (options = {}) => {
 		});
 
 	/**
-	 * Generates a verification code string from the stored hash for the specified user.
+	 * Generates the verification code of the specified user from the stored hash.
 	 *
 	 * @param {string} userId - The ID of the user.
-	 * @param {number} [codeLength=6] - The length of the verification code.
 	 * @returns {string|boolean} The verification code string or false if no hash is stored.
 	 */
-	const getVerificationCode = (userId, codeLength = 6) => {
-		if (!_userVerification.has(userId)) {
+	const getVerificationCode = (userId) => {
+		const hash = _users.get(userId)?.code;
+		if (!hash) {
 			return false;
 		}
-		const hashArray = _userVerification.get(userId);
 		let code = "";
-		for (let i = 0; i < codeLength; i++) {
-			const index = hashArray[i] % IDENTIFIABLE_CHARACTERS.length;
-			code += IDENTIFIABLE_CHARACTERS[index];
+		for (let i = 0; i < 6; i++) {
+			code += IDENTIFIABLE_CHARACTERS[hash[i] % IDENTIFIABLE_CHARACTERS.length];
 		}
 		return code;
 	};
@@ -1288,27 +1228,23 @@ export const createClientConnector = (options = {}) => {
 		 * @returns {boolean} True if the verification was successful, false otherwise.
 		 */
 		verifyUser: async (userId, code) => {
-			if (_myId !== _creatorId || !code) {
+			// Compare the whole code, ignoring case and surrounding white space.
+			if (
+				_myId !== _creatorId ||
+				typeof code !== "string" ||
+				code.trim().toUpperCase() !== getVerificationCode(userId)
+			) {
 				return false;
 			}
+			_users.get(userId).verified = true;
 
-			const expectedCode = getVerificationCode(userId, code.length);
-			if (!expectedCode || !code || expectedCode !== code) {
-				return false;
-			}
-			_userVerified.set(userId, true);
-
-			const derivedKey = _userDerivedKeys.get(userId);
-			if (!derivedKey) {
-				return false;
-			}
-
-			_message(
+			await _message(
 				{
 					type: EXCHANGE_2,
 					privateData: _privateData,
 				},
 				{
+					handshake: true,
 					receiver: userId,
 				},
 			);
