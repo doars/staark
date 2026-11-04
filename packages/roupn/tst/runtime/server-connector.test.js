@@ -134,7 +134,7 @@ describe('Server message limits', () => {
     const creatorConnection = createConnection()
     connector.joinRoom(room.roomCode, creatorConnection, true)
     creatorConnection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
     const peerConnection = createConnection()
     const [, peer] = connector.joinRoom(room.roomCode, peerConnection)
@@ -199,7 +199,7 @@ describe('Server message limits', () => {
     const creatorConnection = createConnection()
     connector.joinRoom(room.roomCode, creatorConnection, true)
     creatorConnection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
     const message = `S:${stringToBase64(JSON.stringify({ type: 'unknown' }))}`
     creatorConnection.dispatch('message', { data: message })
@@ -235,7 +235,7 @@ describe('Creator authentication', () => {
     assert.strictEqual(authenticated, 0)
 
     connection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
 
     assert.strictEqual(authenticated, 1)
@@ -293,7 +293,7 @@ describe('Creator authentication', () => {
     )
     assert.strictEqual(success, true)
     creatorConnection.dispatch('message', {
-      data: `A:${stringToBase64(room.creatorConnectionToken)}`,
+      data: `A:${room.creatorConnectionToken}`,
     })
     assert.strictEqual(storedRoom.users.get(room.userId).verified, true)
     connector.removeRoom(room.roomCode)

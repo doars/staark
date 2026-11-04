@@ -884,10 +884,8 @@ export const createServerConnector = (options = {}) => {
 			];
 		}
 
-		const senderPart = sender
-			? `|${AUTHENTICATED_SENDER}:${stringToBase64(sender)}`
-			: "";
-		const message = `${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${payload}${senderPart}`;
+		const senderPart = sender ? `|${AUTHENTICATED_SENDER}:${sender}` : "";
+		const message = `${SERVER_TIME}:${Date.now()}|${payload}${senderPart}`;
 
 		for (const [userId, { connection, verified }] of _room.users) {
 			if (!verified || (sender && sender === userId)) {
@@ -961,8 +959,8 @@ export const createServerConnector = (options = {}) => {
 
 		sendConnection(
 			connection,
-			`${SERVER_TIME}:${stringToBase64(String(Date.now()))}|${data}${
-				sender ? `|${AUTHENTICATED_SENDER}:${stringToBase64(sender)}` : ""
+			`${SERVER_TIME}:${Date.now()}|${data}${
+				sender ? `|${AUTHENTICATED_SENDER}:${sender}` : ""
 			}`,
 		);
 		return [true, {}];
