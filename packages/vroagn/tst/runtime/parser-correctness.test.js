@@ -57,3 +57,56 @@ describe('Parser correctness', () => {
     assert.deepStrictEqual(result, [['a\r\nb', 'c']])
   })
 })
+
+describe('TOML parser', () => {
+  it('parses multi-line strings into the right key', async () => {
+    const result = await parse(
+      tomlParser(),
+      'a = 1\nb = """abc\n  def\n\n# kept\n"""\nc = """\nhi\n"""\n',
+      'toml',
+    )
+
+    assert.deepStrictEqual({ ...result }, {
+      a: 1,
+      b: 'abc\n  def\n\n# kept\n',
+      c: 'hi\n',
+    })
+  })
+
+  it('joins lines ending in a backslash in basic multi-line strings only', async () => {
+    const result = await parse(
+      tomlParser(),
+      'a = """one \\\n    two"""\nb = \'\'\'one \\\ntwo\'\'\'\n',
+      'toml',
+    )
+
+    assert.strictEqual(result.a, 'one two')
+    assert.strictEqual(result.b, 'one \\\ntwo')
+  })
+
+  it('keeps quoted strings in inline tables', async () => {
+    const result = await parse(
+      tomlParser(),
+      't = { s = "1", b = "true", n = 2 }\n',
+      'toml',
+    )
+
+    assert.deepStrictEqual({ ...result.t }, { s: '1', b: 'true', n: 2 })
+  })
+
+  it('removes trailing comments outside of quotes', async () => {
+    const result = await parse(
+      tomlParser(),
+      'a = 1 # c\nb = "x # y" # z\n[t] # c\nc = [\n  1, # one\n  2,\n]\n',
+      'toml',
+    )
+
+    assert.strictEqual(result.a, 1)
+    assert.strictEqual(result.b, 'x # y')
+    assert.deepStrictEqual([...result.t.c], [1, 2])
+  })
+
+  it('throws on a key without a value', async () => {
+    await assert.rejects(parse(tomlParser(), 'a =\n', 'toml'), SyntaxError)
+  })
+})
