@@ -60,7 +60,18 @@ export const cloneRecursive = (value, clones = new WeakMap()) => {
 		: Object.create(Object.getPrototypeOf(value));
 	clones.set(value, clone);
 	for (const key of Object.keys(value)) {
-		clone[key] = cloneRecursive(value[key], clones);
+		// Define an own "__proto__" key, since assigning it would change the
+		// prototype instead.
+		if (key === "__proto__") {
+			Object.defineProperty(clone, key, {
+				configurable: true,
+				enumerable: true,
+				value: cloneRecursive(value[key], clones),
+				writable: true,
+			});
+		} else {
+			clone[key] = cloneRecursive(value[key], clones);
+		}
 	}
 	return clone;
 };

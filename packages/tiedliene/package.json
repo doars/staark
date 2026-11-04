@@ -23,6 +23,7 @@
 	},
 	"scripts": {
 		"benchmark": "node ./benchmarks/state.js",
+		"benchmark:cold": "node ./benchmarks/state.js cold",
 		"check": "biome check ./src",
 		"check:write": "biome check --write ./src",
 		"develop": "NODE_ENV=development node config.bundle.js",

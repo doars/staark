@@ -17,7 +17,7 @@ type Change = {
 }
 ```
 
-A diff is a `Change[]`. `set` creates or replaces a value; `delete` removes one. Paths must be non-empty and cannot contain `__proto__`, `constructor`, or `prototype`. Numeric components address array indices.
+A diff is a `Change[]`. `set` creates or replaces a value; `delete` removes one. Paths must be non-empty. Numeric components address array indices. Keys such as `__proto__`, `constructor`, and `prototype` are written as ordinary own keys and never change a prototype. tiedliene does not validate who a diff came from or what it contains beyond its shape; callers must validate untrusted diffs and state themselves.
 
 ## `determineDiff`
 
@@ -29,7 +29,7 @@ determineDiff(
 ): Change[]
 ```
 
-Returns the ordered changes needed to transform `before` into `after`. Plain objects and arrays are traversed recursively. Cycles and shared references are supported. `Date`, `Map`, `Set`, typed arrays, and other non-container values are treated as atomic values.
+Returns the changes needed to transform `before` into `after`, in the order they are applied in. For each object or array, the keys of `before` come first, from the last to the first, then the keys only in `after`, from the first to the last. Array items are therefore removed from the end and appended without holes. Array indices are emitted as numbers, and holes in sparse arrays are read as `undefined`. A `set` only has `old` when the key existed in `before`. Plain objects and arrays are traversed recursively. Cycles and shared references are supported: an object reached again through another path is not traversed twice. If that path should end up with a different value than the first path, the diff contains one `set` that gives it its own copy, so the sharing ends there. Reverting such a diff restores a copy of the old value, so the values are restored but the ended sharing is not. `Date`, `Map`, `Set`, typed arrays, and other non-container values are treated as atomic values. They are compared by value; a `Map` or `Set` compares its entries in any order, including plain objects and cycles inside it. Throws a `TypeError` when `before` and `after` are not both objects or both arrays.
 
 ## `applyDiff`
 
@@ -45,7 +45,7 @@ Validates the complete diff before mutation, applies it to `state`, and returns 
 revertDiff(state: Record<string, any>, diff: Change[]): Record<string, any>
 ```
 
-Applies the inverse changes in reverse order and returns the restored state. The same validation and cloning rules as `applyDiff` apply.
+Applies the inverse changes in reverse order, from the last change to the first, and returns the restored state. A `set` with an own `old` key is reverted by setting `old`, one without it by deleting the value, and a `delete` by setting `old`, inserting it back at its index in an array. So `revertDiff(applyDiff(state, diff), diff)` restores `state` for any diff whose `old` values match the state, including hand-written diffs with repeated paths. The same validation and cloning rules as `applyDiff` apply.
 
 ## `cloneRecursive`
 
@@ -53,7 +53,7 @@ Applies the inverse changes in reverse order and returns the restored state. The
 cloneRecursive(value: any, clones?: WeakMap<object, any>): any
 ```
 
-Deeply clones supported values while preserving cycles and shared references.
+Deeply clones supported values while preserving cycles and shared references. An own `__proto__` key, such as one made by `JSON.parse`, is copied as an own key.
 
 ## `manageState`
 
@@ -77,7 +77,7 @@ Creates an undoable state manager. `maximumHistory` defaults to `50`; `0` disabl
 
 `set` records changes and clears redo history. `undo` and `redo` return the resulting snapshot, including when no corresponding history entry exists.
 
-Plain objects and arrays may contain cycles. `Date`, `Map`, `Set`, and typed arrays are stored as atomic values. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected with `TypeError`.
+Plain objects and arrays may contain cycles and shared references, with the same rules as `determineDiff`. `Date`, `Map`, `Set`, and typed arrays are stored as atomic values. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected with `TypeError`.
 
 ## Example
 

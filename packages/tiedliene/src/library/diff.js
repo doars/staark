@@ -1,10 +1,5 @@
 import { cloneRecursive } from "../utilities/clone.js";
 
-const FORBIDDEN_PATH_COMPONENTS = new Set([
-	"__proto__",
-	"constructor",
-	"prototype",
-]);
 const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
 
 /**
@@ -12,7 +7,7 @@ const ARRAY_INDEX = /^(0|[1-9]\d*)$/;
  *
  * @param {unknown} path Path to validate.
  * @returns {Array<string | number>} Validated path.
- * @throws {TypeError} When the path is malformed or unsafe.
+ * @throws {TypeError} When the path is malformed.
  */
 const validatePath = (path) => {
 	if (!Array.isArray(path) || path.length === 0) {
@@ -27,9 +22,6 @@ const validatePath = (path) => {
 			throw new TypeError(
 				"Diff path components must be strings or array indices",
 			);
-		}
-		if (FORBIDDEN_PATH_COMPONENTS.has(String(component))) {
-			throw new TypeError(`Unsafe diff path component: ${String(component)}`);
 		}
 	}
 
@@ -73,7 +65,16 @@ const isContainer = (value) =>
 		Object.getPrototypeOf(value) === Object.prototype ||
 		Object.getPrototypeOf(value) === null);
 
-const valuesEqual = (before, after, compared = new WeakMap()) => {
+/**
+ * Check whether two values are equal. Plain objects and arrays are compared by
+ * their keys, Maps and Sets by their entries in any order.
+ *
+ * @param {unknown} before Value before the change.
+ * @param {unknown} after Value after the change.
+ * @param {Map<object, Set<object>>} [inProgress] Pairs still being compared.
+ * @returns {boolean} Whether the values are equal.
+ */
+const valuesEqual = (before, after, inProgress) => {
 	if (Object.is(before, after)) {
 		return true;
 	}
@@ -85,25 +86,12 @@ const valuesEqual = (before, after, compared = new WeakMap()) => {
 	) {
 		return false;
 	}
-	let comparedAfter = compared.get(before);
-	if (comparedAfter?.has(after)) {
-		return true;
+	// When only "after" is one of these, the checks below return false.
+	if (before instanceof Date) {
+		return after instanceof Date && before.getTime() === after.getTime();
 	}
-	if (!comparedAfter) {
-		comparedAfter = new WeakSet();
-		compared.set(before, comparedAfter);
-	}
-	comparedAfter.add(after);
-	if (before instanceof Date || after instanceof Date) {
-		return (
-			before instanceof Date &&
-			after instanceof Date &&
-			before.getTime() === after.getTime()
-		);
-	}
-	if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
+	if (ArrayBuffer.isView(before)) {
 		if (
-			!ArrayBuffer.isView(before) ||
 			!ArrayBuffer.isView(after) ||
 			before.constructor !== after.constructor ||
 			before.byteLength !== after.byteLength
@@ -127,55 +115,58 @@ const valuesEqual = (before, after, compared = new WeakMap()) => {
 		}
 		return true;
 	}
-	if (before instanceof Map || after instanceof Map) {
-		if (
-			!(before instanceof Map) ||
-			!(after instanceof Map) ||
-			before.size !== after.size
-		) {
-			return false;
-		}
-		const unmatchedEntries = [...after];
-		for (const [beforeKey, beforeValue] of before) {
-			let matchIndex = -1;
-			for (let index = 0; index < unmatchedEntries.length; index++) {
-				const [afterKey, afterValue] = unmatchedEntries[index];
-				if (
-					valuesEqual(beforeKey, afterKey, new WeakMap()) &&
-					valuesEqual(beforeValue, afterValue, new WeakMap())
-				) {
-					matchIndex = index;
-					break;
+
+	// A pair that is met again while it is still being compared is a cycle.
+	// It is treated as equal, since any other difference still makes the outer
+	// comparison fail. Pairs are removed once done, so a failed candidate entry
+	// of a Map or Set leaves no trace.
+	inProgress ??= new Map();
+	let afters = inProgress.get(before);
+	if (afters?.has(after)) {
+		return true;
+	}
+	if (!afters) {
+		afters = new Set();
+		inProgress.set(before, afters);
+	}
+	afters.add(after);
+	try {
+		// The entries of a Map are [key, value] arrays, which are compared as
+		// containers below.
+		if (before instanceof Map || before instanceof Set) {
+			if (
+				before.constructor !== after.constructor ||
+				before.size !== after.size
+			) {
+				return false;
+			}
+			const unmatched = [...after];
+			for (const beforeEntry of before) {
+				const matchIndex = unmatched.findIndex((afterEntry) =>
+					valuesEqual(beforeEntry, afterEntry, inProgress),
+				);
+				if (matchIndex < 0) {
+					return false;
 				}
+				unmatched.splice(matchIndex, 1);
 			}
-			if (matchIndex < 0) {
-				return false;
-			}
-			unmatchedEntries.splice(matchIndex, 1);
+			return true;
 		}
-		return true;
+		const keys = Object.keys(before);
+		return (
+			isContainer(before) &&
+			isContainer(after) &&
+			Array.isArray(before) === Array.isArray(after) &&
+			keys.length === Object.keys(after).length &&
+			keys.every(
+				(key) =>
+					Object.hasOwn(after, key) &&
+					valuesEqual(before[key], after[key], inProgress),
+			)
+		);
+	} finally {
+		afters.delete(after);
 	}
-	if (before instanceof Set || after instanceof Set) {
-		if (
-			!(before instanceof Set) ||
-			!(after instanceof Set) ||
-			before.size !== after.size
-		) {
-			return false;
-		}
-		const unmatchedValues = [...after];
-		for (const beforeValue of before) {
-			const matchIndex = unmatchedValues.findIndex((afterValue) =>
-				valuesEqual(beforeValue, afterValue, new WeakMap()),
-			);
-			if (matchIndex < 0) {
-				return false;
-			}
-			unmatchedValues.splice(matchIndex, 1);
-		}
-		return true;
-	}
-	return false;
 };
 
 /**
@@ -188,7 +179,7 @@ const valuesEqual = (before, after, compared = new WeakMap()) => {
 const getKey = (current, component) => {
 	if (Array.isArray(current)) {
 		if (
-			(typeof component === "number" && component >= 0) ||
+			typeof component === "number" ||
 			(typeof component === "string" && ARRAY_INDEX.test(component))
 		) {
 			return Number(component);
@@ -214,28 +205,42 @@ const getKey = (current, component) => {
  * @param {Record<string, any>} record The record to update.
  * @param {string[]} path The path to the value to update.
  * @param {*} value The new value.
+ * @param {boolean} [inserting] Whether to insert the value into an array,
+ * which undoes deleting it.
  */
-const setValueAtPath = (record, path, value) => {
+const setValueAtPath = (record, path, value, inserting) => {
+	// Every later level is checked as a child before it is entered.
+	if (!isContainer(record)) {
+		throw new TypeError("Cannot traverse a non-record diff path value");
+	}
 	let current = record;
 	for (let index = 0; index < path.length - 1; index++) {
-		if (!isContainer(current)) {
-			throw new TypeError("Cannot traverse a non-record diff path value");
-		}
 		const key = getKey(current, path[index]);
 		if (!Object.hasOwn(current, key)) {
-			const nextComponent = path[index + 1];
-			current[key] =
-				typeof nextComponent === "number" ? [] : Object.create(null);
+			// Define the key, since assigning "__proto__" would change the prototype.
+			Object.defineProperty(current, key, {
+				configurable: true,
+				enumerable: true,
+				value: typeof path[index + 1] === "number" ? [] : Object.create(null),
+				writable: true,
+			});
 		}
 		if (!isContainer(current[key])) {
 			throw new TypeError("Cannot traverse a non-record diff path value");
 		}
 		current = current[key];
 	}
-	if (!isContainer(current)) {
-		throw new TypeError("Cannot set a value on a non-record diff path value");
+	const key = getKey(current, path[path.length - 1]);
+	if (inserting && Array.isArray(current)) {
+		current.splice(key, 0, cloneRecursive(value));
+	} else {
+		Object.defineProperty(current, key, {
+			configurable: true,
+			enumerable: true,
+			value: cloneRecursive(value),
+			writable: true,
+		});
 	}
-	current[getKey(current, path[path.length - 1])] = cloneRecursive(value);
 };
 
 /**
@@ -277,20 +282,23 @@ const deleteValueAtPath = (record, path) => {
  * @param {boolean} reverting Whether changes are being reverted.
  * @returns {Record<string, any>} Updated state.
  */
-const applyValidatedDiff = (state, diff, reverting) => {
-	for (const change of diff) {
-		if (reverting) {
-			if (change.type === "set") {
-				if (change.old === undefined) {
-					deleteValueAtPath(state, change.path);
-				} else {
-					setValueAtPath(state, change.path, change.old);
-				}
-			} else {
-				setValueAtPath(state, change.path, change.old);
-			}
-		} else if (change.type === "set") {
-			setValueAtPath(state, change.path, change.new);
+export const applyValidatedDiff = (state, diff, reverting) => {
+	// Revert from the last change to the first, so each change sees the state
+	// it was applied to.
+	for (let index = 0; index < diff.length; index++) {
+		const change = diff[reverting ? diff.length - index - 1 : index];
+		// A set without an old value created the key, so reverting deletes it.
+		if (
+			reverting
+				? change.type === "delete" || Object.hasOwn(change, "old")
+				: change.type === "set"
+		) {
+			setValueAtPath(
+				state,
+				change.path,
+				reverting ? change.old : change.new,
+				change.type === "delete",
+			);
 		} else {
 			deleteValueAtPath(state, change.path);
 		}
@@ -299,68 +307,81 @@ const applyValidatedDiff = (state, diff, reverting) => {
 };
 
 /**
- * Determine the differences between two objects.
+ * Determine the differences between two objects. The changes are in the order
+ * they are applied in: per container, the keys of the "before" object from the
+ * last to the first, then the keys only in the "after" object from the first
+ * to the last. Array items are therefore removed from the end and appended
+ * without leaving holes.
  *
  * @param {Record<string, any>} before The object before the change.
  * @param {Record<string, any>} after The object after the change.
- * @param {string[]} [path=[]] The path to the current object.
- * @param {WeakMap<object, WeakSet<object>>} [compared] Compared object pairs.
+ * @param {Array<string | number>} [path=[]] The path to the current object.
+ * @param {Map<object, object>} [paired] The "after" object each "before" object
+ * was first compared with.
+ * @param {Change[]} [changes=[]] The list to add the changes to.
  * @returns {Change[]} The changes between the two objects.
  */
 export const determineDiff = (
 	before,
 	after,
 	path = [],
-	compared = new WeakMap(),
+	paired = new Map(),
+	changes = [],
 ) => {
-	const changes = [];
-	if (
-		before &&
-		after &&
-		typeof before === "object" &&
-		typeof after === "object"
-	) {
-		let comparedAfter = compared.get(before);
-		if (comparedAfter?.has(after)) {
-			return changes;
+	// A "before" object reached again is shared, or part of a cycle. The
+	// changes made through the first path already update it. If this path
+	// should end up different, it gets its own copy instead.
+	const firstAfter = paired.get(before);
+	if (firstAfter) {
+		if (!valuesEqual(firstAfter, after)) {
+			changes.push({
+				type: "set",
+				path,
+				old: cloneRecursive(before),
+				new: cloneRecursive(after),
+			});
 		}
-		if (!comparedAfter) {
-			comparedAfter = new WeakSet();
-			compared.set(before, comparedAfter);
-		}
-		comparedAfter.add(after);
+		return changes;
 	}
+	paired.set(before, after);
 
-	// Check for keys in the "before" object that are not in "after".
-	for (const key of Object.keys(before)) {
-		const currentPath = [...path, key];
-
-		if (!Object.hasOwn(after, key)) {
-			changes.unshift({
+	// Arrays are walked by index, so holes are read as undefined and paths
+	// contain numbers.
+	const isArray = Array.isArray(before);
+	if (isArray !== Array.isArray(after)) {
+		throw new TypeError("Cannot diff an array against an object");
+	}
+	const keys = isArray ? [...before.keys()] : Object.keys(before);
+	for (let index = keys.length; index-- > 0; ) {
+		const key = keys[index];
+		if (isArray ? key >= after.length : !Object.hasOwn(after, key)) {
+			changes.push({
 				type: "delete",
-				path: currentPath,
+				path: [...path, key],
 				old: cloneRecursive(before[key]),
 			});
-		} else if (isContainer(before[key]) && isContainer(after[key])) {
-			// If both are objects, recurse deeper.
-			changes.unshift(
-				...determineDiff(before[key], after[key], currentPath, compared),
-			);
+		} else if (
+			isContainer(before[key]) &&
+			isContainer(after[key]) &&
+			Array.isArray(before[key]) === Array.isArray(after[key])
+		) {
+			// If both are objects or both are arrays, recurse deeper.
+			determineDiff(before[key], after[key], [...path, key], paired, changes);
 		} else if (!valuesEqual(before[key], after[key])) {
 			// If the value has changed, record the new and old value.
-			changes.unshift({
+			changes.push({
 				type: "set",
-				path: currentPath,
+				path: [...path, key],
 				old: cloneRecursive(before[key]),
 				new: cloneRecursive(after[key]),
 			});
 		}
 	}
 
-	// Check for keys in the "after" object that were not in "before".
-	for (const key of Object.keys(after)) {
-		if (!Object.hasOwn(before, key)) {
-			changes.unshift({
+	// Add the keys in the "after" object that were not in "before".
+	for (const key of isArray ? [...after.keys()] : Object.keys(after)) {
+		if (isArray ? key >= before.length : !Object.hasOwn(before, key)) {
+			changes.push({
 				type: "set",
 				path: [...path, key],
 				new: cloneRecursive(after[key]),

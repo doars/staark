@@ -1,5 +1,5 @@
 import { cloneRecursive } from "../utilities/clone.js";
-import { applyDiff, determineDiff, revertDiff } from "./diff.js";
+import { applyDiff, applyValidatedDiff, determineDiff } from "./diff.js";
 
 /**
  * @typedef {import('./diff.js').Change} Change
@@ -90,6 +90,10 @@ export const manageState = (state, options) => {
 	state = options.clone(state);
 	const snapshot = () =>
 		options.snapshot === "reference" ? state : options.clone(state);
+	// Diffs in the history applied cleanly before. With cloned snapshots
+	// nothing else can change the state, so they apply cleanly again and can
+	// skip the trial run on a copy.
+	const trusted = options.snapshot === "clone";
 
 	/** @type {Change[][]} */
 	const undoStack = [];
@@ -102,9 +106,7 @@ export const manageState = (state, options) => {
 		 *
 		 * @returns {Record<string, any>} The current state.
 		 */
-		get: () => {
-			return snapshot();
-		},
+		get: snapshot,
 
 		/**
 		 * Sets the state and returns the new state.
@@ -114,25 +116,16 @@ export const manageState = (state, options) => {
 		 */
 		set: (newState) => {
 			validateState(newState);
-			const diffs = determineDiff(state, newState);
-			if (diffs.length > 0) {
-				if (options.maximumHistory > 0) {
-					undoStack.push(diffs);
+			const diff = determineDiff(state, newState);
+			if (diff.length > 0) {
+				// Apply first, so a failure leaves the history untouched.
+				state = applyDiff(state, diff);
+				undoStack.push(diff);
+				if (undoStack.length > options.maximumHistory) {
+					undoStack.shift();
 				}
-
-				// Cap stack size.
-				if (
-					options.maximumHistory > 0 &&
-					undoStack.length > options.maximumHistory
-				) {
-					undoStack.splice(0, undoStack.length - options.maximumHistory);
-				}
-
-				// Clear the redo stack when a new state is set.
-				redoStack.splice(0);
+				redoStack.length = 0;
 			}
-
-			state = applyDiff(state, diffs);
 			return snapshot();
 		},
 
@@ -143,22 +136,13 @@ export const manageState = (state, options) => {
 		 */
 		undo: () => {
 			if (undoStack.length > 0) {
-				const lastDiffs = undoStack.pop();
-				if (lastDiffs) {
-					redoStack.push(lastDiffs);
-
-					// Cap stack size.
-					if (
-						options.maximumHistory &&
-						redoStack.length > options.maximumHistory
-					) {
-						redoStack.splice(0, redoStack.length - options.maximumHistory);
-					}
-
-					state = revertDiff(state, lastDiffs);
+				const diff = undoStack.at(-1);
+				if (!trusted) {
+					applyValidatedDiff(cloneRecursive(state), diff, true);
 				}
+				state = applyValidatedDiff(state, diff, true);
+				redoStack.push(undoStack.pop());
 			}
-
 			return snapshot();
 		},
 
@@ -169,22 +153,13 @@ export const manageState = (state, options) => {
 		 */
 		redo: () => {
 			if (redoStack.length > 0) {
-				const diffs = redoStack.pop();
-				if (diffs) {
-					undoStack.push(diffs);
-
-					// Cap stack size.
-					if (
-						options.maximumHistory &&
-						undoStack.length > options.maximumHistory
-					) {
-						undoStack.splice(0, undoStack.length - options.maximumHistory);
-					}
-
-					state = applyDiff(state, diffs);
+				const diff = redoStack.at(-1);
+				if (!trusted) {
+					applyValidatedDiff(cloneRecursive(state), diff, false);
 				}
+				state = applyValidatedDiff(state, diff, false);
+				undoStack.push(redoStack.pop());
 			}
-
 			return snapshot();
 		},
 	};

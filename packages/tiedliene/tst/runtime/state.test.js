@@ -105,6 +105,37 @@ describe('Manage state', () => {
   })
 })
 
+describe('Manage state failures', () => {
+  it('leaves the state and history alone when set throws', () => {
+    const state = manageState({ value: 1 })
+    state.set({ value: 2 })
+    state.set({ value: 3 })
+    state.undo()
+
+    assert.throws(() => state.set({ value: 4, callback: () => {} }), TypeError)
+    assert.deepStrictEqual(state.get(), { value: 2 })
+    assert.deepStrictEqual(state.redo(), { value: 3 })
+    assert.deepStrictEqual(state.undo(), { value: 2 })
+    assert.deepStrictEqual(state.undo(), { value: 1 })
+    assert.deepStrictEqual(state.undo(), { value: 1 })
+  })
+
+  it('keeps undo atomic when reference snapshots were changed', () => {
+    const state = manageState({
+      value: 1,
+      nested: { value: 1 },
+    }, { snapshot: 'reference' })
+    state.set({
+      value: 2,
+      nested: { value: 2 },
+    })
+    state.get().nested = 3
+
+    assert.throws(() => state.undo(), /Cannot traverse/)
+    assert.deepStrictEqual(state.get(), { value: 2, nested: 3 })
+  })
+})
+
 describe('Manage state policies', () => {
   it('validates history and snapshot options', () => {
     assert.throws(() => manageState({}, { maximumHistory: -1 }), TypeError)
@@ -201,5 +232,26 @@ describe('Manage state policies', () => {
     assert.strictEqual(redone.self, redone)
     assert.strictEqual(redone.left, redone.right)
     assert.strictEqual(redone.left.value, 2)
+  })
+
+  it('splits a shared object when only one path changes', () => {
+    const shared = { value: 1 }
+    const initial = { left: shared, right: shared }
+    const state = manageState(initial)
+    assert.deepStrictEqual(state.set({
+      left: { value: 2 },
+      right: { value: 1 },
+    }), {
+      left: { value: 2 },
+      right: { value: 1 },
+    })
+    const undone = state.undo()
+    assert.deepStrictEqual(undone, { left: { value: 1 }, right: { value: 1 } })
+    undone.left.value = 3
+    assert.strictEqual(undone.right.value, 1)
+    assert.deepStrictEqual(state.redo(), {
+      left: { value: 2 },
+      right: { value: 1 },
+    })
   })
 })
