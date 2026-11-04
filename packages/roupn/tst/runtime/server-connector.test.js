@@ -389,6 +389,23 @@ describe('Transport and origin policy', () => {
     )
   })
 
+  it('requires an origin policy in production', () => {
+    const environment = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    try {
+      assert.throws(() => createServerConnector(), /serverOrigin or validateOrigin/)
+      assert.doesNotThrow(() => createServerConnector({ serverOrigin: 'https://app.example' }))
+      assert.doesNotThrow(() => createServerConnector({ validateOrigin: () => true }))
+    } finally {
+      if (environment === undefined) {
+        delete process.env.NODE_ENV
+      } else {
+        process.env.NODE_ENV = environment
+      }
+    }
+    assert.doesNotThrow(() => createServerConnector())
+  })
+
   it('rejects missing and cross-origin upgrades', () => {
     const connector = createServerConnector()
     for (const headers of [{}, { origin: 'https://example.test' }]) {

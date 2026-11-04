@@ -173,6 +173,16 @@ export const createServerConnector = (options = {}) => {
 	if (typeof validateOrigin !== "function") {
 		throw new TypeError("validateOrigin must be a function");
 	}
+	// The default origin check only allows the default server origin, which is a local one, so it would reject every upgrade in production.
+	if (
+		!options.serverOrigin &&
+		!options.validateOrigin &&
+		process.env.NODE_ENV === "production"
+	) {
+		throw new TypeError(
+			"serverOrigin or validateOrigin is required in production",
+		);
+	}
 	if (
 		!Array.isArray(allowedWebSocketProtocols) ||
 		allowedWebSocketProtocols.some((protocol) => typeof protocol !== "string")
