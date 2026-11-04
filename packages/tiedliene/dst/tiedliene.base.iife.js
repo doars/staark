@@ -54,6 +54,9 @@
     const clone = Array.isArray(value) ? [] : Object.create(Object.getPrototypeOf(value));
     clones.set(value, clone);
     for (const key of Object.keys(value)) {
+      if (key === "__proto__") {
+        throw new TypeError("Unsafe diff path component: __proto__");
+      }
       clone[key] = cloneRecursive(value[key], clones);
     }
     return clone;
@@ -95,27 +98,18 @@
     return diff;
   };
   var isContainer = (value) => value !== null && typeof value === "object" && (Array.isArray(value) || Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
-  var valuesEqual = (before, after, compared = /* @__PURE__ */ new WeakMap()) => {
+  var valuesEqual = (before, after, inProgress) => {
     if (Object.is(before, after)) {
       return true;
     }
     if (!before || !after || typeof before !== "object" || typeof after !== "object") {
       return false;
     }
-    let comparedAfter = compared.get(before);
-    if (comparedAfter?.has(after)) {
-      return true;
+    if (before instanceof Date) {
+      return after instanceof Date && before.getTime() === after.getTime();
     }
-    if (!comparedAfter) {
-      comparedAfter = /* @__PURE__ */ new WeakSet();
-      compared.set(before, comparedAfter);
-    }
-    comparedAfter.add(after);
-    if (before instanceof Date || after instanceof Date) {
-      return before instanceof Date && after instanceof Date && before.getTime() === after.getTime();
-    }
-    if (ArrayBuffer.isView(before) || ArrayBuffer.isView(after)) {
-      if (!ArrayBuffer.isView(before) || !ArrayBuffer.isView(after) || before.constructor !== after.constructor || before.byteLength !== after.byteLength) {
+    if (ArrayBuffer.isView(before)) {
+      if (!ArrayBuffer.isView(after) || before.constructor !== after.constructor || before.byteLength !== after.byteLength) {
         return false;
       }
       const beforeBytes = new Uint8Array(
@@ -135,48 +129,44 @@
       }
       return true;
     }
-    if (before instanceof Map || after instanceof Map) {
-      if (!(before instanceof Map) || !(after instanceof Map) || before.size !== after.size) {
-        return false;
-      }
-      const unmatchedEntries = [...after];
-      for (const [beforeKey, beforeValue] of before) {
-        let matchIndex = -1;
-        for (let index = 0; index < unmatchedEntries.length; index++) {
-          const [afterKey, afterValue] = unmatchedEntries[index];
-          if (valuesEqual(beforeKey, afterKey, /* @__PURE__ */ new WeakMap()) && valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())) {
-            matchIndex = index;
-            break;
+    inProgress ??= /* @__PURE__ */ new Map();
+    let afters = inProgress.get(before);
+    if (afters?.has(after)) {
+      return true;
+    }
+    if (!afters) {
+      afters = /* @__PURE__ */ new Set();
+      inProgress.set(before, afters);
+    }
+    afters.add(after);
+    try {
+      if (before instanceof Map || before instanceof Set) {
+        if (before.constructor !== after.constructor || before.size !== after.size) {
+          return false;
+        }
+        const unmatched = [...after];
+        for (const beforeEntry of before) {
+          const matchIndex = unmatched.findIndex(
+            (afterEntry) => valuesEqual(beforeEntry, afterEntry, inProgress)
+          );
+          if (matchIndex < 0) {
+            return false;
           }
+          unmatched.splice(matchIndex, 1);
         }
-        if (matchIndex < 0) {
-          return false;
-        }
-        unmatchedEntries.splice(matchIndex, 1);
+        return true;
       }
-      return true;
+      const keys = Object.keys(before);
+      return isContainer(before) && isContainer(after) && Array.isArray(before) === Array.isArray(after) && keys.length === Object.keys(after).length && keys.every(
+        (key) => Object.hasOwn(after, key) && valuesEqual(before[key], after[key], inProgress)
+      );
+    } finally {
+      afters.delete(after);
     }
-    if (before instanceof Set || after instanceof Set) {
-      if (!(before instanceof Set) || !(after instanceof Set) || before.size !== after.size) {
-        return false;
-      }
-      const unmatchedValues = [...after];
-      for (const beforeValue of before) {
-        const matchIndex = unmatchedValues.findIndex(
-          (afterValue) => valuesEqual(beforeValue, afterValue, /* @__PURE__ */ new WeakMap())
-        );
-        if (matchIndex < 0) {
-          return false;
-        }
-        unmatchedValues.splice(matchIndex, 1);
-      }
-      return true;
-    }
-    return false;
   };
   var getKey = (current, component) => {
     if (Array.isArray(current)) {
-      if (typeof component === "number" && component >= 0 || typeof component === "string" && ARRAY_INDEX.test(component)) {
+      if (typeof component === "number" || typeof component === "string" && ARRAY_INDEX.test(component)) {
         return Number(component);
       }
       throw new TypeError(
@@ -185,26 +175,28 @@
     }
     return component;
   };
-  var setValueAtPath = (record, path, value) => {
+  var setValueAtPath = (record, path, value, inserting) => {
+    if (!isContainer(record)) {
+      throw new TypeError("Cannot traverse a non-record diff path value");
+    }
     let current = record;
     for (let index = 0; index < path.length - 1; index++) {
-      if (!isContainer(current)) {
-        throw new TypeError("Cannot traverse a non-record diff path value");
-      }
-      const key = getKey(current, path[index]);
-      if (!Object.hasOwn(current, key)) {
+      const key2 = getKey(current, path[index]);
+      if (!Object.hasOwn(current, key2)) {
         const nextComponent = path[index + 1];
-        current[key] = typeof nextComponent === "number" ? [] : /* @__PURE__ */ Object.create(null);
+        current[key2] = typeof nextComponent === "number" ? [] : /* @__PURE__ */ Object.create(null);
       }
-      if (!isContainer(current[key])) {
+      if (!isContainer(current[key2])) {
         throw new TypeError("Cannot traverse a non-record diff path value");
       }
-      current = current[key];
+      current = current[key2];
     }
-    if (!isContainer(current)) {
-      throw new TypeError("Cannot set a value on a non-record diff path value");
+    const key = getKey(current, path[path.length - 1]);
+    if (inserting && Array.isArray(current)) {
+      current.splice(key, 0, cloneRecursive(value));
+    } else {
+      current[key] = cloneRecursive(value);
     }
-    current[getKey(current, path[path.length - 1])] = cloneRecursive(value);
   };
   var deleteValueAtPath = (record, path) => {
     let current = record;
@@ -231,62 +223,68 @@
     }
   };
   var applyValidatedDiff = (state, diff, reverting) => {
-    for (const change of diff) {
-      if (reverting) {
-        if (change.type === "set") {
-          if (change.old === void 0) {
-            deleteValueAtPath(state, change.path);
-          } else {
-            setValueAtPath(state, change.path, change.old);
-          }
-        } else {
-          setValueAtPath(state, change.path, change.old);
-        }
-      } else if (change.type === "set") {
-        setValueAtPath(state, change.path, change.new);
+    for (let index = 0; index < diff.length; index++) {
+      const change = diff[reverting ? diff.length - index - 1 : index];
+      if (reverting ? change.type === "delete" || Object.hasOwn(change, "old") : change.type === "set") {
+        setValueAtPath(
+          state,
+          change.path,
+          reverting ? change.old : change.new,
+          change.type === "delete"
+        );
       } else {
         deleteValueAtPath(state, change.path);
       }
     }
     return state;
   };
-  var determineDiff = (before, after, path = [], compared = /* @__PURE__ */ new WeakMap()) => {
-    const changes = [];
-    if (before && after && typeof before === "object" && typeof after === "object") {
-      let comparedAfter = compared.get(before);
-      if (comparedAfter?.has(after)) {
-        return changes;
+  var determineDiff = (before, after, path = [], paired = /* @__PURE__ */ new Map(), changes = []) => {
+    const firstAfter = paired.get(before);
+    if (firstAfter) {
+      if (!valuesEqual(firstAfter, after)) {
+        changes.push({
+          type: "set",
+          path,
+          old: cloneRecursive(before),
+          new: cloneRecursive(after)
+        });
       }
-      if (!comparedAfter) {
-        comparedAfter = /* @__PURE__ */ new WeakSet();
-        compared.set(before, comparedAfter);
-      }
-      comparedAfter.add(after);
+      return changes;
     }
-    for (const key of Object.keys(before)) {
-      const currentPath = [...path, key];
-      if (!Object.hasOwn(after, key)) {
-        changes.unshift({
+    paired.set(before, after);
+    const isArray = Array.isArray(before);
+    if (isArray !== Array.isArray(after)) {
+      throw new TypeError("Cannot diff an array against an object");
+    }
+    const keys = isArray ? [...before.keys()] : Object.keys(before);
+    for (let index = keys.length; index-- > 0; ) {
+      const key = keys[index];
+      if (key === "__proto__") {
+        throw new TypeError("Unsafe diff path component: __proto__");
+      }
+      if (isArray ? key >= after.length : !Object.hasOwn(after, key)) {
+        changes.push({
           type: "delete",
-          path: currentPath,
+          path: [...path, key],
           old: cloneRecursive(before[key])
         });
-      } else if (isContainer(before[key]) && isContainer(after[key])) {
-        changes.unshift(
-          ...determineDiff(before[key], after[key], currentPath, compared)
-        );
+      } else if (isContainer(before[key]) && isContainer(after[key]) && Array.isArray(before[key]) === Array.isArray(after[key])) {
+        determineDiff(before[key], after[key], [...path, key], paired, changes);
       } else if (!valuesEqual(before[key], after[key])) {
-        changes.unshift({
+        changes.push({
           type: "set",
-          path: currentPath,
+          path: [...path, key],
           old: cloneRecursive(before[key]),
           new: cloneRecursive(after[key])
         });
       }
     }
-    for (const key of Object.keys(after)) {
-      if (!Object.hasOwn(before, key)) {
-        changes.unshift({
+    for (const key of isArray ? [...after.keys()] : Object.keys(after)) {
+      if (key === "__proto__") {
+        throw new TypeError("Unsafe diff path component: __proto__");
+      }
+      if (isArray ? key >= before.length : !Object.hasOwn(before, key)) {
+        changes.push({
           type: "set",
           path: [...path, key],
           new: cloneRecursive(after[key])
@@ -295,14 +293,18 @@
     }
     return changes;
   };
-  var applyDiff = (state, diff) => {
+  var applyDiff = (state, diff, trusted) => {
     validateDiff(diff);
-    applyValidatedDiff(cloneRecursive(state), diff, false);
+    if (!trusted) {
+      applyValidatedDiff(cloneRecursive(state), diff, false);
+    }
     return applyValidatedDiff(state, diff, false);
   };
-  var revertDiff = (state, diff) => {
+  var revertDiff = (state, diff, trusted) => {
     validateDiff(diff);
-    applyValidatedDiff(cloneRecursive(state), diff, true);
+    if (!trusted) {
+      applyValidatedDiff(cloneRecursive(state), diff, true);
+    }
     return applyValidatedDiff(state, diff, true);
   };
 
