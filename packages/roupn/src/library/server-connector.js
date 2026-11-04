@@ -296,7 +296,7 @@ export const createServerConnector = (options = {}) => {
 		bucket.tokens--;
 		return true;
 	};
-	const consumeCreationTokens = (remoteAddress) => {
+	const consumeAddressCreationToken = (remoteAddress) => {
 		let addressBucket = _creationBuckets.get(remoteAddress);
 		if (!addressBucket) {
 			addressBucket = {
@@ -314,12 +314,7 @@ export const createServerConnector = (options = {}) => {
 			}
 		}, 60000);
 		addressBucket.cleanupTimer.unref?.();
-		const addressAllowed = consumeToken(addressBucket, roomCreationsPerAddress);
-		const globalAllowed = consumeToken(
-			_globalCreationBucket,
-			roomCreationsGlobal,
-		);
-		return addressAllowed && globalAllowed;
+		return consumeToken(addressBucket, roomCreationsPerAddress);
 	};
 	const clearRoomTimers = (room) => {
 		if (room.creatorJoinTimer) {
@@ -1018,6 +1013,11 @@ export const createServerConnector = (options = {}) => {
 			);
 
 			if (pathname === createRoomEndpoint) {
+				if (request.method !== "POST") {
+					response.writeHead(405, { Allow: "POST" });
+					response.end();
+					return true;
+				}
 				let remoteAddress;
 				try {
 					remoteAddress = String(getRemoteAddress(request));
@@ -1028,7 +1028,8 @@ export const createServerConnector = (options = {}) => {
 					);
 					return true;
 				}
-				if (!consumeCreationTokens(remoteAddress)) {
+				// Check the address before calling the authorization, and only take from the global budget for requests that would succeed otherwise, so one address can't use it up.
+				if (!consumeAddressCreationToken(remoteAddress)) {
 					response.writeHead(429, {
 						"Content-Type": contentType,
 						"Retry-After": "60",
@@ -1053,9 +1054,14 @@ export const createServerConnector = (options = {}) => {
 					);
 					return true;
 				}
-				if (request.method !== "POST") {
-					response.writeHead(405, { Allow: "POST" });
-					response.end();
+				if (!consumeToken(_globalCreationBucket, roomCreationsGlobal)) {
+					response.writeHead(429, {
+						"Content-Type": contentType,
+						"Retry-After": "60",
+					});
+					response.end(
+						serializeMessage({ error: "room_creation_rate_limited" }),
+					);
 					return true;
 				}
 				const limitValue = searchParams.get("limit");

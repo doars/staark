@@ -591,4 +591,23 @@ describe('Room creation failures', { timeout: 20000 }, () => {
     assert.ok((await createRoom(client)).roomCode)
     await server.close()
   })
+
+  it('lets another address create a room while one floods the endpoint', async () => {
+    let address = 'flood'
+    const server = await startServer({
+      getRemoteAddress: () => address,
+      roomCreationsGlobal: 3,
+      roomCreationsPerAddress: 1,
+    })
+    const statuses = []
+    for (let index = 0; index < 10; index++) {
+      statuses.push((await fetch(`${server.httpUrl}/create-room`, { method: 'POST' })).status)
+    }
+    assert.deepStrictEqual(statuses, [200, ...Array(9).fill(429)])
+
+    address = 'fresh'
+    const creator = createClient(server)
+    assert.ok((await createRoom(creator)).roomCode)
+    await server.close()
+  })
 })

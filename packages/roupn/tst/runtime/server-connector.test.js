@@ -85,28 +85,64 @@ describe('Server room creation policy', () => {
     assert.strictEqual(connector.getRoomCount(), 0)
   })
 
-  it('rate limits every attempt before method validation', () => {
+  it('rejects other methods before taking a token', () => {
     const connector = createServerConnector({
+      roomCreationsGlobal: 1,
+      roomCreationsPerAddress: 1,
+    })
+    const request = (method) => ({
+      method,
+      socket: { remoteAddress: '192.0.2.2' },
+      url: '/create-room',
+    })
+    const statuses = []
+    for (const method of ['GET', 'GET', 'POST', 'POST']) {
+      const response = createResponse()
+      connector.handleHttpRequest(request(method), response)
+      statuses.push(response.result.status)
+      if (response.result.status === 429) {
+        assert.strictEqual(response.result.headers['Retry-After'], '60')
+        assert.deepStrictEqual(JSON.parse(response.result.body), {
+          error: 'room_creation_rate_limited',
+        })
+      }
+    }
+
+    assert.deepStrictEqual(statuses, [405, 405, 200, 429])
+    for (const roomCode of connector.getRoomCodes()) {
+      connector.removeRoom(roomCode)
+    }
+  })
+
+  it('keeps one address from using up the global budget', () => {
+    const connector = createServerConnector({
+      authorizeRoomCreation: ({ remoteAddress }) => remoteAddress !== '192.0.2.5',
       roomCreationsGlobal: 2,
       roomCreationsPerAddress: 1,
     })
-    const request = {
-      method: 'GET',
-      socket: { remoteAddress: '192.0.2.2' },
-      url: '/create-room',
+    const create = (remoteAddress) => {
+      const response = createResponse()
+      connector.handleHttpRequest({
+        method: 'POST',
+        socket: { remoteAddress },
+        url: '/create-room',
+      }, response)
+      return response.result.status
     }
-    const firstResponse = createResponse()
-    const secondResponse = createResponse()
+    const statuses = []
+    for (let index = 0; index < 10; index++) {
+      statuses.push(create('192.0.2.4'))
+    }
+    // Refused by the authorization.
+    statuses.push(create('192.0.2.5'))
 
-    connector.handleHttpRequest(request, firstResponse)
-    connector.handleHttpRequest(request, secondResponse)
-
-    assert.strictEqual(firstResponse.result.status, 405)
-    assert.strictEqual(secondResponse.result.status, 429)
-    assert.strictEqual(secondResponse.result.headers['Retry-After'], '60')
-    assert.deepStrictEqual(JSON.parse(secondResponse.result.body), {
-      error: 'room_creation_rate_limited',
-    })
+    assert.deepStrictEqual(statuses, [200, ...Array(9).fill(429), 403])
+    assert.strictEqual(create('192.0.2.6'), 200)
+    // Now the global budget is used up.
+    assert.strictEqual(create('192.0.2.7'), 429)
+    for (const roomCode of connector.getRoomCodes()) {
+      connector.removeRoom(roomCode)
+    }
   })
 
   it('returns a stable max-room error', () => {
