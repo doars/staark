@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- Fix a queued request hanging forever when another request with the same abort signal was aborted.
+- Send the documented `priority` option to fetch.
+- Add `queryParams` with `&` when the path already has a query, keep a `#fragment` at the end, and don't leave a trailing `?` when there are no parameters.
+- Merge instance and per-call headers with the `Headers` class, so `Headers` instances are no longer dropped, and read the Accept header case-insensitively.
+- Only encode plain objects and arrays as JSON, and give them `Content-Type: application/json` when no content type is set. Strings, `FormData`, `Blob`, `URLSearchParams` and buffers are sent unchanged.
+- Give errors for failed responses a message when the status text is empty, as it always is over HTTP/2, and attach `status` and `response` to them.
+- Ignore a URL fragment when reading the file extension.
+- End the `delay`, `throttle` and retry waits as soon as the request is aborted or times out.
+- Cancel the body of a failed response before retrying, so its connection is released.
+- Stop passing internal `perCall*` keys to custom parsers.
+- Fix CSV with CRLF line endings, and keep an empty last field.
+- Fix TOML multi-line strings, keep quoted values in inline tables as strings, strip trailing comments, and throw on a key without a value.
+- Rewrite the YAML parser, adding plain lists, block scalars with chomping indicators, anchors on mappings and lists, merge keys, and trailing comments. Lines it doesn't understand now throw a `SyntaxError` instead of being skipped. The unused `indentSize` option is removed.
+- Only cache GET requests in the cache example.
+- Update the documentation to match the code.
+
 ## 1.5.1
 
 - Update and improve the `README.md`.

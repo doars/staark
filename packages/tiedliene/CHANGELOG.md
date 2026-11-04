@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Emit the changes of `determineDiff` in apply order, with array indices as numbers, and revert them from last to first as documented. Hand-written diffs now revert correctly.
+- Fix large diffs throwing a `RangeError`, and make diffs with many changes much faster.
+- Give a shared object its own copy where a diff would split it, instead of changing both paths.
+- Record a change from an object to an array, or the other way around. Roots of different kinds throw a `TypeError`.
+- Compare objects and arrays inside Maps and Sets, and fix Maps and Sets that contain themselves overflowing the stack.
+- Restore values that were really `undefined` on revert, insert array items back when reverting a delete, and keep the holes in sparse arrays in place.
+- Only update the undo and redo history once a change has been applied, so a failed `set`, `undo` or `redo` leaves it unchanged.
+- Reject `__proto__`, `constructor` and `prototype` keys in managed state, and own `__proto__` keys when cloning or diffing.
+- Skip the trial run on a copy when undoing or redoing with cloned snapshots.
+- Time cold runs and large diffs in the benchmarks.
+- Update the documentation to match the code.
+
 ## 1.3.1
 
 - Update and improve the `README.md`.

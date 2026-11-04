@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- Update the protocol to version 3, which isn't compatible with version 2.
+- Derive the verification code from every key exchanged in the handshake, so a relay in the middle can no longer swap keys unnoticed. The joiner commits to its keys before seeing the creator's, and the rest of the handshake is encrypted with a key derived from the compared secret.
+- Only base64-encode the server and direct payloads, instead of encoding encrypted values a second time.
+- Only accept room and user events from the server, and only let unverified users message the creator.
+- Require the whole verification code in `verifyUser`.
+- Exchange and check the private data given to `createRoom` and `joinRoom`.
+- Fix leaving and rejoining a room crashing the connection.
+- Keep the connection when handling one message fails, handle messages one at a time, and always dispatch `onError` with `{ error }`.
+- Dispatch `onError` when `createRoom` fails, instead of throwing and leaving the connector stuck.
+- Stop one address from using up the global room creation budget, and answer non-POST requests before any rate limit.
+- Apply synchronized state updates in the same order on every client, accept full state syncs only from the creator, and clear the history when leaving.
+- Generate keys without a Worker, and keep private keys non-extractable.
+- Require `serverOrigin` or `validateOrigin` when `NODE_ENV` is `production`.
+- Document `sendUpdate`, `serverOrigin`, private data and the client limits.
+
 ## 0.2.1
 
 - Update and improve the `README.md`.
