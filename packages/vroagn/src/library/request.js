@@ -246,7 +246,16 @@ export const create = (initialOptions) => {
 				];
 			}
 			if (!response.ok) {
-				return [new Error("Invalid response"), response, null];
+				// The status text is empty over HTTP/2, so fall back to the status.
+				const error = new Error(
+					response.statusText ||
+						`Request failed with status ${response.status}`,
+				);
+				return [
+					Object.assign(error, { response, status: response.status }),
+					response,
+					null,
+				];
 			}
 
 			try {
@@ -366,37 +375,22 @@ export const create = (initialOptions) => {
 			}
 		};
 
-		/**
-		 * Retries the request.
-		 *
-		 * @returns {Promise<[Error | null, Response, any]>} The error, response and result of the request.
-		 */
-		const retryRequest = async () => {
-			let attempt = 0;
-			const retryAttempts = options.retryAttempts || 0;
-			const retryDelay = options.retryDelay || 0;
-
-			while (attempt <= retryAttempts) {
+		try {
+			for (let attempt = 0; ; attempt++) {
 				const [error, response, result] = await executeFetch();
-				if (!error) {
-					return [error, response, result];
-				}
-				if (controller.signal.aborted) {
-					return [error, response, result];
-				}
-				if (response?.ok) {
-					return [error, response, result];
-				}
-				if (response && !options.retryCodes?.includes(response.status)) {
-					return [new Error("Invalid status code"), response, result];
-				}
-
-				attempt++;
-				if (attempt > retryAttempts) {
+				// Stop on success, on abort, on errors a retry can not fix, and once
+				// the attempts run out.
+				if (
+					!error ||
+					controller.signal.aborted ||
+					response?.ok ||
+					(response && !options.retryCodes?.includes(response.status)) ||
+					attempt >= (options.retryAttempts || 0)
+				) {
 					return [error, response, result];
 				}
 
-				let delayTime = retryDelay * 2 ** (attempt - 1);
+				let delayTime = (options.retryDelay || 0) * 2 ** attempt;
 
 				const retryAfter = response?.headers.get("Retry-After");
 				if (retryAfter) {
@@ -417,15 +411,6 @@ export const create = (initialOptions) => {
 
 				await delay(delayTime);
 			}
-			return executeFetch();
-		};
-
-		try {
-			const [error, response, result] = await retryRequest();
-			if (response && !response.ok) {
-				return [new Error(response.statusText), response, result];
-			}
-			return [error, response, result];
 		} finally {
 			if (timeoutIdentifier !== null) {
 				clearTimeout(timeoutIdentifier);

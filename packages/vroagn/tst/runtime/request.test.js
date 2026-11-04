@@ -275,6 +275,37 @@ describe('Request', () => {
     assert.strictEqual(result, null)
   })
 
+  it('describes unsuccessful responses without status text', async () => {
+    const response = new Response('', { status: 404 })
+    const request = create({
+      fetch: async () => response,
+    })
+
+    const [error] = await request({})
+
+    assert.strictEqual(error.message, 'Request failed with status 404')
+    assert.strictEqual(error.status, 404)
+    assert.strictEqual(error.response, response)
+  })
+
+  it('returns the last failed response once the retries run out', async () => {
+    let fetchCount = 0
+    const request = create({
+      fetch: async () => {
+        fetchCount++
+        return new Response('', { status: 503, statusText: `Attempt ${fetchCount}` })
+      },
+      retryAttempts: 2,
+      retryDelay: 1,
+    })
+
+    const [error, response] = await request({})
+
+    assert.strictEqual(fetchCount, 3)
+    assert.strictEqual(error.message, 'Attempt 3')
+    assert.strictEqual(response.status, 503)
+  })
+
   it('enforces the maximum request count without throwing', async () => {
     let fetchCount = 0
     const successfulResponse = new Response('ok')
