@@ -136,7 +136,24 @@ describe('Synchronizer validation', () => {
     assert.strictEqual(Object.getPrototypeOf(synchronizer.publicState), Object.prototype)
     assert.strictEqual(synchronizer.publicState.polluted, undefined)
     assert.deepStrictEqual({ ...synchronizer.publicState }, { a: 1 })
-    assert.strictEqual(errors.length, 1)
+    assert.deepStrictEqual(errors, ['unsafe_state_key'])
+  })
+
+  it('rejects updates whose values contain prototype-related keys', () => {
+    const { errors, receive, synchronizer } = createJoinedSynchronizer({ a: 1 })
+    for (const key of ['__proto__', 'constructor', 'prototype']) {
+      receive({
+        type: '_SU',
+        identifier: key,
+        sender: 'peer',
+        stateDelta: [{ type: 'set', path: ['b'], new: JSON.parse(`{"nested": {"${key}": {"polluted": true}}}`) }],
+        time: 1,
+      })
+    }
+
+    assert.deepStrictEqual({ ...synchronizer.publicState }, { a: 1 })
+    assert.deepStrictEqual(errors, ['unsafe_state_key', 'unsafe_state_key', 'unsafe_state_key'])
+    assert.strictEqual({}.polluted, undefined)
   })
 
   it('rejects unsafe paths and leaves the state as it was when a diff fails', () => {

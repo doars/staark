@@ -100,8 +100,14 @@ export const createClientSynchronizer = (
 			throw new TypeError(`${name} must be a positive integer`);
 		}
 	}
+	// Measures the size of received data, and rejects keys that could change a prototype or replace a method, since tiedliene stores them as ordinary keys.
 	const serializedBytes = (value) => {
-		const serialized = JSON.stringify(value);
+		const serialized = JSON.stringify(value, (key, entry) => {
+			if (key === "__proto__" || key === "constructor" || key === "prototype") {
+				throw new TypeError("unsafe_state_key");
+			}
+			return entry;
+		});
 		if (serialized === undefined) {
 			throw new TypeError("invalid_serialized_value");
 		}
