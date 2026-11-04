@@ -73,7 +73,16 @@ const isContainer = (value) =>
 		Object.getPrototypeOf(value) === Object.prototype ||
 		Object.getPrototypeOf(value) === null);
 
-const valuesEqual = (before, after, compared = new WeakMap()) => {
+/**
+ * Check whether two values are equal. Plain objects and arrays are compared by
+ * their keys, Maps and Sets by their entries in any order.
+ *
+ * @param {unknown} before Value before the change.
+ * @param {unknown} after Value after the change.
+ * @param {Map<object, Set<object>>} [inProgress] Pairs still being compared.
+ * @returns {boolean} Whether the values are equal.
+ */
+const valuesEqual = (before, after, inProgress) => {
 	if (Object.is(before, after)) {
 		return true;
 	}
@@ -85,15 +94,6 @@ const valuesEqual = (before, after, compared = new WeakMap()) => {
 	) {
 		return false;
 	}
-	let comparedAfter = compared.get(before);
-	if (comparedAfter?.has(after)) {
-		return true;
-	}
-	if (!comparedAfter) {
-		comparedAfter = new WeakSet();
-		compared.set(before, comparedAfter);
-	}
-	comparedAfter.add(after);
 	if (before instanceof Date || after instanceof Date) {
 		return (
 			before instanceof Date &&
@@ -127,55 +127,79 @@ const valuesEqual = (before, after, compared = new WeakMap()) => {
 		}
 		return true;
 	}
-	if (before instanceof Map || after instanceof Map) {
-		if (
-			!(before instanceof Map) ||
-			!(after instanceof Map) ||
-			before.size !== after.size
-		) {
-			return false;
-		}
-		const unmatchedEntries = [...after];
-		for (const [beforeKey, beforeValue] of before) {
-			let matchIndex = -1;
-			for (let index = 0; index < unmatchedEntries.length; index++) {
-				const [afterKey, afterValue] = unmatchedEntries[index];
-				if (
-					valuesEqual(beforeKey, afterKey, new WeakMap()) &&
-					valuesEqual(beforeValue, afterValue, new WeakMap())
-				) {
-					matchIndex = index;
-					break;
+
+	// A pair that is met again while it is still being compared is a cycle.
+	// It is treated as equal, since any other difference still makes the outer
+	// comparison fail. Pairs are removed once done, so a failed candidate entry
+	// of a Map or Set leaves no trace.
+	inProgress ??= new Map();
+	let afters = inProgress.get(before);
+	if (afters?.has(after)) {
+		return true;
+	}
+	if (!afters) {
+		afters = new Set();
+		inProgress.set(before, afters);
+	}
+	afters.add(after);
+	try {
+		if (before instanceof Map || after instanceof Map) {
+			if (
+				!(before instanceof Map) ||
+				!(after instanceof Map) ||
+				before.size !== after.size
+			) {
+				return false;
+			}
+			const unmatchedEntries = [...after];
+			for (const [beforeKey, beforeValue] of before) {
+				const matchIndex = unmatchedEntries.findIndex(
+					([afterKey, afterValue]) =>
+						valuesEqual(beforeKey, afterKey, inProgress) &&
+						valuesEqual(beforeValue, afterValue, inProgress),
+				);
+				if (matchIndex < 0) {
+					return false;
 				}
+				unmatchedEntries.splice(matchIndex, 1);
 			}
-			if (matchIndex < 0) {
+			return true;
+		}
+		if (before instanceof Set || after instanceof Set) {
+			if (
+				!(before instanceof Set) ||
+				!(after instanceof Set) ||
+				before.size !== after.size
+			) {
 				return false;
 			}
-			unmatchedEntries.splice(matchIndex, 1);
-		}
-		return true;
-	}
-	if (before instanceof Set || after instanceof Set) {
-		if (
-			!(before instanceof Set) ||
-			!(after instanceof Set) ||
-			before.size !== after.size
-		) {
-			return false;
-		}
-		const unmatchedValues = [...after];
-		for (const beforeValue of before) {
-			const matchIndex = unmatchedValues.findIndex((afterValue) =>
-				valuesEqual(beforeValue, afterValue, new WeakMap()),
-			);
-			if (matchIndex < 0) {
-				return false;
+			const unmatchedValues = [...after];
+			for (const beforeValue of before) {
+				const matchIndex = unmatchedValues.findIndex((afterValue) =>
+					valuesEqual(beforeValue, afterValue, inProgress),
+				);
+				if (matchIndex < 0) {
+					return false;
+				}
+				unmatchedValues.splice(matchIndex, 1);
 			}
-			unmatchedValues.splice(matchIndex, 1);
+			return true;
 		}
-		return true;
+		const keys = Object.keys(before);
+		return (
+			isContainer(before) &&
+			isContainer(after) &&
+			Array.isArray(before) === Array.isArray(after) &&
+			keys.length === Object.keys(after).length &&
+			keys.every(
+				(key) =>
+					Object.hasOwn(after, key) &&
+					valuesEqual(before[key], after[key], inProgress),
+			)
+		);
+	} finally {
+		afters.delete(after);
 	}
-	return false;
 };
 
 /**

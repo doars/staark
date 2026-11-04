@@ -384,4 +384,31 @@ describe('Determine diff', () => {
     assert.throws(() => determineDiff({}, []), TypeError)
     assert.throws(() => determineDiff([], {}), TypeError)
   })
+
+  it('maps and sets holding objects and arrays', () => {
+    const create = (value) => ({
+      map: new Map([[{ key: [1] }, { value: [value] }]]),
+      set: new Set([{ value }, [value]]),
+    })
+    assert.deepStrictEqual(determineDiff(create(1), create(1)), [])
+    const diff = determineDiff(create(1), create(2))
+    assert.deepStrictEqual(diff.map((change) => change.path), [['set'], ['map']])
+    assert.deepStrictEqual(determineDiff(
+      { set: new Set([{}]) },
+      { set: new Set([[]]) },
+    ).length, 1)
+  })
+
+  it('maps and sets that contain themselves', () => {
+    const create = (value) => {
+      const map = new Map([['value', value]])
+      map.set('self', map)
+      const set = new Set([value])
+      set.add(set)
+      return { map, set }
+    }
+    assert.deepStrictEqual(determineDiff(create(1), create(1)), [])
+    const diff = determineDiff(create(1), create(2))
+    assert.deepStrictEqual(diff.map((change) => change.path), [['set'], ['map']])
+  })
 })
