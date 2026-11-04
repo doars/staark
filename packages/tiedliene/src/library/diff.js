@@ -212,7 +212,7 @@ const valuesEqual = (before, after, inProgress) => {
 const getKey = (current, component) => {
 	if (Array.isArray(current)) {
 		if (
-			(typeof component === "number" && component >= 0) ||
+			typeof component === "number" ||
 			(typeof component === "string" && ARRAY_INDEX.test(component))
 		) {
 			return Number(component);
@@ -240,11 +240,12 @@ const getKey = (current, component) => {
  * @param {*} value The new value.
  */
 const setValueAtPath = (record, path, value) => {
+	// Every later level is checked as a child before it is entered.
+	if (!isContainer(record)) {
+		throw new TypeError("Cannot traverse a non-record diff path value");
+	}
 	let current = record;
 	for (let index = 0; index < path.length - 1; index++) {
-		if (!isContainer(current)) {
-			throw new TypeError("Cannot traverse a non-record diff path value");
-		}
 		const key = getKey(current, path[index]);
 		if (!Object.hasOwn(current, key)) {
 			const nextComponent = path[index + 1];
@@ -255,9 +256,6 @@ const setValueAtPath = (record, path, value) => {
 			throw new TypeError("Cannot traverse a non-record diff path value");
 		}
 		current = current[key];
-	}
-	if (!isContainer(current)) {
-		throw new TypeError("Cannot set a value on a non-record diff path value");
 	}
 	current[getKey(current, path[path.length - 1])] = cloneRecursive(value);
 };
