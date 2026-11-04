@@ -410,6 +410,8 @@ export const create = (initialOptions) => {
 					delayTime = Math.min(delayTime, options.maximumRetryDelay);
 				}
 
+				// Release the connection held by the unread body before waiting.
+				await response?.body?.cancel();
 				// The request's own signal, so a timeout also ends the wait.
 				await delay(delayTime, controller.signal);
 			}

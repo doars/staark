@@ -475,6 +475,30 @@ describe('Request scheduling', () => {
     await busy
   })
 
+  it('cancels the body of a response before retrying', async () => {
+    const cancelled = []
+    const responses = []
+    const request = create({
+      fetch: async () => {
+        const index = responses.length
+        const response = new Response(new ReadableStream({
+          cancel: () => {
+            cancelled.push(index)
+          },
+        }), { status: 503 })
+        responses.push(response)
+        return response
+      },
+      retryAttempts: 1,
+      retryDelay: 1,
+    })
+
+    const [, response] = await request({})
+
+    assert.deepStrictEqual(cancelled, [0])
+    assert.strictEqual(response, responses[1])
+  })
+
   it('ends the retry delay when the request is aborted', async () => {
     const abort = new AbortController()
     const request = create({
