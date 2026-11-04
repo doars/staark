@@ -163,6 +163,48 @@ describe('Server message limits', () => {
     connector.removeRoom(room.roomCode)
   })
 
+  it('only lets unverified users and the creator use the channels of the handshake', () => {
+    const connector = createServerConnector()
+    const room = connector.createRoom()
+    const creatorConnection = createConnection()
+    connector.joinRoom(room.roomCode, creatorConnection, true)
+    creatorConnection.dispatch('message', {
+      data: `A:${room.creatorConnectionToken}`,
+    })
+    const joinUser = () => {
+      const connection = createConnection()
+      const [, { userId }] = connector.joinRoom(room.roomCode, connection)
+      return { connection, userId }
+    }
+    const direct = (receiver, payload = '{}') => ({
+      data: `D:${stringToBase64(payload)}|U:${receiver}`,
+    })
+    const verified = joinUser()
+    connector.getRoom(room.roomCode).users.get(verified.userId).verified = true
+    const pending = joinUser()
+    const other = joinUser()
+
+    // An unverified user can message the creator, but nobody else.
+    pending.connection.dispatch('message', direct(room.userId))
+    assert.strictEqual(pending.connection.closeCount, 0)
+    assert.match(creatorConnection.sent.at(-1), /^T:\d+\|D:/)
+    pending.connection.dispatch('message', direct(verified.userId))
+    assert.strictEqual(pending.connection.closeReason, 'invalid_protocol_message')
+    assert.strictEqual(verified.connection.sent.some((message) => message.includes('|D:')), false)
+
+    // The creator can only send unencrypted messages to unverified users.
+    creatorConnection.dispatch('message', direct(other.userId))
+    assert.strictEqual(creatorConnection.closeCount, 0)
+    assert.match(other.connection.sent.at(-1), /\|D:/)
+    creatorConnection.dispatch('message', direct(verified.userId))
+    assert.strictEqual(creatorConnection.closeReason, 'invalid_protocol_message')
+
+    // Verified users have no use for the unencrypted channel.
+    verified.connection.dispatch('message', direct(other.userId))
+    assert.strictEqual(verified.connection.closeReason, 'invalid_protocol_message')
+    connector.removeRoom(room.roomCode)
+  })
+
   it('closes malformed and oversized senders without throwing', () => {
     const connector = createServerConnector({
       maxEncodedMessageBytes: 32,

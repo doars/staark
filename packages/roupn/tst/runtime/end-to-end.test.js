@@ -388,4 +388,28 @@ describe('Handshake security', { timeout: 20000 }, () => {
     assert.strictEqual((await received).data.text, 'still here')
     await server.close()
   })
+
+  it('closes an unverified user that messages anyone but the creator', async () => {
+    const server = await startServer()
+    const creator = createClient(server)
+    const joiner = createClient(server)
+    const { roomCode } = await createRoom(creator)
+    const joinerId = await joinAndVerify(creator, joiner, roomCode)
+    const attacker = await openRawClient(server, roomCode)
+    const errors = []
+    joiner.onError.addListener(({ error }) => errors.push(error))
+
+    attacker.send({
+      U: joinerId,
+      D: JSON.stringify({ type: '_RJ', protocolVersion: 3, sender: attacker.joined.userId }),
+    })
+    assert.strictEqual((await attacker.closed).reason, 'invalid_protocol_message')
+
+    // The next message the joiner gets is the creator's.
+    const received = next(joiner.onMessage)
+    await creator.messageRoom({ text: 'after' })
+    assert.strictEqual((await received).data.text, 'after')
+    assert.deepStrictEqual(errors, [])
+    await server.close()
+  })
 })

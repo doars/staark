@@ -691,6 +691,15 @@ export const createServerConnector = (options = {}) => {
 					) {
 						throw new TypeError("invalid_direct_message");
 					}
+					// Unverified users may only message the creator. The unencrypted channel is only for the handshake between the creator and an unverified user.
+					if (
+						(!userData.verified && userPayload !== room.creatorId) ||
+						(userDirectPayload &&
+							userData.verified &&
+							(!_isCreator || room.users.get(userPayload)?.verified))
+					) {
+						throw new TypeError("direct_message_not_allowed");
+					}
 					refreshRoomIdleTimer(roomCode);
 					messageUser(roomCode, userId, userPayload, encodedMessage);
 					return;
