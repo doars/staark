@@ -179,6 +179,81 @@
     };
   };
 
+  // src/library/key-generator.js
+  var USER_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
+    Promise.all([
+      crypto.subtle.generateKey(
+        {
+          hash: "SHA-256",
+          modulusLength: 4096,
+          name: "RSA-OAEP",
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        false,
+        ["encrypt", "decrypt"]
+      ),
+      crypto.subtle.generateKey(
+        {
+          hash: "SHA-256",
+          modulusLength: 4096,
+          name: "RSASSA-PKCS1-v1_5",
+          publicExponent: new Uint8Array([1, 0, 1])
+        },
+        false,
+        ["sign", "verify"]
+      ),
+      crypto.subtle.generateKey(
+        {
+          name: "ECDH",
+          namedCurve: "P-256"
+        },
+        false,
+        ["deriveBits"]
+      )
+    ]).then(
+      ([encryptKeys, signKeys, exchangeKeys]) => Promise.all([
+        crypto.subtle.exportKey("spki", encryptKeys.publicKey),
+        crypto.subtle.exportKey("spki", signKeys.publicKey),
+        crypto.subtle.exportKey("raw", exchangeKeys.publicKey)
+      ]).then(([publicEncryptKey, publicSignKey, publicExchangeKey]) => {
+        self.postMessage({
+          success: true,
+          encryptKeys,
+          exchangeKeys,
+          publicEncryptKey,
+          publicExchangeKey,
+          publicSignKey,
+          signKeys
+        });
+      })
+    ).catch((error) => {
+      self.postMessage({
+        success: false,
+        error: error.message
+      });
+    });
+  }).toString() + ")";
+  var SHARED_KEY_GENERATOR = "self.addEventListener('message'," + (() => {
+    crypto.subtle.generateKey(
+      {
+        length: 256,
+        name: "AES-GCM"
+      },
+      true,
+      ["encrypt", "decrypt"]
+    ).then((sharedKey) => {
+      self.postMessage({
+        success: true,
+        sharedKey
+      });
+    }).catch((error) => {
+      self.postMessage({
+        success: false,
+        error: error.message
+      });
+    });
+  }).toString() + ")";
+
   // src/library/message-types.js
   var CONNECTION_CONNECTED = "CONNECTED";
   var CONNECTION_CONNECTING = "CONNECTING";
@@ -265,67 +340,41 @@
     const _users = /* @__PURE__ */ new Map();
     const _generateMyKeys = () => {
       if (!_keyGenerationPromise) {
-        _keyGenerationPromise = Promise.all([
-          crypto.subtle.generateKey(
-            {
-              hash: HASH_ALGORITHM,
-              modulusLength: 4096,
-              name: USER_ENCRYPTION_ALGORITHM,
-              publicExponent: new Uint8Array([1, 0, 1])
-            },
-            false,
-            ["encrypt", "decrypt"]
-          ),
-          crypto.subtle.generateKey(
-            {
-              hash: HASH_ALGORITHM,
-              modulusLength: 4096,
-              name: USER_SIGNATURE_ALGORITHM,
-              publicExponent: new Uint8Array([1, 0, 1])
-            },
-            false,
-            ["sign", "verify"]
-          ),
-          crypto.subtle.generateKey(
-            {
-              name: DIFFIE_HELLMAN_ALGORITHM,
-              namedCurve: DIFFIE_HELLMAN_CURVE
-            },
-            false,
-            ["deriveBits"]
-          )
-        ]).then(
-          async ([encryptKeys, signKeys, exchangeKeys]) => {
-            const [publicEncryptKey, publicSignKey, publicExchangeKey] = await Promise.all([
-              crypto.subtle.exportKey(
-                PUBLIC_KEY_EXPORT_FORMAT,
-                encryptKeys.publicKey
-              ),
-              crypto.subtle.exportKey(
-                PUBLIC_KEY_EXPORT_FORMAT,
-                signKeys.publicKey
-              ),
-              crypto.subtle.exportKey(
-                DIFFIE_HELLMAN_EXPORT_FORMAT,
-                exchangeKeys.publicKey
-              )
-            ]);
-            _myEncryptKeys = encryptKeys;
-            _mySignKeys = signKeys;
-            _myExchangeKeys = exchangeKeys;
+        _keyGenerationPromise = new Promise((resolve, reject) => {
+          const worker = new Worker(
+            URL.createObjectURL(
+              new Blob([USER_KEY_GENERATOR], {
+                type: "text/javascript"
+              })
+            )
+          );
+          worker.addEventListener("message", (event) => {
+            worker.terminate();
+            if (!event.data.success) {
+              reject(new Error(event.data.error));
+              return;
+            }
+            _myEncryptKeys = event.data.encryptKeys;
+            _mySignKeys = event.data.signKeys;
+            _myExchangeKeys = event.data.exchangeKeys;
             _myPublicKeys = {
-              publicEncryptKey: bufferToBase64(publicEncryptKey),
-              publicExchangeKey: bufferToBase64(publicExchangeKey),
-              publicSignKey: bufferToBase64(publicSignKey)
+              publicEncryptKey: bufferToBase64(event.data.publicEncryptKey),
+              publicExchangeKey: bufferToBase64(event.data.publicExchangeKey),
+              publicSignKey: bufferToBase64(event.data.publicSignKey)
             };
-          },
-          (error) => {
-            _keyGenerationPromise = null;
-            onError.dispatch({
-              error
-            });
-          }
-        );
+            resolve();
+          });
+          worker.addEventListener("error", (event) => {
+            worker.terminate();
+            reject(event.error || new Error("key_generation_failed"));
+          });
+          worker.postMessage(null);
+        }).catch((error) => {
+          _keyGenerationPromise = null;
+          onError.dispatch({
+            error
+          });
+        });
       }
       return _keyGenerationPromise;
     };
@@ -994,14 +1043,28 @@
         } = options2);
         let data;
         try {
-          _sharedKey = await crypto.subtle.generateKey(
-            {
-              length: SHARED_KEY_LENGTH,
-              name: SHARED_ENCRYPTION_ALGORITHM
-            },
-            true,
-            ["encrypt", "decrypt"]
-          );
+          _sharedKey = await new Promise((resolve, reject) => {
+            const worker = new Worker(
+              URL.createObjectURL(
+                new Blob([SHARED_KEY_GENERATOR], {
+                  type: "text/javascript"
+                })
+              )
+            );
+            worker.addEventListener("message", (event) => {
+              worker.terminate();
+              if (event.data.success) {
+                resolve(event.data.sharedKey);
+              } else {
+                reject(new Error(event.data.error));
+              }
+            });
+            worker.addEventListener("error", (event) => {
+              worker.terminate();
+              reject(event.error || new Error("key_generation_failed"));
+            });
+            worker.postMessage(null);
+          });
           const url = new URL(httpUrl + createRoomEndpoint);
           if (options2.limit) {
             url.searchParams.append("limit", options2.limit);
