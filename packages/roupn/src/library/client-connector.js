@@ -454,10 +454,9 @@ export const createClientConnector = (options = {}) => {
 		});
 
 	/**
-	 * Joins a WebSocket room with the specified room code and optional credentials. Establishes a WebSocket connection to the server, appending the room code, password, and creator secret (if provided) as query parameters. Sets up event listeners for 'close', 'error', and 'message' events to handle room leave, errors, and incoming messages.
+	 * Joins a WebSocket room with the specified room code. Establishes a WebSocket connection to the server, and sends the creator token as the first message if one is given. Sets up event listeners for 'close', 'error', and 'message' events to handle room leave, errors, and incoming messages.
 	 *
 	 * @param {string} roomCode - The code of the room to join.
-	 * @param {string|null} [password=null] - Optional password for the room.
 	 * @param {string|null} [creatorConnectionToken=null] - Optional single-use token for authenticating the creator connection.
 	 */
 	const _joinRoom = (roomCode, creatorConnectionToken = null) => {
@@ -585,10 +584,7 @@ export const createClientConnector = (options = {}) => {
 			data = new TextDecoder().decode(data);
 		} else if (userEncryptionPayload) {
 			const user = _users.get(authenticatedSender);
-			if (
-				!userEncryptionIv ||
-				!(isHandshake ? user?.handshakeKey : user?.signKey)
-			) {
+			if (!(isHandshake ? user?.handshakeKey : user?.signKey)) {
 				onError.dispatch({
 					error: new Error(
 						`No keys to decrypt message from ${authenticatedSender}`,
