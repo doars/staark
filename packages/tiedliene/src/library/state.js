@@ -102,9 +102,7 @@ export const manageState = (state, options) => {
 		 *
 		 * @returns {Record<string, any>} The current state.
 		 */
-		get: () => {
-			return snapshot();
-		},
+		get: snapshot,
 
 		/**
 		 * Sets the state and returns the new state.
@@ -114,25 +112,16 @@ export const manageState = (state, options) => {
 		 */
 		set: (newState) => {
 			validateState(newState);
-			const diffs = determineDiff(state, newState);
-			if (diffs.length > 0) {
-				if (options.maximumHistory > 0) {
-					undoStack.push(diffs);
+			const diff = determineDiff(state, newState);
+			if (diff.length > 0) {
+				// Apply first, so a failure leaves the history untouched.
+				state = applyDiff(state, diff);
+				undoStack.push(diff);
+				if (undoStack.length > options.maximumHistory) {
+					undoStack.shift();
 				}
-
-				// Cap stack size.
-				if (
-					options.maximumHistory > 0 &&
-					undoStack.length > options.maximumHistory
-				) {
-					undoStack.splice(0, undoStack.length - options.maximumHistory);
-				}
-
-				// Clear the redo stack when a new state is set.
-				redoStack.splice(0);
+				redoStack.length = 0;
 			}
-
-			state = applyDiff(state, diffs);
 			return snapshot();
 		},
 
@@ -143,22 +132,9 @@ export const manageState = (state, options) => {
 		 */
 		undo: () => {
 			if (undoStack.length > 0) {
-				const lastDiffs = undoStack.pop();
-				if (lastDiffs) {
-					redoStack.push(lastDiffs);
-
-					// Cap stack size.
-					if (
-						options.maximumHistory &&
-						redoStack.length > options.maximumHistory
-					) {
-						redoStack.splice(0, redoStack.length - options.maximumHistory);
-					}
-
-					state = revertDiff(state, lastDiffs);
-				}
+				state = revertDiff(state, undoStack.at(-1));
+				redoStack.push(undoStack.pop());
 			}
-
 			return snapshot();
 		},
 
@@ -169,22 +145,9 @@ export const manageState = (state, options) => {
 		 */
 		redo: () => {
 			if (redoStack.length > 0) {
-				const diffs = redoStack.pop();
-				if (diffs) {
-					undoStack.push(diffs);
-
-					// Cap stack size.
-					if (
-						options.maximumHistory &&
-						undoStack.length > options.maximumHistory
-					) {
-						undoStack.splice(0, undoStack.length - options.maximumHistory);
-					}
-
-					state = applyDiff(state, diffs);
-				}
+				state = applyDiff(state, redoStack.at(-1));
+				undoStack.push(redoStack.pop());
 			}
-
 			return snapshot();
 		},
 	};

@@ -105,6 +105,22 @@ describe('Manage state', () => {
   })
 })
 
+describe('Manage state failures', () => {
+  it('leaves the state and history alone when set throws', () => {
+    const state = manageState({ value: 1 })
+    state.set({ value: 2 })
+    state.set({ value: 3 })
+    state.undo()
+
+    assert.throws(() => state.set({ value: 4, constructor: 1 }), TypeError)
+    assert.deepStrictEqual(state.get(), { value: 2 })
+    assert.deepStrictEqual(state.redo(), { value: 3 })
+    assert.deepStrictEqual(state.undo(), { value: 2 })
+    assert.deepStrictEqual(state.undo(), { value: 1 })
+    assert.deepStrictEqual(state.undo(), { value: 1 })
+  })
+})
+
 describe('Manage state policies', () => {
   it('validates history and snapshot options', () => {
     assert.throws(() => manageState({}, { maximumHistory: -1 }), TypeError)
