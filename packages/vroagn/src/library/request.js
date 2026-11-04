@@ -189,8 +189,13 @@ export const create = (initialOptions) => {
 		};
 
 		let url = (options.domain || "") + (options.path || "");
-		if (options.queryParams) {
-			url += `?${new URLSearchParams(options.queryParams).toString()}`;
+		const query = new URLSearchParams(options.queryParams).toString();
+		if (query) {
+			// Add the query before any fragment, after any existing query.
+			url = url.replace(
+				/^[^#]*/,
+				(base) => base + (base.includes("?") ? "&" : "?") + query,
+			);
 		}
 
 		const externalSignal = options.abort?.signal || options.abort;

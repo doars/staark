@@ -85,6 +85,28 @@ describe('Request', () => {
     assert(receivedOptions.signal instanceof AbortSignal)
   })
 
+  it('appends query parameters to an existing query and before a fragment', async () => {
+    const urls = []
+    const request = create({
+      fetch: async (url) => {
+        urls.push(url)
+        return new Response('ok')
+      },
+    })
+
+    await request({ path: '/a?x=1', queryParams: { y: '2' } })
+    await request({ path: '/a', queryParams: {} })
+    await request({ path: '/a#top', queryParams: { y: '2' } })
+    await request({ path: '/a?x=1#top', queryParams: { y: '2' } })
+
+    assert.deepStrictEqual(urls, [
+      '/a?x=1&y=2',
+      '/a',
+      '/a?y=2#top',
+      '/a?x=1&y=2#top',
+    ])
+  })
+
   it('uses a matching custom parser', async () => {
     const response = new Response('value', {
       headers: {
