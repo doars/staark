@@ -93,21 +93,7 @@ export const create = (initialOptions) => {
 	}
 
 	/**
-	 * @param {number} throttleValue
-	 * @param {AbortSignal} [signal]
-	 */
-	const throttle = async (throttleValue, signal) => {
-		const now = Date.now();
-		const waitTime = throttleValue - (now - lastExecutionTime);
-		lastExecutionTime = now + Math.max(waitTime, 0);
-		await delay(waitTime, signal);
-	};
-
-	/**
-	 * Debounces the request handler.
-	 *
-	 * @param {number} debounceValue The debounce time in milliseconds.
-	 * @returns {Promise<void>} A promise that resolves after the debounce time.
+	 * Starts queued requests while their concurrency limit allows it.
 	 */
 	const drainConcurrencyQueue = () => {
 		while (concurrencyQueue.length > 0) {
@@ -153,11 +139,6 @@ export const create = (initialOptions) => {
 			signal?.addEventListener("abort", abort, { once: true });
 			drainConcurrencyQueue();
 		});
-
-	const releaseConcurrency = () => {
-		activeRequests--;
-		drainConcurrencyQueue();
-	};
 
 	/**
 	 * Sends a request.
@@ -412,7 +393,10 @@ export const create = (initialOptions) => {
 		try {
 			await delay(options.delay, signal);
 			if (options.throttle) {
-				await throttle(options.throttle, signal);
+				const now = Date.now();
+				const waitTime = options.throttle - (now - lastExecutionTime);
+				lastExecutionTime = now + Math.max(waitTime, 0);
+				await delay(waitTime, signal);
 			}
 			await acquireConcurrency(maximum, signal);
 			acquired = true;
@@ -425,7 +409,8 @@ export const create = (initialOptions) => {
 			];
 		} finally {
 			if (acquired) {
-				releaseConcurrency();
+				activeRequests--;
+				drainConcurrencyQueue();
 			}
 		}
 	};
