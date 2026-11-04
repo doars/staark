@@ -6,7 +6,7 @@ Use the low-level client connector for application-defined messages. Use the syn
 
 ## Runtime and builds
 
-The client requires browser WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs. The server connector targets Node-style HTTP requests and a compatible WebSocket server.
+The client requires browser WebSocket, Web Crypto, Fetch, and URL APIs. The server connector targets Node-style HTTP requests and a compatible WebSocket server.
 
 The package entry `@doars/roupn` exports `createClientConnector`, `createClientSynchronizer`, and `createServerConnector`. Browser bundles intentionally contain only client APIs: the base build contains `createClientConnector`, and the full build adds `createClientSynchronizer`.
 

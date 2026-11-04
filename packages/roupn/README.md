@@ -171,6 +171,6 @@ import { createClientConnector } from 'https://cdn.jsdelivr.net/npm/@doars/roupn
 import { createClientConnector, createClientSynchronizer } from 'https://cdn.jsdelivr.net/npm/@doars/roupn@1/dst/roupn.js'
 ```
 
-The browser bundles contain client APIs only. Server applications should import `createServerConnector` from the package entry. The client requires WebSocket, Web Crypto, Fetch, URL, Worker, and Blob APIs.
+The browser bundles contain client APIs only. Server applications should import `createServerConnector` from the package entry. The client requires WebSocket, Web Crypto, Fetch, and URL APIs.
 
 For compact language-model documentation, see [`llms.txt`](./llms.txt).

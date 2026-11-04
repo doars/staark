@@ -9,19 +9,6 @@ import { createEvent } from "../utilities/event.js";
 import { decode, encode } from "../utilities/protocol.js";
 import { calculateTime } from "../utilities/time.js";
 import {
-	DIFFIE_HELLMAN_ALGORITHM,
-	DIFFIE_HELLMAN_CURVE,
-	DIFFIE_HELLMAN_EXPORT_FORMAT,
-	HASH_ALGORITHM,
-	PUBLIC_KEY_EXPORT_FORMAT,
-	SHARED_ENCRYPTION_ALGORITHM,
-	SHARED_KEY_GENERATOR,
-	SHARED_KEY_LENGTH,
-	USER_ENCRYPTION_ALGORITHM,
-	USER_KEY_GENERATOR,
-	USER_SIGNATURE_ALGORITHM,
-} from "./key-generator.js";
-import {
 	CONNECTION_CONNECTED,
 	CONNECTION_CONNECTING,
 	CONNECTION_DISCONNECTED,
@@ -54,6 +41,16 @@ import {
 	USER_ENCRYPTION_PAYLOAD,
 	USER_ENCRYPTION_SIGNATURE,
 } from "./payload-keys.js";
+
+const DIFFIE_HELLMAN_ALGORITHM = "ECDH";
+const DIFFIE_HELLMAN_CURVE = "P-256";
+const DIFFIE_HELLMAN_EXPORT_FORMAT = "raw";
+const HASH_ALGORITHM = "SHA-256";
+const PUBLIC_KEY_EXPORT_FORMAT = "spki";
+const SHARED_ENCRYPTION_ALGORITHM = "AES-GCM";
+const SHARED_KEY_LENGTH = 256;
+const USER_ENCRYPTION_ALGORITHM = "RSA-OAEP";
+const USER_SIGNATURE_ALGORITHM = "RSASSA-PKCS1-v1_5";
 
 /**
  * @typedef {import('../utilities/event.js').Event} Event
@@ -174,7 +171,6 @@ export const createClientConnector = (options = {}) => {
 
 	let _connectionState = CONNECTION_DISCONNECTED,
 		_creatorId,
-		_generatedKeys,
 		_keyGenerationPromise,
 		_myEncryptKeys,
 		_myExchangeKeys,
@@ -196,54 +192,67 @@ export const createClientConnector = (options = {}) => {
 		_userVerification = new Map(),
 		_userVerified = new Map();
 	/**
-	 * Generates cryptographic keys for the user using a Web Worker if not already generated.
+	 * Generates the cryptographic keys of the user if they are not generated or being generated already. The private keys can not be extracted.
 	 *
-	 * @returns {Promise<void>|null} A promise that resolves when keys are generated, or null if already generated.
+	 * @returns {Promise<void>} A promise that resolves when the keys are generated.
 	 */
 	const _generateMyKeys = () => {
-		if (!_generatedKeys && !_keyGenerationPromise) {
-			_keyGenerationPromise = new Promise((resolve, reject) => {
-				const worker = new Worker(
-					URL.createObjectURL(
-						new Blob([USER_KEY_GENERATOR], {
-							type: "text/javascript",
-						}),
-					),
-				);
-
-				worker.addEventListener("message", (event) => {
-					if (event.data.success) {
-						_myEncryptKeys = event.data.myEncryptKeys;
-						_mySignKeys = event.data.mySignKeys;
-						_myExchangeKeys = event.data.myExchangeKeys;
-						_myPublicEncryptKey = event.data.myPublicEncryptKey;
-						_myPublicSignKey = event.data.myPublicSignKey;
-
-						_generatedKeys = true;
-						_keyGenerationPromise = null;
-						resolve();
-					} else {
-						const error = new Error(event.data.error);
-						onError.dispatch({
-							error,
-						});
-						reject(error);
-					}
-					worker.terminate();
-				});
-
-				worker.addEventListener("error", (error) => {
+		if (!_keyGenerationPromise) {
+			_keyGenerationPromise = Promise.all([
+				crypto.subtle.generateKey(
+					{
+						hash: HASH_ALGORITHM,
+						modulusLength: 4096,
+						name: USER_ENCRYPTION_ALGORITHM,
+						publicExponent: new Uint8Array([1, 0, 1]),
+					},
+					false,
+					["encrypt", "decrypt"],
+				),
+				crypto.subtle.generateKey(
+					{
+						hash: HASH_ALGORITHM,
+						modulusLength: 4096,
+						name: USER_SIGNATURE_ALGORITHM,
+						publicExponent: new Uint8Array([1, 0, 1]),
+					},
+					false,
+					["sign", "verify"],
+				),
+				crypto.subtle.generateKey(
+					{
+						name: DIFFIE_HELLMAN_ALGORITHM,
+						namedCurve: DIFFIE_HELLMAN_CURVE,
+					},
+					false,
+					["deriveKey"],
+				),
+			]).then(
+				async ([encryptKeys, signKeys, exchangeKeys]) => {
+					const [publicEncryptKey, publicSignKey] = await Promise.all([
+						crypto.subtle.exportKey(
+							PUBLIC_KEY_EXPORT_FORMAT,
+							encryptKeys.publicKey,
+						),
+						crypto.subtle.exportKey(
+							PUBLIC_KEY_EXPORT_FORMAT,
+							signKeys.publicKey,
+						),
+					]);
+					_myEncryptKeys = encryptKeys;
+					_mySignKeys = signKeys;
+					_myExchangeKeys = exchangeKeys;
+					_myPublicEncryptKey = publicEncryptKey;
+					_myPublicSignKey = publicSignKey;
+				},
+				(error) => {
+					// Allow the next call to try again.
+					_keyGenerationPromise = null;
 					onError.dispatch({
 						error,
 					});
-					reject(error);
-					worker.terminate();
-				});
-
-				worker.postMessage({
-					type: "USER_KEYS",
-				});
-			});
+				},
+			);
 		}
 		return _keyGenerationPromise;
 	};
@@ -325,7 +334,6 @@ export const createClientConnector = (options = {}) => {
 		}
 
 		_creatorId =
-			_generatedKeys =
 			_keyGenerationPromise =
 			_myId =
 			_myEncryptKeys =
@@ -517,9 +525,7 @@ export const createClientConnector = (options = {}) => {
 				});
 				return;
 			}
-			if (!_generatedKeys) {
-				await _generateMyKeys();
-			}
+			await _generateMyKeys();
 
 			const encryptedPayload = base64ToBuffer(userEncryptionPayload);
 			const payloadData = deserializeMessage(
@@ -638,9 +644,7 @@ export const createClientConnector = (options = {}) => {
 				} else {
 					_setConnectionState(CONNECTION_PENDING_VERIFICATION);
 
-					if (!_generatedKeys) {
-						await _generateMyKeys();
-					}
+					await _generateMyKeys();
 
 					const myPublicExchangeKey = await crypto.subtle.exportKey(
 						DIFFIE_HELLMAN_EXPORT_FORMAT,
@@ -731,9 +735,7 @@ export const createClientConnector = (options = {}) => {
 
 					_userSignKeys.set(newUserId, publicSignKey);
 
-					if (!_generatedKeys) {
-						await _generateMyKeys();
-					}
+					await _generateMyKeys();
 
 					_userDerivedKeys.set(
 						newUserId,
@@ -841,9 +843,7 @@ export const createClientConnector = (options = {}) => {
 						),
 					);
 
-					if (!_generatedKeys) {
-						await _generateMyKeys();
-					}
+					await _generateMyKeys();
 
 					_userDerivedKeys.set(
 						_creatorId,
@@ -1080,9 +1080,7 @@ export const createClientConnector = (options = {}) => {
 					new TextEncoder().encode(message),
 				);
 
-				if (!_generatedKeys) {
-					await _generateMyKeys();
-				}
+				await _generateMyKeys();
 
 				parts[USER_ENCRYPTION_IV] = bufferToBase64(iv);
 				parts[USER_ENCRYPTION_KEY] = bufferToBase64(
@@ -1223,34 +1221,14 @@ export const createClientConnector = (options = {}) => {
 			}
 
 			try {
-				await new Promise((resolve, reject) => {
-					const worker = new Worker(
-						URL.createObjectURL(
-							new Blob([SHARED_KEY_GENERATOR], {
-								type: "text/javascript",
-							}),
-						),
-					);
-
-					worker.addEventListener("message", (event) => {
-						if (event.data.success) {
-							_sharedKey = event.data.sharedKey;
-							resolve();
-						} else {
-							reject(new Error(event.data.error));
-						}
-						worker.terminate();
-					});
-
-					worker.addEventListener("error", (error) => {
-						reject(error);
-						worker.terminate();
-					});
-
-					worker.postMessage({
-						type: "SHARED_KEY",
-					});
-				});
+				_sharedKey = await crypto.subtle.generateKey(
+					{
+						length: SHARED_KEY_LENGTH,
+						name: SHARED_ENCRYPTION_ALGORITHM,
+					},
+					true,
+					["encrypt", "decrypt"],
+				);
 			} catch (error) {
 				_setConnectionState(CONNECTION_DISCONNECTED);
 				onError.dispatch({
