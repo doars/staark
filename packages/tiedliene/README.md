@@ -135,9 +135,9 @@ console.log(stateManager.get())
 - `snapshot` is either `'clone'` (the defensive default) or `'reference'`. Reference snapshots expose managed state directly and require callers to treat it as immutable unless they intentionally want to mutate the manager state.
 - `clone` is an optional clone function used for snapshots and instrumentation.
 
-Plain objects and arrays may contain cycles and shared references, which are preserved. `Date`, `Map`, `Set`, and typed-array values are compared by value and stored as whole atomic changes. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected with `TypeError` before managed state changes.
+Plain objects and arrays may contain cycles and shared references. An object reached through several paths stays shared while every update changes it the same way through each path. When an update would make the paths differ, the diff sets the paths reached later to their own copy, so the sharing ends there. Undo restores a copy of the old value, so sharing that an update ended is not restored. `Date`, `Map`, `Set`, and typed-array values are compared by value and stored as whole atomic changes. Functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors are rejected with `TypeError` before managed state changes.
 
-tiedliene's diff functions work with nested plain objects and arrays, including cycles and shared references. `manageState` deliberately rejects functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors so managed transitions remain predictable.
+tiedliene's diff functions work with nested plain objects and arrays, including cycles and shared references, as described above. `manageState` deliberately rejects functions, custom instances, weak collections, DOM nodes, symbol-keyed state, and enumerable accessors so managed transitions remain predictable.
 
 ```JavaScript
 const nestedState = {

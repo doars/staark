@@ -23,8 +23,13 @@ const mulberry32 = (seed) => () => {
 const KEYS = ['a', 'b', 'c', 'd', 'e']
 const PRIMITIVES = [0, 1, 2, 'a', 'b', null, undefined, true]
 
-const createValue = (random, depth) => {
+// Containers in the pool are finished, so reusing one shares it without
+// creating a cycle.
+const createValue = (random, depth, pool) => {
   const choice = random()
+  if (pool?.length > 0 && choice < 0.15) {
+    return pool[Math.floor(random() * pool.length)]
+  }
   if (depth <= 0 || choice < 0.4) {
     return PRIMITIVES[Math.floor(random() * PRIMITIVES.length)]
   }
@@ -32,46 +37,71 @@ const createValue = (random, depth) => {
     const array = []
     const length = Math.floor(random() * 5)
     for (let index = 0; index < length; index++) {
-      array.push(createValue(random, depth - 1))
+      array.push(createValue(random, depth - 1, pool))
     }
+    pool?.push(array)
     return array
   }
   const record = {}
   for (const key of KEYS) {
     if (random() < 0.5) {
-      record[key] = createValue(random, depth - 1)
+      record[key] = createValue(random, depth - 1, pool)
     }
   }
+  pool?.push(record)
   return record
 }
 
-// Change a copy of the value a little, so the two values share structure.
-const changeValue = (random, value, depth) => {
+// Change a copy of the value a little, so the two values have a similar
+// structure. With a pool, a changed container is sometimes reused for the
+// same original, so sharing can be kept as well as split.
+const changeValue = (random, value, depth, pool, changed) => {
   if (random() < 0.15) {
-    return createValue(random, depth)
+    return createValue(random, depth, pool)
   }
+  if (changed?.has(value) && random() < 0.5) {
+    return changed.get(value)
+  }
+  let result
   if (Array.isArray(value)) {
-    const array = value.map((item) => changeValue(random, item, depth - 1))
+    result = value.map((item) =>
+      changeValue(random, item, depth - 1, pool, changed),
+    )
     if (random() < 0.3) {
-      array.length = Math.floor(random() * (array.length + 1))
+      result.length = Math.floor(random() * (result.length + 1))
     }
     while (random() < 0.3) {
-      array.push(createValue(random, depth - 1))
+      result.push(createValue(random, depth - 1, pool))
     }
-    return array
-  }
-  if (value && typeof value === 'object') {
-    const record = {}
+  } else if (value && typeof value === 'object') {
+    result = {}
     for (const key of KEYS) {
       if (Object.hasOwn(value, key) && random() < 0.85) {
-        record[key] = changeValue(random, value[key], depth - 1)
+        result[key] = changeValue(random, value[key], depth - 1, pool, changed)
       } else if (random() < 0.2) {
-        record[key] = createValue(random, depth - 1)
+        result[key] = createValue(random, depth - 1, pool)
       }
     }
-    return record
+  } else {
+    return random() < 0.7 ? value : createValue(random, depth, pool)
   }
-  return random() < 0.7 ? value : createValue(random, depth)
+  changed?.set(value, result)
+  return result
+}
+
+const roundTrip = (before, after) => {
+  if (
+    !after ||
+    typeof after !== 'object' ||
+    Array.isArray(after) !== Array.isArray(before)
+  ) {
+    after = cloneRecursive(before)
+  }
+  const diff = determineDiff(before, after)
+  const state = applyDiff(cloneRecursive(before), diff)
+  assert.deepStrictEqual(state, after)
+  assert.deepStrictEqual(revertDiff(state, diff), before)
+  assert.deepStrictEqual(applyDiff(state, diff), after)
 }
 
 describe('Random diffs', () => {
@@ -79,21 +109,20 @@ describe('Random diffs', () => {
     const random = mulberry32(1)
     for (let round = 0; round < ROUNDS; round++) {
       const before = createValue(random, 4)
-      if (!before || typeof before !== 'object') {
-        continue
+      if (before && typeof before === 'object') {
+        roundTrip(before, changeValue(random, before, 4))
       }
-      let after = changeValue(random, before, 4)
-      if (
-        !after ||
-        typeof after !== 'object' ||
-        Array.isArray(after) !== Array.isArray(before)
-      ) {
-        after = cloneRecursive(before)
+    }
+  })
+
+  it('apply and revert are inverses for random shared states', () => {
+    const random = mulberry32(2)
+    for (let round = 0; round < ROUNDS; round++) {
+      const pool = []
+      const before = createValue(random, 4, pool)
+      if (before && typeof before === 'object') {
+        roundTrip(before, changeValue(random, before, 4, pool, new Map()))
       }
-      const diff = determineDiff(before, after)
-      const state = applyDiff(cloneRecursive(before), diff)
-      assert.deepStrictEqual(state, after)
-      assert.deepStrictEqual(revertDiff(state, diff), before)
     }
   })
 })

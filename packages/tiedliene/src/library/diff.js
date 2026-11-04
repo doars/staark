@@ -326,7 +326,8 @@ const applyValidatedDiff = (state, diff, reverting) => {
  * @param {Record<string, any>} before The object before the change.
  * @param {Record<string, any>} after The object after the change.
  * @param {Array<string | number>} [path=[]] The path to the current object.
- * @param {WeakMap<object, WeakSet<object>>} [compared] Compared object pairs.
+ * @param {Map<object, object>} [paired] The "after" object each "before" object
+ * was first compared with.
  * @param {Change[]} [changes=[]] The list to add the changes to.
  * @returns {Change[]} The changes between the two objects.
  */
@@ -334,25 +335,25 @@ export const determineDiff = (
 	before,
 	after,
 	path = [],
-	compared = new WeakMap(),
+	paired = new Map(),
 	changes = [],
 ) => {
-	if (
-		before &&
-		after &&
-		typeof before === "object" &&
-		typeof after === "object"
-	) {
-		let comparedAfter = compared.get(before);
-		if (comparedAfter?.has(after)) {
-			return changes;
+	// A "before" object reached again is shared, or part of a cycle. The
+	// changes made through the first path already update it. If this path
+	// should end up different, it gets its own copy instead.
+	const firstAfter = paired.get(before);
+	if (firstAfter) {
+		if (firstAfter !== after && !valuesEqual(firstAfter, after)) {
+			changes.push({
+				type: "set",
+				path,
+				old: cloneRecursive(before),
+				new: cloneRecursive(after),
+			});
 		}
-		if (!comparedAfter) {
-			comparedAfter = new WeakSet();
-			compared.set(before, comparedAfter);
-		}
-		comparedAfter.add(after);
+		return changes;
 	}
+	paired.set(before, after);
 
 	// Arrays are walked by index, so holes are read as undefined and paths
 	// contain numbers.
@@ -375,7 +376,7 @@ export const determineDiff = (
 			Array.isArray(before[key]) === Array.isArray(after[key])
 		) {
 			// If both are objects or both are arrays, recurse deeper.
-			determineDiff(before[key], after[key], [...path, key], compared, changes);
+			determineDiff(before[key], after[key], [...path, key], paired, changes);
 		} else if (!valuesEqual(before[key], after[key])) {
 			// If the value has changed, record the new and old value.
 			changes.push({

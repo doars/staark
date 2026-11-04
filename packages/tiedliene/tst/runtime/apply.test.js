@@ -6,6 +6,8 @@ import {
 
 import {
     applyDiff,
+    determineDiff,
+    revertDiff,
 } from '../../src/index.js'
 
 describe('Apply diff', () => {
@@ -333,5 +335,45 @@ describe('Apply diff', () => {
       general: 'there',
     }
     assert.deepStrictEqual(actual, expected)
+  })
+
+  it('shared object changed through one path', () => {
+    const shared = { value: 1 }
+    const state = { left: shared, right: shared }
+    const diff = determineDiff(state, {
+      left: { value: 2 },
+      right: { value: 1 },
+    })
+    assert.deepStrictEqual(applyDiff(state, diff), {
+      left: { value: 2 },
+      right: { value: 1 },
+    })
+    assert.deepStrictEqual(revertDiff(state, diff), {
+      left: { value: 1 },
+      right: { value: 1 },
+    })
+  })
+
+  it('shared object changed the same way through both paths', () => {
+    const shared = { value: 1 }
+    const state = { left: shared, right: shared }
+    const changed = { value: 2 }
+    const diff = determineDiff(state, { left: changed, right: changed })
+    assert.strictEqual(diff.length, 1)
+    applyDiff(state, diff)
+    assert.strictEqual(state.left, state.right)
+    assert.strictEqual(state.left.value, 2)
+  })
+
+  it('cycle that is broken', () => {
+    const state = { value: 1 }
+    state.self = state
+    const diff = determineDiff(state, { value: 2, self: { value: 1 } })
+    applyDiff(state, diff)
+    assert.deepStrictEqual(state, { value: 2, self: { value: 1 } })
+    revertDiff(state, diff)
+    assert.strictEqual(state.value, 1)
+    assert.strictEqual(state.self.value, 1)
+    assert.strictEqual(state.self.self.value, 1)
   })
 })

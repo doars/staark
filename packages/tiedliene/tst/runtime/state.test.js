@@ -218,4 +218,25 @@ describe('Manage state policies', () => {
     assert.strictEqual(redone.left, redone.right)
     assert.strictEqual(redone.left.value, 2)
   })
+
+  it('splits a shared object when only one path changes', () => {
+    const shared = { value: 1 }
+    const initial = { left: shared, right: shared }
+    const state = manageState(initial)
+    assert.deepStrictEqual(state.set({
+      left: { value: 2 },
+      right: { value: 1 },
+    }), {
+      left: { value: 2 },
+      right: { value: 1 },
+    })
+    const undone = state.undo()
+    assert.deepStrictEqual(undone, { left: { value: 1 }, right: { value: 1 } })
+    undone.left.value = 3
+    assert.strictEqual(undone.right.value, 1)
+    assert.deepStrictEqual(state.redo(), {
+      left: { value: 2 },
+      right: { value: 1 },
+    })
+  })
 })
